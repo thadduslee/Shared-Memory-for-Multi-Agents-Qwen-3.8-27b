@@ -25,7 +25,7 @@ for f in "${pids[@]}"; do
     else
         log "$name (pid $pid) was not running"
     fi
-    rm -f "$f"
+    rm -f "$f" "${f%.pid}.gpu"
 done
 log "done. GPU state:"
 nvidia-smi --query-gpu=index,memory.used --format=csv,noheader

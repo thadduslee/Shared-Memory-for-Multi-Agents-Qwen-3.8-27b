@@ -71,6 +71,33 @@ free_gpus() {
         | sort -n | awk '{print $2}'
 }
 
+# GPUs already CLAIMED by a server these scripts started, whether or not it has
+# allocated its memory yet.
+#
+# WITHOUT THIS, TWO SERVERS STARTED BACK TO BACK RACE ONTO THE SAME CARD.
+# `free_gpus` reads an instantaneous nvidia-smi, and vLLM takes ~30s between
+# launch and its first allocation -- so a server launched seconds ago is
+# invisible and the next `pick_gpus` hands out the card it is about to take.
+# The loser dies at startup with
+#
+#   ValueError: Free memory on device cuda:0 (86.76/139.8 GiB) on startup is
+#   less than desired GPU memory utilization (0.9, 125.82 GiB)
+#
+# which names memory pressure and says nothing about the collision that caused
+# it. Each start_server records its card in $RUN_DIR/<name>.gpu; a claim whose
+# pid is gone is ignored, so a crashed server does not hold a card forever.
+claimed_gpus() {
+    shopt -s nullglob
+    local f name pid
+    for f in "$RUN_DIR"/*.gpu; do
+        name="$(basename "$f" .gpu)"
+        pid="$(cat "$RUN_DIR/$name.pid" 2>/dev/null || true)"
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            tr ',' '\n' < "$f"
+        fi
+    done
+}
+
 # pick_gpus N -> comma-separated indices, or die with what was actually free.
 pick_gpus() {
     local want="$1" picked
@@ -79,7 +106,10 @@ pick_gpus() {
         echo "$CUDA_VISIBLE_DEVICES"
         return 0
     fi
-    picked="$(free_gpus | head -n "$want" | paste -sd, -)"
+    local claimed
+    claimed="$(claimed_gpus | sort -u)"
+    picked="$(free_gpus | { [[ -n "$claimed" ]] && grep -vxF -f <(echo "$claimed") || cat; } \
+              | head -n "$want" | paste -sd, -)"
     local got
     got="$(awk -F, '{print NF}' <<<"$picked")"
     [[ -z "$picked" ]] && got=0
@@ -148,5 +178,7 @@ start_server() {
         > "$LOG_DIR/$name.log" 2>&1 &
 
     echo $! > "$RUN_DIR/$name.pid"
-    log "$name pid $(cat "$RUN_DIR/$name.pid"), log $LOG_DIR/$name.log"
+    # Claim the card before anyone else can pick it; see `claimed_gpus`.
+    echo "$gpus" > "$RUN_DIR/$name.gpu"
+    log "$name pid $(cat "$RUN_DIR/$name.pid"), gpu $gpus, log $LOG_DIR/$name.log"
 }

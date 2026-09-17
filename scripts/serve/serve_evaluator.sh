@@ -46,7 +46,18 @@ PORT="${EVALUATOR_PORT:-8000}"
 SERVE_MODEL="${EVALUATOR_HF_MODEL:-Qwen/Qwen3.8-27B}"
 # The served name IS the contract with config.EVALUATOR_MODEL. Keep the prefix.
 SERVE_NAME="${EVALUATOR_SERVED_NAME:-$SERVE_MODEL}"
-SERVE_EXTRA_ARGS="--reasoning-parser qwen3 --limit-mm-per-prompt {\"image\":0,\"video\":0}"
+# --enable-auto-tool-choice is REQUIRED even though the Evaluator has no tools
+# of its own. On EVAL_TRANSPORT=dsh the harness mounts its own Cordis tool
+# plugins and therefore sends `tool_choice: "auto"` on EVERY request; a server
+# without a tool parser rejects that outright:
+#
+#   "auto" tool choice requires --enable-auto-tool-choice and
+#   --tool-call-parser to be set   [400 INVALID_REQUEST]
+#
+# Every answering checkpoint then falls back to raw evidence and the run halts
+# with ANSWERER DEGRADED -- correctly, but for a reason the message attributes
+# to an unreachable endpoint rather than to a rejected request.
+SERVE_EXTRA_ARGS="--reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser ${EVALUATOR_TOOL_PARSER:-qwen3_coder} --limit-mm-per-prompt {\"image\":0,\"video\":0}"
 
 GPUS="$(pick_gpus "${EVALUATOR_TP:-1}")"
 start_server "$NAME" "$PORT" "$GPUS" "${EVALUATOR_TP:-1}"

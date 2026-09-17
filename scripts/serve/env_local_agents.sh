@@ -43,6 +43,12 @@ export CRITIC_MODEL="${CRITIC_MODEL:-Qwen/Qwen3.8-27B}"
 export ARCHITECT_MAX_TOKENS="${ARCHITECT_MAX_TOKENS:-32768}"
 export DEVELOPER_MAX_TOKENS="${DEVELOPER_MAX_TOKENS:-16384}"
 export CRITIC_MAX_TOKENS="${CRITIC_MAX_TOKENS:-16384}"
+# The Evaluator needs one too, and for the same reason -- it is also on dsh, and
+# its server's max_model_len is 65536, so the harness's 256000 default is a 400.
+# That failure surfaces as ANSWERER DEGRADED ("the evaluator model did not
+# respond"), which points at reachability rather than at a rejected request.
+# Predictions are short; this is a ceiling, not a target.
+export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"
 
 # dsh stays the default for the agentic nodes, per the brief. The harness
 # reaches the local server the same way it reaches OpenRouter: `provider` is a
