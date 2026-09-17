@@ -42,7 +42,10 @@ export CRITIC_MODEL="${CRITIC_MODEL:-Qwen/Qwen3.8-27B}"
 # completion caps; prompt + completion must fit AGENT_MAX_MODEL_LEN (131072).
 export ARCHITECT_MAX_TOKENS="${ARCHITECT_MAX_TOKENS:-32768}"
 export DEVELOPER_MAX_TOKENS="${DEVELOPER_MAX_TOKENS:-16384}"
-export CRITIC_MAX_TOKENS="${CRITIC_MAX_TOKENS:-16384}"
+# 65536, not 16384: at 16384 the Critic spent its whole budget on (unseen)
+# reasoning and returned no text, so every iteration fell back to an
+# attribution-only critique (runs_local_20iter_critic16k_aborted/iter_1).
+export CRITIC_MAX_TOKENS="${CRITIC_MAX_TOKENS:-65536}"
 # The Evaluator needs one too, and for the same reason -- it is also on dsh, and
 # its server's max_model_len is 65536, so the harness's 256000 default is a 400.
 # That failure surfaces as ANSWERER DEGRADED ("the evaluator model did not
