@@ -140,6 +140,10 @@ class AsyncLLMClient:
             "openrouter": config.openrouter_route(),
             "vllm": config.vllm_route(),
             "openai": config.openai_route(),
+            # The agentic nodes' route. Defaults to the OpenRouter endpoint, so
+            # registering it always is harmless; it becomes a distinct endpoint
+            # (and a distinct semaphore) only when AGENT_* points elsewhere.
+            "agent": config.agent_route(),
         }
         # One semaphore per route: the vLLM cluster and OpenRouter have very
         # different capacity and must not share a budget.
@@ -280,11 +284,16 @@ class AsyncLLMClient:
             reasoning = config.openrouter_reasoning(model)
             if reasoning:
                 payload["reasoning"] = reasoning
-        if route_cfg.name == "vllm":
+        if route_cfg.is_vllm:
             # The vLLM-route twin of the reasoning cap above: stop a hybrid
             # thinking model from reasoning past HTTP_TIMEOUT_S and returning an
             # empty answer. Only vLLM understands this key; OpenRouter and
             # OpenAI would reject it.
+            #
+            # Keyed off `is_vllm`, NOT off `name == "vllm"`: the agentic nodes
+            # can now be served by a second vLLM under the route name "agent",
+            # and a literal-name check silently skipped the thinking-disable
+            # there -- the same class of bug as the bare "qwen3.8-27b" slug.
             template_kwargs = config.vllm_chat_template_kwargs(model)
             if template_kwargs:
                 payload["chat_template_kwargs"] = template_kwargs

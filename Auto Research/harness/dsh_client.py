@@ -60,6 +60,9 @@ CONFIRMED by reading github.com/deepseek-ai/deepseek-harness @ master:
 
 from __future__ import annotations
 
+import dataclasses
+import inspect
+
 import asyncio
 import json
 import logging
@@ -731,6 +734,88 @@ class DSHClientProtocol(Protocol):
     ) -> DSHResult: ...
 
 
+def _sdk_config_fields(sdk: Any) -> frozenset[str] | None:
+    """Field names `DeepSeekHarnessConfig` accepts, or None if undiscoverable."""
+    cls = getattr(sdk, "DeepSeekHarnessConfig", None)
+    if cls is None:
+        return None
+    try:
+        return frozenset(f.name for f in dataclasses.fields(cls))
+    except TypeError:
+        try:
+            return frozenset(inspect.signature(cls.__init__).parameters) - {"self"}
+        except (TypeError, ValueError):
+            return None
+
+
+def _adapt_sdk_kwargs(
+    sdk: Any, kwargs: dict[str, Any], workdir: Path
+) -> dict[str, Any]:
+    """Reshape our kwargs to whatever `DeepSeekHarnessConfig` this SDK has.
+
+    THE SDK'S CONFIG SHAPE IS NOT STABLE AND WE PIN ONLY `>=0.1`.
+    The names above were verified against the build this code was written on,
+    which took `session_root` and `cordis`. The 0.1.5rc1 wheel on PyPI takes
+    NEITHER: its fields are
+
+        provider model reasoning_effort max_tokens cwd runtime_cwd dsh_bin
+        profile patches dsh_home env initialize_timeout_seconds
+        request_timeout_seconds shutdown_timeout_seconds base_url api_key
+
+    so an unadapted call dies with `unexpected keyword argument
+    'session_root'` at CONSTRUCTION -- before any request, so it fails
+    identically against OpenRouter and against a local vLLM, and the error
+    says nothing about either. Every dsh node is dead on that wheel.
+
+    What moved, and how it is mapped:
+
+    * `cordis=<path>`   -> `patches=(<path>,)`.  The least-privilege
+      composition is now supplied as `--patch <file>` arguments rather than one
+      `--cordis` path (`client.py` builds `("--profile", profile, "--patch",
+      p, ...)`).  THIS MAPPING IS LOAD-BEARING: drop it and every node silently
+      gets the default composition, which is the opposite of least privilege --
+      the Architect would acquire the file-writing plugin its whole profile
+      exists to deny it.
+    * `session_root`    -> dropped; sessions now live under `dsh_home`.
+    * `dsh_home`        -> added.  The SDK refuses to start without it and
+      explicitly will not fall back to `~/.dsh`.
+
+    Unknown keys are DROPPED rather than passed, and anything dropped is logged
+    once at debug so a future shape change is visible in a log rather than as a
+    behaviour difference.
+    """
+    fields = _sdk_config_fields(sdk)
+    if fields is None:
+        return kwargs
+
+    out = dict(kwargs)
+
+    if "cordis" in out and "cordis" not in fields:
+        cordis_path = out.pop("cordis")
+        if "patches" in fields:
+            out["patches"] = (str(cordis_path),)
+        else:
+            log.error(
+                "dsh: this SDK takes neither `cordis` nor `patches`; the "
+                "per-node least-privilege composition CANNOT be applied. "
+                "Refusing to run a node with the default tool surface."
+            )
+            raise RuntimeError(
+                "deepseek_harness SDK exposes no way to pass a Cordis "
+                "composition; least privilege would be silently lost"
+            )
+
+    if "dsh_home" in fields and not out.get("dsh_home"):
+        out["dsh_home"] = str(config.DSH_HOME)
+
+    dropped = sorted(set(out) - fields)
+    for key in dropped:
+        out.pop(key)
+    if dropped:
+        log.debug("dsh: dropped kwargs this SDK does not accept: %s", ", ".join(dropped))
+    return out
+
+
 class RealDSHClient:
     """Drives the actual harness.  Used when `MOCK_MODE` is False.
 
@@ -890,6 +975,11 @@ class RealDSHClient:
             key = os.environ.get(profile.api_key_env)
             if key:
                 kwargs["api_key"] = key
+
+        if config.DSH_REASONING_EFFORT:
+            kwargs["reasoning_effort"] = config.DSH_REASONING_EFFORT
+
+        kwargs = _adapt_sdk_kwargs(sdk, kwargs, workdir)
 
         progress = _ProgressLogger(profile.name)
         harness = harness_cls(**kwargs)

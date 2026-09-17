@@ -594,6 +594,72 @@ DEV_TOOL_CHOICE: str = _env("DEV_TOOL_CHOICE", "auto")  # auto | required | none
 # prefix ("openai/gpt-4.1"); with `openai` it does not ("gpt-4.1").
 JUDGE_ROUTE: str = _env("JUDGE_ROUTE", "openai")  # openai | openrouter
 
+
+# ==========================================================================
+# Where the AGENTIC nodes run  (Architect / Developer / Critic)
+# ==========================================================================
+#
+# These three share one endpoint, and it defaults to OpenRouter -- so leaving
+# AGENT_* unset reproduces the shipped behaviour exactly.
+#
+# Point them at a local vLLM to run the loop without an OpenRouter key:
+#
+#   export AGENT_BASE_URL=http://localhost:8002/v1
+#   export AGENT_API_KEY_ENV=VLLM_API_KEY
+#   export AGENT_ROUTE=agent
+#   export ARCHITECT_MODEL=Qwen/Qwen3.8-27B   # and DEVELOPER_/CRITIC_
+#
+# AGENT_ROUTE names the HTTP serving route (see `agent_route()`); it is a
+# separate route from `vllm` on purpose, so the agentic nodes do not share the
+# Evaluator's fan-out semaphore.
+#
+# THE JUDGE IS DELIBERATELY NOT INCLUDED. It keeps its own JUDGE_ROUTE, so a
+# local-agent setup still judges on a frontier model. Under JUDGE_IMPL=gatemem
+# the Judge is PRIMARY on utility -- it can overturn the rule matcher -- and
+# moving both the system under test and its grader onto the same local model
+# is how a shared blind spot becomes a score rather than a caught error.
+# Reasoning effort for the dsh transport, or "" to leave the harness's own
+# default alone.
+#
+# THE VOCABULARY IS PER-MODEL, AND A WRONG VALUE IS A 400, NOT A FALLBACK.
+# The harness defaults to "high", which DeepSeek accepts and Qwen3.8 does not:
+#
+#   Unexpected reasoning effort high. Supported types are xhigh (default),
+#   medium, and low.   [400 INVALID_REQUEST]
+#
+# The node reports "empty response" and the iteration halts at MGS=0, which
+# reads as a model failure rather than a config one. Set this to "low" when
+# the agentic nodes are on a local Qwen -- the same reasoning as
+# OPENROUTER_REASONING_EFFORT: an uncapped reasoner on a shared completion
+# budget thinks until the budget is gone and returns no content.
+DSH_REASONING_EFFORT: Final[str] = _env("DSH_REASONING_EFFORT", "")
+
+# The dsh SDK refuses to start without an explicit DSH_HOME and will not fall
+# back to ~/.dsh. Kept inside the project so a run's harness state sits beside
+# its artifacts rather than in the invoking user's home directory.
+DSH_HOME: Final[Path] = Path(
+    _env("DSH_HOME", str(PROJECT_ROOT / ".dsh-home"))
+).expanduser().resolve()
+DSH_HOME.mkdir(parents=True, exist_ok=True)
+
+AGENT_BASE_URL: str = _env("AGENT_BASE_URL", OPENROUTER_BASE_URL)
+AGENT_API_KEY_ENV: str = _env("AGENT_API_KEY_ENV", OPENROUTER_API_KEY_ENV)
+AGENT_ROUTE: str = _env("AGENT_ROUTE", "openrouter")  # openrouter | agent
+
+# Inferred, not configured: a route pointed at something other than OpenRouter
+# or OpenAI is a local OpenAI-compatible server, which here means vLLM. This
+# is what gates `chat_template_kwargs` (the thinking-disable) onto the route.
+AGENT_IS_VLLM: bool = _env_bool(
+    "AGENT_IS_VLLM",
+    not AGENT_BASE_URL.startswith(("https://openrouter.ai", "https://api.openai.com")),
+)
+
+# Sized for a handful of long calls, NOT for a fan-out. The Developer holds one
+# conversation; the Architect and Critic issue one call each per iteration.
+# Raising this does not make a single Architect turn faster and does make an
+# OOM on a shared GPU more likely.
+AGENT_MAX_CONCURRENCY: int = _env_int("AGENT_MAX_CONCURRENCY", 4)
+
 EVAL_TRANSPORT: str = _env("EVAL_TRANSPORT", "dsh")    # dsh | http
 JUDGE_TRANSPORT: str = _env("JUDGE_TRANSPORT", "dsh")  # dsh | http
 
@@ -846,6 +912,13 @@ class RouteConfig:
     api_key_env: str
     max_concurrency: int
     extra_headers: dict[str, str] = field(default_factory=dict)
+    # Is this route served by vLLM?  Declared, not inferred from `name`, because
+    # more than one route can now point at a vLLM server (the Evaluator's and
+    # the agentic nodes'), and `llm/client.py` must send `chat_template_kwargs`
+    # to BOTH -- that key is what disables a hybrid thinking model's reasoning
+    # channel, and OpenRouter/OpenAI would reject it.  Keying that decision off
+    # the literal string "vllm" silently skipped the second route.
+    is_vllm: bool = False
 
 
 def openrouter_route() -> RouteConfig:
@@ -868,6 +941,32 @@ def vllm_route() -> RouteConfig:
         base_url=VLLM_BASE_URL,
         api_key_env=VLLM_API_KEY_ENV,
         max_concurrency=VLLM_MAX_CONCURRENCY,
+        is_vllm=True,
+    )
+
+
+def agent_route() -> RouteConfig:
+    """Where the Architect / Developer / Critic send traffic.
+
+    A route of its own rather than a reuse of `vllm`, because the two have
+    genuinely different capacity: the Evaluator's semaphore is sized for a
+    579-checkpoint fan-out, while the agentic nodes issue a handful of long
+    calls per iteration.  Sharing one budget would queue a single Architect
+    turn behind the whole fan-out -- and DSH_ARCHITECT_TIMEOUT_S is what would
+    fire, reported as a transport failure that re-runs the iteration.
+
+    Defaults to OpenRouter, so this is a no-op until AGENT_* is set.
+    """
+    return RouteConfig(
+        name="agent",
+        base_url=AGENT_BASE_URL,
+        api_key_env=AGENT_API_KEY_ENV,
+        max_concurrency=AGENT_MAX_CONCURRENCY,
+        extra_headers={} if AGENT_IS_VLLM else {
+            "HTTP-Referer": OPENROUTER_REFERER,
+            "X-Title": OPENROUTER_TITLE,
+        },
+        is_vllm=AGENT_IS_VLLM,
     )
 
 

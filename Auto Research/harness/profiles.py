@@ -77,8 +77,12 @@ _SQL_ONLY_CONSTRAINT = (
 ARCHITECT_PROFILE = DSHProfile(
     name="architect",
     model=config.ARCHITECT_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
+    # AGENT_* defaults to the OpenRouter values, so this is the same endpoint
+    # it always was until those are set. See the agentic-nodes block in
+    # config.py for pointing all three at a local vLLM instead.
+    base_url=config.AGENT_BASE_URL,
+    api_key_env=config.AGENT_API_KEY_ENV,
+    route=config.AGENT_ROUTE,
     # No fs_write, no bash: the Architect proposes, it does not build.
     #
     # No `todo` either. Its deliverable is ONE document, and a todo tool only
@@ -115,8 +119,12 @@ ARCHITECT_PROFILE = DSHProfile(
 DEVELOPER_PROFILE = DSHProfile(
     name="developer",
     model=config.DEVELOPER_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
+    # AGENT_* defaults to the OpenRouter values, so this is the same endpoint
+    # it always was until those are set. See the agentic-nodes block in
+    # config.py for pointing all three at a local vLLM instead.
+    base_url=config.AGENT_BASE_URL,
+    api_key_env=config.AGENT_API_KEY_ENV,
+    route=config.AGENT_ROUTE,
     # NO HARNESS-NATIVE TOOLS -- and this is not the same statement as "no
     # tools". The Developer has ten real tools; they are `DevToolbox`
     # (nodes/dev_tools.py), advertised to the model as a genuine tool schema
@@ -259,9 +267,12 @@ JUDGE_PROFILE = DSHProfile(
 CRITIC_PROFILE = DSHProfile(
     name="critic",
     model=config.CRITIC_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
-    route="openrouter",
+    # AGENT_* defaults to the OpenRouter values, so this is the same endpoint
+    # it always was until those are set. See the agentic-nodes block in
+    # config.py for pointing all three at a local vLLM instead.
+    base_url=config.AGENT_BASE_URL,
+    api_key_env=config.AGENT_API_KEY_ENV,
+    route=config.AGENT_ROUTE,
     # Same reasoning as the Architect: one document, so no todo bookkeeping.
     capabilities=frozenset({"fs_read"}),
     max_turns=12,
