@@ -976,4 +976,12 @@ def openai_route() -> RouteConfig:
         base_url=OPENAI_BASE_URL,
         api_key_env=OPENAI_API_KEY_ENV,
         max_concurrency=JUDGE_MAX_CONCURRENCY,
+        # OPENAI_BASE_URL pointed at a local vLLM is how a local Judge is wired
+        # (scripts/serve/serve_judge.sh). Without this the thinking-disable is
+        # never sent and a Qwen judge reasons at its default effort on every
+        # checkpoint.
+        is_vllm=_env_bool(
+            "OPENAI_ROUTE_IS_VLLM",
+            not OPENAI_BASE_URL.startswith(("https://api.openai.com", "https://openrouter.ai")),
+        ),
     )
