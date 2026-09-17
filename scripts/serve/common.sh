@@ -41,10 +41,16 @@ LOG_DIR="${LOG_DIR:-$REPO_ROOT/.serve-logs}"
 RUN_DIR="${RUN_DIR:-$REPO_ROOT/.serve-run}"
 mkdir -p "$LOG_DIR" "$RUN_DIR"
 
-export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
+# Weights live on /node2, not on /home. /home is an 879 GB disk that was at 87%
+# BEFORE the first 52 GB model landed on it; /node2 is 24 TB with 6.4 TB free.
+# A second model on /home would not have fitted at all.
+export HF_HOME="${HF_HOME:-/node2/alfred/huggingface}"
 # These two override HF_HOME when set and are a common source of a model
-# silently downloading to the wrong disk. serve_qwen38.sh unsets them; so do we.
+# silently downloading to the wrong disk -- which on /home now means a failed
+# download rather than a slow one. serve_qwen38.sh unsets them; so do we.
 unset HF_HUB_CACHE TRANSFORMERS_CACHE 2>/dev/null || true
+
+[[ -d "$HF_HOME" ]] || warn "HF_HOME=$HF_HOME does not exist yet; it will be created and the model downloaded into it."
 
 log()  { printf '\033[1;34m[serve]\033[0m %s\n' "$*" >&2; }
 warn() { printf '\033[1;33m[warn]\033[0m  %s\n' "$*" >&2; }

@@ -128,8 +128,20 @@ which conda-forge's `libicui18n` needs, so the `vllm` entry point dies on
 `import sqlite3` without it. Confusingly, `python -c "import sqlite3"` succeeds
 in the same env, which makes it look like a vLLM bug rather than loader order.
 
-## Disk
+## Disk — weights live on `/node2`, not `/home`
 
-The weights are ~54 GB and this disk was at 87% before the first download.
-`df -h /home/lweilun` before pulling a second model — a judge model is another
-~60 GB and the two together will not fit.
+`common.sh` sets `HF_HOME=/node2/alfred/huggingface`.
+
+This is not a preference. `/home` is an 879 GB disk that was at **87% before**
+the first 52 GB model landed on it, and at **95% after**. A judge model is
+another ~60 GB and would simply not have fitted. `/node2` is 24 TB with 6.4 TB
+free.
+
+Override with `HF_HOME` if you want a different location. Note that
+`HF_HUB_CACHE` and `TRANSFORMERS_CACHE` silently *override* `HF_HOME` when set,
+which is the usual way a model ends up back on the wrong disk — `common.sh`
+unsets both.
+
+Anything outside these scripts that pulls weights (a bare `vllm serve`, a
+`transformers` call, `huggingface-cli download`) needs `HF_HOME` exported too,
+or it will download a second copy to `~/.cache/huggingface`.
