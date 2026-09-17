@@ -59,6 +59,33 @@ export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"
 # config.py. "low" for the same reason OPENROUTER_REASONING_EFFORT is low.
 export DSH_REASONING_EFFORT="${DSH_REASONING_EFFORT:-low}"
 
+# A LOCAL 27B ON dsh IS MUCH SLOWER THAN DeepSeek ON OpenRouter, AND THE
+# SHIPPED TIMEOUTS ARE SIZED FOR THE LATTER.
+# Measured here: the Architect generates at ~64 tok/s single-stream, and on the
+# dsh transport it does not issue one call -- the harness runs its own
+# multi-step agent loop (observed: step 5, 50 events, repeated `glob` calls).
+# One Architect turn blew straight through DSH_ARCHITECT_TIMEOUT_S=1800:
+#
+#   dsh timeout profile=architect after 1800s (not retried -- raise its budget)
+#
+# The loop then correctly classifies that as TRANSPORT rather than design and
+# re-runs the same iteration -- which times out again. A systematic overrun
+# looks exactly like a flaky endpoint from inside the router.
+export DSH_ARCHITECT_TIMEOUT_S="${DSH_ARCHITECT_TIMEOUT_S:-5400}"
+export DSH_DEFAULT_TIMEOUT_S="${DSH_DEFAULT_TIMEOUT_S:-2400}"
+export DSH_DEVELOPER_TIMEOUT_S="${DSH_DEVELOPER_TIMEOUT_S:-5400}"
+
+# IF YOU WANT THIS TO FINISH IN REASONABLE TIME, OR IF LEAST PRIVILEGE MATTERS,
+# SET AGENT_TRANSPORT=http. Two independent reasons, both measured here:
+#   * SPEED. The Architect needs one document, not an agent loop. On http that
+#     is a single call; on dsh it was 30+ minutes of harness turns.
+#   * PRIVILEGE. The installed SDK takes `patches` (an OVERLAY) where this code
+#     was written for `cordis` (a REPLACEMENT), so a profile can only ADD tools.
+#     The Architect -- capabilities set empty, composition mounting neither
+#     dsh-tool-fs nor dsh-bash-local -- still called `glob`. On the http path a
+#     node has exactly the tools its caller passes, so a node that passes none
+#     has none. See harness/dsh_client.py `_adapt_sdk_kwargs`.
+
 export AGENT_TRANSPORT="${AGENT_TRANSPORT:-dsh}"
 export DSH_BASE_URL="${DSH_BASE_URL:-$AGENT_BASE_URL}"
 export DEEPSEEK_BASE_URL="${DEEPSEEK_BASE_URL:-$AGENT_BASE_URL}"

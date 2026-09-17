@@ -734,6 +734,9 @@ class DSHClientProtocol(Protocol):
     ) -> DSHResult: ...
 
 
+_PATCH_OVERLAY_WARNED = False
+
+
 def _sdk_config_fields(sdk: Any) -> frozenset[str] | None:
     """Field names `DeepSeekHarnessConfig` accepts, or None if undiscoverable."""
     cls = getattr(sdk, "DeepSeekHarnessConfig", None)
@@ -794,6 +797,32 @@ def _adapt_sdk_kwargs(
         cordis_path = out.pop("cordis")
         if "patches" in fields:
             out["patches"] = (str(cordis_path),)
+            # WARNING: `--patch` IS AN OVERLAY, `--cordis` WAS A REPLACEMENT.
+            # This mapping keeps the harness running, but it does NOT
+            # reproduce the old privilege model. An observed run proves it:
+            # the Architect, whose composition mounts neither `dsh-tool-fs`
+            # nor `dsh-bash-local` and whose capabilities set is empty, still
+            # called `glob` three times -- the SDK's default tool surface
+            # survives the patch.
+            #
+            # So on this SDK, README section 4's claim that "a node's tools
+            # are the Cordis plugins its profile mounts" is FALSE: the profile
+            # can only add, not take away. Least privilege is documented as
+            # structural and is, here, merely instructional.
+            #
+            # Until the patch/profile semantics are pinned down upstream,
+            # prefer AGENT_TRANSPORT=http for any node whose privilege matters:
+            # the http path sends exactly the tools the caller passes, so a
+            # node that passes none has none.
+            if not _PATCH_OVERLAY_WARNED:
+                log.warning(
+                    "dsh: this SDK takes `patches` (an overlay) rather than "
+                    "`cordis` (a replacement), so a profile can only ADD tools, "
+                    "not remove them. Nodes may hold tools their composition "
+                    "does not mount -- least privilege is NOT enforced on this "
+                    "transport. Use AGENT_TRANSPORT=http where that matters."
+                )
+                globals()["_PATCH_OVERLAY_WARNED"] = True
         else:
             log.error(
                 "dsh: this SDK takes neither `cordis` nor `patches`; the "
