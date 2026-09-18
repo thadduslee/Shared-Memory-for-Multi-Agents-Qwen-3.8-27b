@@ -34,6 +34,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import sys
 import threading
 import time
@@ -548,28 +549,59 @@ requester; answer from it and keep its specifics verbatim: {'(none)' if evidence
 
 Respond with exactly one ```json fenced block."""
 
-    async with _semaphore():
-        if config.EVAL_TRANSPORT == "http":
-            from llm import get_llm_client
+    # WHOLE-CALL RETRIES, OUTSIDE THE HTTP LADDER AND OUTSIDE THE SEMAPHORE.
+    #
+    # The client's own HTTP_MAX_RETRIES all fire inside one rate-limit window:
+    # `_backoff_delay` draws full jitter from [0, ceiling], so even a late
+    # attempt can sleep 20ms, and a whole ladder can be spent in under a second.
+    # Against a RATE limit that is not a retry, it is the same request four
+    # times. Measured on SoCLaaS at 579 checkpoints: 84 HTTP 429s, 14 calls
+    # reaching attempt 4/4, and 10 of those in the answer phase -- which is
+    # exactly the "10 of 217 answering checkpoints fell back to raw evidence"
+    # that `render_degraded` reported.
+    #
+    # These attempts are spaced with a guaranteed FLOOR (never less than half
+    # the ceiling, unlike full jitter) so each one lands in a later window, and
+    # the semaphore is released between them so a waiting call does not hold
+    # capacity a neighbour could use. A degraded prediction is not neutral: its
+    # `answer` is the joined raw record bodies, which biases A and F upward
+    # precisely because unredacted content is what a leak check looks for.
+    text, usage, ok = "", {}, False
+    attempts = max(1, config.EVAL_RENDER_ATTEMPTS)
+    for attempt in range(attempts):
+        async with _semaphore():
+            if config.EVAL_TRANSPORT == "http":
+                from llm import get_llm_client
 
-            result = await get_llm_client().chat(
-                route=EVALUATOR_PROFILE.route, model=config.EVALUATOR_MODEL,
-                messages=[
-                    {"role": "system", "content": EVALUATOR_PROFILE.system_prompt},
-                    {"role": "user", "content": task},
-                ],
-                temperature=EVALUATOR_PROFILE.temperature,
-                max_tokens=EVALUATOR_PROFILE.max_tokens,
-                role="evaluator",
-            )
-            text, usage, ok = result.text, result.usage, result.ok
-        else:
-            dsh = await run_dsh(
-                EVALUATOR_PROFILE, task, Path(config.PROJECT_ROOT), int(config.DSH_DEFAULT_TIMEOUT_S)
-            )
-            text, usage, ok = dsh.text, dsh.usage, dsh.ok
+                result = await get_llm_client().chat(
+                    route=EVALUATOR_PROFILE.route, model=config.EVALUATOR_MODEL,
+                    messages=[
+                        {"role": "system", "content": EVALUATOR_PROFILE.system_prompt},
+                        {"role": "user", "content": task},
+                    ],
+                    temperature=EVALUATOR_PROFILE.temperature,
+                    max_tokens=EVALUATOR_PROFILE.max_tokens,
+                    role="evaluator",
+                )
+                text, usage, ok = result.text, result.usage, result.ok
+            else:
+                dsh = await run_dsh(
+                    EVALUATOR_PROFILE, task, Path(config.PROJECT_ROOT),
+                    int(config.DSH_DEFAULT_TIMEOUT_S),
+                )
+                text, usage, ok = dsh.text, dsh.usage, dsh.ok
+        if ok:
+            break
+        if attempt + 1 < attempts:
+            ceiling = config.EVAL_RETRY_BASE_S * (2 ** attempt)
+            await asyncio.sleep(random.uniform(ceiling / 2, ceiling))
 
     if not ok:
+        log.warning(
+            "render %s: no model response after %d whole-call attempt(s); "
+            "falling back to raw evidence (this prediction is NOT model-written)",
+            record.get("checkpoint_id", "?"), attempts,
+        )
         # The retrieval layer's own decision is a safe fallback for ONE
         # checkpoint: it already applied every gate, and its `answer` is the
         # joined bodies of the records that cleared them, so serving it loses

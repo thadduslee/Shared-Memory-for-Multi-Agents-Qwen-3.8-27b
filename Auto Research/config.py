@@ -517,6 +517,23 @@ RENDER_DEGRADED_THRESHOLD: float = _env_float("RENDER_DEGRADED_THRESHOLD", 0.5)
 # numbers -- they are labelled either way.
 HALT_ON_DEGRADED_EVAL: bool = _env_bool("HALT_ON_DEGRADED_EVAL", True)
 
+# WHOLE-CALL retries for one checkpoint's answer render, on top of the HTTP
+# client's own HTTP_MAX_RETRIES -- the Evaluator's equivalent of
+# JUDGE_LLM_ATTEMPTS, and needed for the same reason.
+#
+# The client's ladder fires entirely inside one rate-limit window: full jitter
+# means a late attempt can sleep 20ms, so four attempts can be spent in under a
+# second. Against a RATE limit that is one request sent four times. On SoCLaaS
+# at 579 checkpoints that produced 84 HTTP 429s, 14 calls reaching attempt 4/4
+# and 10 answer-phase renders falling back to raw evidence.
+#
+# That fallback is NOT neutral. The prediction's `answer` becomes the joined raw
+# record bodies, i.e. unredacted content -- exactly what the privacy and
+# deletion checks look for -- so every degraded checkpoint biases A and F upward
+# and measures the gating layer rather than the system under test.
+EVAL_RENDER_ATTEMPTS: int = _env_int("EVAL_RENDER_ATTEMPTS", 3)
+EVAL_RETRY_BASE_S: float = _env_float("EVAL_RETRY_BASE_S", 4.0)
+
 # Circuit breaker: abort the batch once this many results share one normalized
 # failure signature.  3 is low on purpose -- if the first three shards all die
 # the same way, shard four will too.

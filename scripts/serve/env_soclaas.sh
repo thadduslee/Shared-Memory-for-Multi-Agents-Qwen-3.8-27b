@@ -55,9 +55,12 @@ export VLLM_THINKING_MODEL_PREFIXES="Qwen/,qwen/,qwen3"
 # requests is served cleanly; 24 returns 4x HTTP 429 and 48 returns 15x. The
 # client does retry 429 with jitter (RETRYABLE_STATUS in llm/client.py), but a
 # retry storm across a 579-checkpoint fan-out wastes wall clock to no purpose.
-# 12 + 4 keeps total in-flight under the observed ceiling with headroom, since
-# the Evaluator and the Judge share this one endpoint.
-export VLLM_MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:-12}"
+# 12 + 4 was NOT enough: a burst test measures a CONCURRENCY ceiling, but this
+# endpoint also limits by request RATE, which concurrency does not bound when
+# each call is fast. At 12 + 4 a 579-checkpoint pass still drew 84 429s and
+# degraded 10 answering checkpoints to raw evidence. 6 + 2 halves the rate the
+# Evaluator and the Judge together ask this one shared endpoint for.
+export VLLM_MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:-6}"
 # 2, not 4. SoCLaaS turned out to limit by REQUEST RATE, not by concurrency:
 # the first 579-checkpoint pass drew 734 HTTP 429s with this at 4, because the
 # judge fans out one call per checkpoint and concurrency does not bound the
@@ -65,6 +68,22 @@ export VLLM_MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:-12}"
 # retries in _dispatch_judge are the correctness guard; this is the politeness
 # one, and it costs judging wall clock rather than accuracy.
 export JUDGE_MAX_CONCURRENCY="${JUDGE_MAX_CONCURRENCY:-2}"
+
+# RETRY LADDER, widened for a rate-limited shared endpoint.
+#
+# The defaults (4 attempts, base 0.75s, full jitter) all fire inside one
+# rate-limit window -- an entire ladder can be spent in under a second, which
+# against a RATE limit is one request sent four times. The first 579-checkpoint
+# pass drew 84 HTTP 429s and burned 14 ladders to exhaustion that way.
+#
+# 8 attempts with a 2s base and a 60s ceiling spans minutes rather than seconds,
+# so a later attempt lands in a later window. This is the transport half; the
+# correctness half is EVAL_RENDER_ATTEMPTS / JUDGE_LLM_ATTEMPTS in config.py,
+# which retry the WHOLE call with a guaranteed floor between tries after the
+# ladder is spent.
+export HTTP_MAX_RETRIES="${HTTP_MAX_RETRIES:-8}"
+export HTTP_BACKOFF_BASE_S="${HTTP_BACKOFF_BASE_S:-2.0}"
+export HTTP_BACKOFF_MAX_S="${HTTP_BACKOFF_MAX_S:-60.0}"
 
 export EVAL_TRANSPORT=http
 export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"
