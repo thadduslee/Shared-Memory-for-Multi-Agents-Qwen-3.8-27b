@@ -267,12 +267,13 @@ JUDGE_PROFILE = DSHProfile(
 CRITIC_PROFILE = DSHProfile(
     name="critic",
     model=config.CRITIC_MODEL,
-    # AGENT_* defaults to the OpenRouter values, so this is the same endpoint
-    # it always was until those are set. See the agentic-nodes block in
-    # config.py for pointing all three at a local vLLM instead.
-    base_url=config.AGENT_BASE_URL,
-    api_key_env=config.AGENT_API_KEY_ENV,
-    route=config.AGENT_ROUTE,
+    # CRITIC_* falls back to AGENT_*, which falls back to OpenRouter, so this is
+    # the same endpoint it always was until one of them is set. The per-node
+    # layer exists so the Critic can move to a local vLLM while the Architect
+    # and Developer stay on DeepSeek; see the CRITIC_BASE_URL block in config.py.
+    base_url=config.CRITIC_BASE_URL,
+    api_key_env=config.CRITIC_API_KEY_ENV,
+    route=config.CRITIC_ROUTE,
     # Same reasoning as the Architect: one document, so no todo bookkeeping.
     capabilities=frozenset({"fs_read"}),
     max_turns=12,

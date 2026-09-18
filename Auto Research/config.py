@@ -697,6 +697,25 @@ AGENT_IS_VLLM: bool = _env_bool(
 # OOM on a shared GPU more likely.
 AGENT_MAX_CONCURRENCY: int = _env_int("AGENT_MAX_CONCURRENCY", 4)
 
+# PER-NODE OVERRIDE FOR THE CRITIC. Empty = inherit the AGENT_* values above.
+#
+# AGENT_* moves all three agentic nodes together, which is the wrong grain when
+# only one of them should change endpoint -- e.g. Architect and Developer on
+# DeepSeek via OpenRouter while the Critic runs on a local Qwen. Same shape as
+# DEVELOPER_TRANSPORT: one node routed around without disturbing the others.
+#
+# CRITIC_TRANSPORT is read generically by nodes/_transport.transport_for, which
+# looks up `config.<PROFILE>_TRANSPORT`; declaring it here is what makes the
+# env var take effect at all. Set it to http when pointing the Critic at a
+# local vLLM: the pinned deepseek-harness SDK (0.1.1rc1) always sends
+# reasoningEffort=high on dsh, which a vLLM-served Qwen rejects with a 400 that
+# surfaces as an empty completion. The cost is the Critic's `fs_read`, which is
+# only a real capability on dsh -- see the note in nodes/critic.py.
+CRITIC_BASE_URL: str = _env("CRITIC_BASE_URL", "") or AGENT_BASE_URL
+CRITIC_API_KEY_ENV: str = _env("CRITIC_API_KEY_ENV", "") or AGENT_API_KEY_ENV
+CRITIC_ROUTE: str = _env("CRITIC_ROUTE", "") or AGENT_ROUTE
+CRITIC_TRANSPORT: str = _env("CRITIC_TRANSPORT", "")  # dsh | http | "" (inherit)
+
 EVAL_TRANSPORT: str = _env("EVAL_TRANSPORT", "dsh")    # dsh | http
 JUDGE_TRANSPORT: str = _env("JUDGE_TRANSPORT", "dsh")  # dsh | http
 
