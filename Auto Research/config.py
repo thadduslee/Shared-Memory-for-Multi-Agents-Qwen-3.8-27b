@@ -860,6 +860,27 @@ DSH_DEFAULT_TIMEOUT_S: float = _env_float("DSH_DEFAULT_TIMEOUT_S", 600.0)
 # open-ended design turn over a large context, not a tight tool loop.
 DSH_ARCHITECT_TIMEOUT_S: float = _env_float("DSH_ARCHITECT_TIMEOUT_S", 1800.0)
 
+# The Critic is the SECOND such node, and it inherited the general-purpose 600s
+# until runs_hybrid_v2 proved that is not enough: the Critic timed out at 600s
+# in EVERY iteration (1 through 4), returned tokens=0 each time, and fell back
+# to the deterministic attribution-only critique with 0 proposals. With no
+# critique to read, the Architect had no memory of what had failed, re-proposed
+# variants of the same design, and dev MGS sat at exactly 0.6111 for four
+# consecutive iterations -- "TIED with the best; this iteration's code will not
+# be adopted", four times.
+#
+# It is not a hang. The event stream reads `step 1, 10 events` for the whole
+# budget and then jumps to 120-245 events in the last twenty seconds, i.e. ONE
+# very long completion that was still streaming when the wall arrived. Two
+# things make that completion long: the Critic is uncapped by default, so the
+# harness sends its own maxTokens (256000), and deepseek-harness-sdk 0.1.1rc1
+# (pinned) has no reasoning_effort field, so the runtime always asks for
+# reasoningEffort=high. A ceiling ALONE is the wrong fix -- a hard cap
+# truncates mid-JSON, which is how a capped Critic produced empty replies
+# before -- so the budget and the cap are raised together and neither is left
+# as the only thing between a run and its critique.
+DSH_CRITIC_TIMEOUT_S: float = _env_float("DSH_CRITIC_TIMEOUT_S", 1800.0)
+
 # One `dev_think` call is a SINGLE TURN -- the model deciding what to call next
 # -- not the whole build. The tools themselves run outside this budget: the
 # Developer calls DevToolbox, which executes in-process and is bounded by each

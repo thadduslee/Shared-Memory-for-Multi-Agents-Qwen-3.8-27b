@@ -639,7 +639,10 @@ checkpoint_ids[]), evidence_checkpoint_ids and proposals[] (each with component,
 kind, change, expected_fixes[]){_regression_json_keys(regression)}."""
 
         result, block = await agent_call_json(
-            CRITIC_PROFILE, task, Path(state.get("memory_codebase") or config.PROJECT_ROOT)
+            CRITIC_PROFILE, task, Path(state.get("memory_codebase") or config.PROJECT_ROOT),
+            # Its own budget, not DSH_DEFAULT_TIMEOUT_S: one long single-turn
+            # completion, like the Architect's. See DSH_CRITIC_TIMEOUT_S.
+            int(config.DSH_CRITIC_TIMEOUT_S),
         )
         span["tokens"] = result.usage.get("total_tokens", 0)
 

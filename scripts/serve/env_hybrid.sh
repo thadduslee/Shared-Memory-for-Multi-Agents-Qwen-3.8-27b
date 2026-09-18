@@ -15,13 +15,27 @@ if [ -f "$_REPO_ROOT/.env" ]; then set -a; . "$_REPO_ROOT/.env"; set +a; fi
 
 # ---- agentic nodes: repo defaults, stated explicitly ----
 unset AGENT_BASE_URL AGENT_API_KEY_ENV AGENT_ROUTE AGENT_IS_VLLM DSH_BASE_URL DEEPSEEK_BASE_URL DEEPSEEK_API_KEY
-unset ARCHITECT_MAX_TOKENS DEVELOPER_MAX_TOKENS CRITIC_MAX_TOKENS
+unset ARCHITECT_MAX_TOKENS DEVELOPER_MAX_TOKENS
 export ARCHITECT_MODEL=deepseek/deepseek-v4-flash-0731
 export DEVELOPER_MODEL=deepseek/deepseek-v4-flash-0731
 export CRITIC_MODEL=deepseek/deepseek-v4-flash-0731
 export AGENT_TRANSPORT=dsh
 export DEVELOPER_TRANSPORT=http
 export OPENROUTER_REASONING_EFFORT="${OPENROUTER_REASONING_EFFORT:-low}"
+# The Critic is CAPPED while the other two stay uncapped, because it is the one
+# node that ran away. Left uncapped it inherits the harness default of 256000
+# and, on the pinned SDK, reasoningEffort=high with it; in runs_hybrid_v2 that
+# produced one still-streaming completion per iteration that hit the wall at
+# 600s with tokens=0, four iterations in a row, and the run never moved off
+# MGS=0.6111 because the Architect never received a critique.
+#
+# 32768, not 16384: a cap that truncates the reply mid-JSON is its own failure
+# (a 16384-capped Critic returned empty replies earlier in this project), and a
+# real critique -- prose plus a json block of mechanisms and proposals -- has
+# been observed at ~31k tokens upstream. This is a runaway guard, not a budget
+# the node is meant to spend. DSH_CRITIC_TIMEOUT_S (1800s, config.py) is the
+# other half: neither the cap nor the wall should be the only thing in the way.
+export CRITIC_MAX_TOKENS="${CRITIC_MAX_TOKENS:-32768}"
 
 # ---- evaluator: local Qwen on the GPU 1 server ----
 export VLLM_API_KEY="${VLLM_API_KEY:-sk-local-dummy-key}"
