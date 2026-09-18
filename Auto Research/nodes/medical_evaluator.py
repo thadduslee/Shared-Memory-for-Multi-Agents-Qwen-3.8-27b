@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -430,11 +431,48 @@ def _diagnosis(exc: BaseException, limit: int = 400) -> str:
     return joined if len(joined) <= limit else joined[: limit - 1] + "\u2026"
 
 
+def _materialise_runner(workspace: Path) -> Path:
+    """Put `_eval_runner.py` in `workspace` without racing the other shards.
+
+    EVERY SHARD SHARES ONE WORKSPACE, so every shard wrote this same path before
+    exec'ing it. `write_text` truncates and then writes, which leaves a window
+    in which the file exists and is EMPTY -- and a shard that exec'd the runner
+    inside that window ran an empty script, which exits 0, prints nothing and
+    writes no stderr. The caller sees no `SHARD_RESULT=` line and reports
+    "produced no result" with an empty stderr section, i.e. the one failure
+    shape that carries no diagnosis at all.
+
+    It is a pure scale bug and it stayed hidden for exactly that reason. A
+    50-checkpoint dev slice is 5 shards and the window almost never opens; the
+    first 579-checkpoint run is 58 shards and lost shard 17 and shard 27 in the
+    same second as dispatch, 20 checkpoints scored as missing predictions and
+    charged against U.
+
+    Two independent guards, because the cost of being wrong is silent:
+
+    * `os.replace` is atomic on POSIX, so a reader either sees the whole old
+      file or the whole new one -- never a truncated one. The temp file carries
+      the pid so two writers cannot collide on it either.
+    * The write is skipped entirely when the file is already correct, which is
+      the common case for all but the first shard.
+    """
+    runner = workspace / "_eval_runner.py"
+    try:
+        if runner.read_text(encoding="utf-8") == _EVAL_RUNNER:
+            return runner
+    except (OSError, UnicodeDecodeError):
+        pass  # absent, unreadable or half-written: write it properly below
+
+    tmp = workspace / f"_eval_runner.py.{os.getpid()}.{threading.get_ident()}.tmp"
+    tmp.write_text(_EVAL_RUNNER, encoding="utf-8")
+    os.replace(tmp, runner)  # atomic: no reader ever sees a partial file
+    return runner
+
+
 async def _run_retrieval_shard(shard: dict[str, Any]) -> list[dict[str, Any]]:
     """Phase 1: child process, no model.  Raises on infrastructure failure."""
     workspace = Path(shard["workspace"])
-    runner = workspace / "_eval_runner.py"
-    runner.write_text(_EVAL_RUNNER, encoding="utf-8")
+    runner = _materialise_runner(workspace)
 
     env = {
         **os.environ,

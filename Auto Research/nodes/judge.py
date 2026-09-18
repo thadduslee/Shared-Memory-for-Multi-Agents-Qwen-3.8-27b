@@ -40,6 +40,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import random
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -197,10 +198,8 @@ Return exactly one ```json fenced verdict block."""
     return await _dispatch_judge(profile, task)
 
 
-async def _dispatch_judge(
-    profile: Any, task: str
-) -> tuple[dict[str, Any], dict[str, int]]:
-    """One judge call on the configured transport. Shared by both scorers."""
+async def _judge_once(profile: Any, task: str) -> tuple[dict[str, Any], dict[str, int], bool]:
+    """One judge call on the configured transport. Returns (block, usage, ok)."""
     async with _semaphore():
         if config.JUDGE_TRANSPORT == "http":
             from llm import get_llm_client
@@ -222,8 +221,46 @@ async def _dispatch_judge(
             text, usage, ok = dsh.text, dsh.usage, dsh.ok
 
     if not ok:
-        return {}, usage
-    return extract_json_block(text) or {}, usage
+        return {}, usage, False
+    block = extract_json_block(text) or {}
+    # A reply that arrived but carried no verdict is a failed verdict: merging
+    # {} is the same silent rule-only fallback as a dead call, so retry it too.
+    return block, usage, bool(block)
+
+
+async def _dispatch_judge(
+    profile: Any, task: str
+) -> tuple[dict[str, Any], dict[str, int]]:
+    """One checkpoint's verdict, insisting rather than degrading on failure.
+
+    EVERY CHECKPOINT MUST BE SCORED BY THE SAME JUDGE, and a call that fails is
+    not a neutral outcome. `_merge_one` falls back to the rule verdict, whose
+    utility false-negatives are exactly what GateMem's judge was adopted to fix
+    -- so a checkpoint whose call was rate-limited is scored more harshly than
+    its neighbours, U is understated by an amount nobody can see, and the
+    report says nothing about which checkpoints it happened to.
+
+    The client already retries 429 internally (HTTP_MAX_RETRIES), but it gives
+    up inside one rate-limit window. These attempts are spaced further apart to
+    outlast the window instead. When they are all spent the caller still gets
+    `{}` and still degrades -- the difference is that `judge_report` now counts
+    it (`n_llm_judge_fallbacks`) so a degraded scoring pass is visible in the
+    artifact rather than only in a log line.
+    """
+    usage_total: dict[str, int] = {}
+    attempts = max(1, config.JUDGE_LLM_ATTEMPTS)
+    for attempt in range(attempts):
+        block, usage, ok = await _judge_once(profile, task)
+        for key, value in (usage or {}).items():
+            usage_total[key] = usage_total.get(key, 0) + int(value or 0)
+        if ok:
+            return block, usage_total
+        if attempt + 1 < attempts:
+            delay = config.JUDGE_RETRY_BASE_S * (2 ** attempt) * (0.5 + random.random())
+            log.debug("judge verdict attempt %d/%d failed; retrying in %.1fs",
+                      attempt + 1, attempts, delay)
+            await asyncio.sleep(delay)
+    return {}, usage_total
 
 
 def _merge_verdicts(rule: dict[str, Any], llm: dict[str, Any]) -> dict[str, Any]:
@@ -333,6 +370,9 @@ async def judge_node(state: OrchestratorState) -> dict[str, Any]:
             rule_verdicts[cid] = _score_one(prediction, annotation)
 
         usages: list[dict[str, int]] = []
+        # Checkpoints whose LLM verdict never arrived, so they carry a rule-only
+        # score. Reported rather than silently mixed in with the rest.
+        llm_fallbacks: list[str] = []
         if config.USE_LLM_JUDGE and rule_verdicts:
             tasks = [
                 _llm_verdict(predictions[cid], annotations[cid], rule_verdicts[cid])
@@ -347,10 +387,26 @@ async def judge_node(state: OrchestratorState) -> dict[str, Any]:
             for cid, outcome in zip(list(rule_verdicts), outcomes, strict=True):
                 if isinstance(outcome, BaseException):
                     log.warning("llm judge failed for %s: %s", cid, outcome)
+                    llm_fallbacks.append(cid)
                     continue
                 llm_verdict, usage = outcome
                 usages.append(usage)
+                # An empty verdict means every attempt in _dispatch_judge was
+                # spent: the checkpoint keeps its RULE verdict while its
+                # neighbours got an LLM one. Counted, not shrugged at.
+                if not llm_verdict:
+                    llm_fallbacks.append(cid)
                 rule_verdicts[cid] = _merge_one(rule_verdicts[cid], llm_verdict)
+
+            if llm_fallbacks:
+                log.warning(
+                    "judge: %d of %d checkpoint(s) fell back to the RULE verdict "
+                    "because their LLM call never succeeded (%s%s). U is understated "
+                    "for these; they are listed in judge_report.llm_judge_fallbacks.",
+                    len(llm_fallbacks), len(rule_verdicts),
+                    ", ".join(llm_fallbacks[:3]),
+                    ", ..." if len(llm_fallbacks) > 3 else "",
+                )
 
         for cid in missing:
             rule_verdicts[cid] = {
@@ -361,6 +417,8 @@ async def judge_node(state: OrchestratorState) -> dict[str, Any]:
             }
 
         report = _aggregate(rule_verdicts, annotations, malformed, len(missing))
+        report["n_llm_judge_fallbacks"] = len(llm_fallbacks)
+        report["llm_judge_fallbacks"] = llm_fallbacks
 
         # --- scripted override (mock only) -------------------------------
         # The real aggregate above is still computed and still written to the
@@ -444,10 +502,11 @@ async def judge_node(state: OrchestratorState) -> dict[str, Any]:
 
         log.info(
             "judge iter=%d stage=%s: U=%.4f A=%.4f F=%.4f MGS=%.4f "
-            "(gate>=%.2f -> %s | target>=%.2f) malformed=%d missing=%d",
+            "(gate>=%.2f -> %s | target>=%.2f) malformed=%d missing=%d rule_only=%d",
             iteration, stage, report["U"], report["A"], report["F"], mgs,
             config.DEV_GATE_MGS, "PROCEED" if proceed else "SKIP FULL",
             config.MGS_TARGET, malformed, len(missing),
+            report.get("n_llm_judge_fallbacks", 0),
         )
         # The comparison, on its own line and at WARNING when it is bad news.
         # A regression used to be invisible in the log: every iteration printed

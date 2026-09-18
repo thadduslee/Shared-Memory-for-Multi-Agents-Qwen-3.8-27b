@@ -58,7 +58,13 @@ export VLLM_THINKING_MODEL_PREFIXES="Qwen/,qwen/,qwen3"
 # 12 + 4 keeps total in-flight under the observed ceiling with headroom, since
 # the Evaluator and the Judge share this one endpoint.
 export VLLM_MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:-12}"
-export JUDGE_MAX_CONCURRENCY="${JUDGE_MAX_CONCURRENCY:-4}"
+# 2, not 4. SoCLaaS turned out to limit by REQUEST RATE, not by concurrency:
+# the first 579-checkpoint pass drew 734 HTTP 429s with this at 4, because the
+# judge fans out one call per checkpoint and concurrency does not bound the
+# rate a fast endpoint is asked at. Halving it halves the request rate. The
+# retries in _dispatch_judge are the correctness guard; this is the politeness
+# one, and it costs judging wall clock rather than accuracy.
+export JUDGE_MAX_CONCURRENCY="${JUDGE_MAX_CONCURRENCY:-2}"
 
 export EVAL_TRANSPORT=http
 export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"

@@ -320,6 +320,26 @@ VLLM_MAX_CONCURRENCY: int = _env_int("VLLM_MAX_CONCURRENCY", 12)  # ~2 in-flight
 OPENROUTER_MAX_CONCURRENCY: int = _env_int("OPENROUTER_MAX_CONCURRENCY", 4)
 JUDGE_MAX_CONCURRENCY: int = _env_int("JUDGE_MAX_CONCURRENCY", 4)
 
+# WHOLE-CALL retries for one checkpoint's LLM verdict, on top of the HTTP
+# client's own HTTP_MAX_RETRIES.
+#
+# A judge call that comes back not-ok is NOT a scoring failure the loop can
+# shrug at. `_merge_one` falls back to the rule verdict, and the rule pass is
+# precisely the one whose utility false-negatives motivated adopting GateMem's
+# judge in the first place -- so a rate-limited checkpoint is silently scored
+# more harshly than its neighbours, and nothing in the report says which ones.
+#
+# The first 579-checkpoint run made this concrete: SoCLaaS limits by REQUEST
+# RATE rather than by concurrency, so JUDGE_MAX_CONCURRENCY=4 did not prevent
+# 734 HTTP 429s across one judging pass. Every one was absorbed by the client's
+# own retries there, but nothing guaranteed it -- the client gives up after
+# HTTP_MAX_RETRIES and the verdict quietly degrades.
+#
+# These attempts are spaced by JUDGE_RETRY_BASE_S with exponential backoff, and
+# they exist to outlast a rate-limit window rather than to hammer through it.
+JUDGE_LLM_ATTEMPTS: int = _env_int("JUDGE_LLM_ATTEMPTS", 3)
+JUDGE_RETRY_BASE_S: float = _env_float("JUDGE_RETRY_BASE_S", 2.0)
+
 HTTP_MAX_CONNECTIONS: int = _env_int("HTTP_MAX_CONNECTIONS", 64)
 HTTP_MAX_KEEPALIVE: int = _env_int("HTTP_MAX_KEEPALIVE", 16)
 HTTP_TIMEOUT_S: float = _env_float("HTTP_TIMEOUT_S", 120.0)
