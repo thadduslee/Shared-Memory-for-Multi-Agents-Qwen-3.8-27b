@@ -13,7 +13,27 @@ pydantic>=2.7
 # Installing this also pulls the matching deepseek-harness-runtime-bin wheel, so
 # no Node runtime is required. Optional: the graph runs fully in MOCK_MODE
 # without it, and RealDSHClient falls back to `npx @deepseek-ai/dsh` if absent.
-deepseek-harness-sdk>=0.1 ; python_version >= "3.10"
+# PINNED EXACTLY, and this is not routine caution.
+#
+# 0.1.2a3 renamed `DeepSeekHarnessConfig.cordis` to `patches`, and the two are
+# NOT the same thing: `--cordis` REPLACED the composition, `--patch` OVERLAYS
+# it. Every profile in harness/profiles.py, and the "a plugin that is not
+# mounted here is a tool this node physically cannot call" contract in the
+# generated .cordis/*.yml, assume replacement. On >=0.1.2 that contract is
+# false -- a profile can only ADD tools -- so every dsh node silently inherits
+# the SDK default tool surface including bash.
+#
+# Measured, not theorised. The Architect's profile grants it no bash and no
+# fs_write. On 0.1.5rc1 it spent its entire 1800s budget running bash over the
+# repo (step 209, 1190 events, 6.7M tokens) and timed out, killing the run at
+# iteration 6; on 0.1.1rc1 the identical call returns in 11.8s with ZERO tool
+# calls. Upstream's 20/20-iteration runs_real_100iter_v4 averaged 107s and 41k
+# tokens per Architect call -- i.e. the cordis-era behaviour.
+#
+# harness/dsh_client.py::_adapt_sdk_kwargs still maps cordis->patches so the
+# loop RUNS on a newer SDK, but it runs without least privilege. Do not relax
+# this pin until patch/profile semantics are pinned down upstream.
+deepseek-harness-sdk==0.1.1rc1 ; python_version >= "3.10"
 
 # ---- developer-loop tooling (invoked as subprocesses by nodes/dev_tools.py) ----
 pytest>=8.0

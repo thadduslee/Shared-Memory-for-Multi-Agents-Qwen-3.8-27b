@@ -28,10 +28,29 @@ export VLLM_API_KEY="${VLLM_API_KEY:-sk-local-dummy-key}"
 export VLLM_BASE_URL=http://localhost:8002/v1
 export EVALUATOR_MODEL=Qwen/Qwen3.8-27B      # prefix required for the thinking-disable
 export VLLM_MAX_CONCURRENCY="${VLLM_MAX_CONCURRENCY:-48}"
-export EVAL_TRANSPORT=dsh
+# http, NOT dsh, and this is forced by the pinned SDK rather than preferred.
+#
+# deepseek-harness-sdk 0.1.1rc1 (pinned -- see requirements.txt) has no
+# `reasoning_effort` field, so the runtime always sends reasoningEffort=high.
+# DeepSeek's endpoint accepts that; our vLLM Qwen3.8-27B answers
+#
+#   Unexpected reasoning effort high. Supported types are xhigh (default),
+#   medium, and low.   [400 INVALID_REQUEST]
+#
+# which reaches the loop as an EMPTY completion, i.e. as a total retrieval
+# failure rather than as a rejected request. Setting the composition's
+# `defaults.reasoningEffort` does not help: the runtime ignores that key.
+#
+# Nothing is lost here. The Evaluator is a single-shot scorer with NO tools, so
+# the harness buys it nothing, and config.py already notes that eval/judge on
+# http is a supported topology. The http path also sends
+# enable_thinking=false for a "Qwen/"-prefixed model, which dsh never did.
+# The three AGENTIC nodes stay on dsh, where the pinned SDK's cordis
+# composition is what restores least privilege.
+export EVAL_TRANSPORT=http
 export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"
-# Global to every dsh node. Qwen rejects the harness default "high"; "low" is
-# also what the repo already uses for DeepSeek on the http path.
+# Harmless on 0.1.1rc1 (no such field; the adapter drops it), kept so the file
+# still does the right thing if the pin is ever moved forward.
 export DSH_REASONING_EFFORT="${DSH_REASONING_EFFORT:-low}"
 
 # ---- judge: local Qwen, same server (self-judging -- see env_local_judge.sh) ----
