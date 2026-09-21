@@ -428,6 +428,9 @@ def main() -> int:
                 # what bench/agents/base.py avoids for the same reason.
                 "episode_id": cp["episode_id"],
                 "relationships": _requester_relationships(episode, cp.get("asker", {})),
+                # The episode declares its own domain; the answerer prompt's
+                # policy block and domain label are chosen from it.
+                "domain": episode.get("domain") or "",
             })
         except Exception as exc:
             out.append({"checkpoint_id": cid, "error": repr(exc),

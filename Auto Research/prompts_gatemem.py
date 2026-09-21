@@ -170,7 +170,14 @@ def render_query_prompt(record: dict[str, Any]) -> tuple[str, str]:
     `relationships` the shard filtered for this requester.
     """
     domains = _bench_domain_helpers()
-    domain_key = domains.normalize_domain_name(record.get("domain") or "medical")
+    # The EPISODE's own domain first. Defaulting to medical silently sent the
+    # medical access policy with every office checkpoint -- the policy block is
+    # part of the measured prompt, so that is a wrong measurement rather than a
+    # cosmetic slip. config.GATEMEM_DOMAIN is the fallback when a shard row
+    # predates this field.
+    domain_key = domains.normalize_domain_name(
+        record.get("domain") or config.GATEMEM_DOMAIN
+    )
     asker = record.get("asker") or {}
 
     variables = {

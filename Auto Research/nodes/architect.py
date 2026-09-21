@@ -538,6 +538,33 @@ def _critique_source_iteration(state: OrchestratorState, iteration: int) -> int:
     return recorded or max(0, iteration - 1)
 
 
+def _domain_brief() -> tuple[str, str]:
+    """`(label, principals)` for the domain this run is scoring against.
+
+    Read from the loaded dataset rather than configured: the episodes carry the
+    roles, and a hand-maintained list would drift the first time a domain was
+    added. Falls back to the configured domain name with no role list when the
+    data cannot be read, which is honest -- a wrong role list would be worse
+    than none, because the Architect would design an access model around it.
+    """
+    try:
+        import gatemem_adapter as _g
+
+        dataset = _g.load_medical_dataset(config.GATEMEM_DATA_DIR)
+        roles: dict[str, int] = {}
+        for episode in dataset.episodes:
+            for principal in ((episode.get("entities") or {}).get("principals") or []):
+                role = str(principal.get("role") or "").strip()
+                if role and role != "agent":
+                    roles[role] = roles.get(role, 0) + 1
+        ranked = sorted(roles, key=lambda r: -roles[r])[:8]
+        if ranked:
+            return config.GATEMEM_DOMAIN, ", ".join(ranked)
+    except Exception as exc:  # noqa: BLE001 -- a brief is not worth failing a run over
+        log.warning("could not read the domain brief from the dataset: %s", exc)
+    return config.GATEMEM_DOMAIN, "several roles with different authorization"
+
+
 def _recap_additions(
     state: OrchestratorState, block: dict[str, Any], iteration: int, critique: str
 ) -> list[dict[str, Any]]:
@@ -722,6 +749,10 @@ async def architect_node(state: OrchestratorState) -> dict[str, Any]:
         # path `critique` is stale (or empty) and this block is the ONLY
         # feedback about the iteration that just failed.
         dev_failure = _developer_failure_block(state)
+        # Named from the data, so pointing the loop at another GateMem domain
+        # does not leave the Architect designing for the last one. The roles are
+        # the ones this domain's episodes actually contain.
+        domain_label, domain_principals = _domain_brief()
         # Omitted entirely when the curriculum is off: naming a phase the run is
         # not actually gated on tells the model to design for a slice instead of
         # for the benchmark. See config.CURRICULUM_ENABLED.
@@ -785,12 +816,16 @@ async def architect_node(state: OrchestratorState) -> dict[str, Any]:
         task = f"""You are designing iteration {iteration} of the memory system.
 
 ## WHAT YOU ARE DESIGNING
-A medical-grade shared memory system serving several principals -- patients,
-clinicians, family members, schedulers -- with different authorization over one
-memory pool. It MUST cross-reference retrieved records against an access-control
-model before they reach the answerer, and it MUST implement active forgetting
-(explicit deletion or cryptographic shredding) such that deleted content cannot
-be recovered, restated, or confirmed to have existed.
+A shared memory system for the {domain_label} domain, serving several principals
+-- {domain_principals} -- with different authorization over one memory pool. It
+MUST cross-reference retrieved records against an access-control model before
+they reach the answerer, and it MUST implement active forgetting (explicit
+deletion or cryptographic shredding) such that deleted content cannot be
+recovered, restated, or confirmed to have existed.
+
+The roles and relationship types are properties of THIS domain's data, not of
+your design: read them out of the implementation and the evidence rather than
+assuming the ones a previous domain used.
 
 ## STORAGE CONSTRAINT (non-negotiable)
 The backing store is SQL only -- SQLite, one database file per run. Do NOT

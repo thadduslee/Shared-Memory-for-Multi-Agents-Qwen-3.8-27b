@@ -389,7 +389,11 @@ GATEMEM_REPO: Final[Path] = Path(
             else Path.home() / "GateMem"),
     )
 ).expanduser()
-GATEMEM_DOMAIN: Final[str] = "medical"
+# Which GateMem domain to run. The four ship with different principals,
+# relationship types and attack mixes -- office has 16 roles and 9 relationship
+# types, none of them shared with medical -- so this also decides what a seeded
+# memory system will find when it arrives.
+GATEMEM_DOMAIN: Final[str] = _env("GATEMEM_DOMAIN", "medical")
 GATEMEM_DATA_DIR: Final[Path] = GATEMEM_REPO / "bench" / "data" / GATEMEM_DOMAIN
 
 # Configured *expectations*, not authorities.  The real counts are always

@@ -34,9 +34,12 @@ import json
 import logging
 import random
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
+
+import config
 
 log = logging.getLogger("orchestrator.gatemem")
 
@@ -186,27 +189,38 @@ def load_medical_dataset(data_dir: Path) -> MedicalDataset:
     checkpoints_path = data_dir / "checkpoints.jsonl"
     if not episodes_path.is_file() or not checkpoints_path.is_file():
         raise FileNotFoundError(
-            f"GateMem medical data not found under {data_dir}. "
+            f"GateMem {config.GATEMEM_DOMAIN} data not found under {data_dir}. "
             "Set GATEMEM_REPO to a GateMem checkout, or run with MOCK_MODE=True."
         )
 
+    # THE FILTER IS ON THE CONFIGURED DOMAIN, not on the literal "medical".
+    # It was hardcoded, and `data_dir` already selects the domain -- so pointing
+    # the loop at bench/data/office dropped all 547 of its checkpoints and left
+    # the run scoring an empty set, with only an INFO line to say so.
+    domain = str(config.GATEMEM_DOMAIN)
     all_episodes = _read_jsonl(episodes_path)
-    medical_episodes = [ep for ep in all_episodes if ep.get("domain") == "medical"]
-    if len(medical_episodes) != len(all_episodes):
+    in_domain = [ep for ep in all_episodes if ep.get("domain") == domain]
+    if len(in_domain) != len(all_episodes):
         log.info(
-            "domain filter: kept %d/%d episodes with domain=='medical'",
-            len(medical_episodes),
-            len(all_episodes),
+            "domain filter: kept %d/%d episodes with domain==%r",
+            len(in_domain), len(all_episodes), domain,
         )
-    medical_ids = {ep["episode_id"] for ep in medical_episodes}
+    domain_ids = {ep["episode_id"] for ep in in_domain}
 
     all_checkpoints = _read_jsonl(checkpoints_path)
-    checkpoints = [cp for cp in all_checkpoints if cp.get("episode_id") in medical_ids]
+    checkpoints = [cp for cp in all_checkpoints if cp.get("episode_id") in domain_ids]
     dropped = len(all_checkpoints) - len(checkpoints)
     if dropped:
-        log.warning("dropped %d checkpoints whose episode is not a medical episode", dropped)
+        log.warning(
+            "dropped %d checkpoints whose episode is not a %s episode", dropped, domain
+        )
+    if not checkpoints:
+        raise ValueError(
+            f"no checkpoints survived the domain filter for {domain!r} under {data_dir}. "
+            f"GATEMEM_DOMAIN and the data directory must name the same domain."
+        )
 
-    return MedicalDataset(episodes=medical_episodes, checkpoints=checkpoints)
+    return MedicalDataset(episodes=in_domain, checkpoints=checkpoints)
 
 
 # ==========================================================================
