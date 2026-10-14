@@ -124,11 +124,14 @@ def test_an_explicit_ceiling_is_still_sent(route: str) -> None:
     assert http.payloads[0]["max_tokens"] == 512
 
 
-def test_agent_call_omits_the_key_for_an_uncapped_profile() -> None:
+def test_agent_call_omits_the_key_for_an_uncapped_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The seam the nodes actually use, not just the client directly."""
     from llm import client as client_module
     from nodes import _transport
 
+    monkeypatch.setattr(config, "AGENT_TRANSPORT", "http")
     client = AsyncLLMClient()
     http = _CapturingHTTP()
     client._client = http  # type: ignore[assignment]

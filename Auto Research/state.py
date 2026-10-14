@@ -22,6 +22,33 @@ from typing import Annotated, Any, Literal, TypedDict
 EvalStage = Literal["dev", "full"]
 
 
+class OnlineState(TypedDict, total=False):
+    """Durable online state (stored transactionally by online.storage.Journal).
+
+    Separate from batch reducers: online observations are keyed immutable rows,
+    not append reducers that can be applied twice after a process restart.
+    Episode memory images and cursors are committed in the same SQLite DB.
+    """
+    event_boundary_index: int
+    repair_attempt_index: int
+    committed_system_version: str
+    candidate_system_version: str | None
+    episode_cursors: dict[str, int]
+    versions: dict[str, dict[str, Any]]
+    official_first_attempt: dict[str, Any]
+    repair_attempt: list[dict[str, Any]]
+    cumulative_counts: dict[str, Any]
+    retry_counters: dict[str, int]
+    pending_repairs: list[dict[str, Any]]
+    incident_sequence: int
+    active_repair_incident: dict[str, Any] | None
+    unresolved_repair_incident: dict[str, Any] | None
+    repair_incidents: list[dict[str, Any]]
+    token_usage: dict[str, Any]
+    started_at: float
+    status: str
+
+
 def merge_dicts(left: dict[str, Any] | None, right: dict[str, Any] | None) -> dict[str, Any]:
     """Shallow-merge reducer for dicts written by more than one writer.
 
@@ -330,6 +357,12 @@ class DeveloperState(TypedDict, total=False):
     # cost of one turn. See the note in nodes/developer.py on why the
     # Developer's spend has to be counted.
     tokens_used: Annotated[dict[str, Any], merge_dicts]
+    # Online repair uses workflow milestones without orchestrator-imposed turn,
+    # token, time, or retry ceilings. Batch sessions omit this flag and retain
+    # their existing budget behavior.
+    online_unbounded: bool
+    unworkable: bool
+    unworkable_reason: str
 
     done: bool
     failure_signature: str | None

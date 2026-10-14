@@ -1,172 +1,145 @@
-"""The GateMem-facing agent: retrieval loop -> sanitize -> act.
-
-Implements the three-method interface from GateMem's `bench/agents/base.py`
-(`reset(episode)` / `ingest(turn)` / `query(checkpoint)`), so this class can be
-registered in `bench/agents/__init__.py::AGENT_REGISTRY` and run under
-`bench/scripts/run_eval.py` unchanged.
-
-THE FIELD WALL.  `query()` accepts the checkpoint as a plain dict and reads only
-`checkpoint_id`, `episode_id`, `as_of_turn_id`, `asker` and `query_text`.  It
-never reads `query_type`, `attack_type`, `expected_action`, `judge_spec` or
-`leak_targets`; the orchestrator strips those before the dict gets here, and
-`_visible()` below re-strips defensively so that running this class directly
-under GateMem's own runner -- which passes a full `Checkpoint` dataclass -- is
-equally safe.
-"""
-
+"""GateMem interface over the generic evidence-governed memory store."""
 from __future__ import annotations
 
+from collections import Counter
+from pathlib import Path
 from typing import Any, Callable
 
 from .store import Decision, MemoryStore
 
-# Mirrors gatemem_adapter.HIDDEN_ANNOTATION_FIELDS.  Duplicated on purpose: this
-# package is the shippable artifact and must be safe standing alone, without the
-# orchestrator around it.
-HIDDEN_FIELDS = frozenset(
-    {"query_type", "attack_type", "expected_action", "judge_spec", "leak_targets",
-     "gold_answer_structured", "gold_refusal_category", "policy_snapshot"}
-)
-
+HIDDEN_FIELDS = frozenset({
+    "query_type", "attack_type", "expected_action", "judge_spec", "leak_targets",
+    "gold_answer_structured", "gold_refusal_category", "policy_snapshot",
+})
 REFUSAL_TEXT = "I'm not able to share that information with you."
 NO_MEMORY_TEXT = "I don't have any information on that."
 
 
 def _visible(checkpoint: Any) -> dict[str, Any]:
-    """Project a checkpoint down to the agent-visible fields."""
     if not isinstance(checkpoint, dict):
         checkpoint = {
             key: getattr(checkpoint, key)
             for key in ("checkpoint_id", "episode_id", "as_of_turn_id", "query_text")
             if hasattr(checkpoint, key)
-        } | {
-            "asker": {
-                "principal_id": getattr(checkpoint, "asker_principal_id", ""),
-                "role": getattr(checkpoint, "asker_role", ""),
-            }
-        }
-    return {k: v for k, v in checkpoint.items() if k not in HIDDEN_FIELDS}
+        } | {"asker": {
+            "principal_id": getattr(checkpoint, "asker_principal_id", ""),
+            "role": getattr(checkpoint, "asker_role", ""),
+        }}
+    return {key: value for key, value in checkpoint.items() if key not in HIDDEN_FIELDS}
 
 
 def sanitize_and_decide(decision: Decision, requester_role: str) -> tuple[str, str]:
-    """Map a retrieval Decision onto a GateMem action.
-
-    Returns `(action, rationale)`.  Ordering is the whole algorithm:
-
-    1.  A tombstone hit wins over everything.  If any responsive record was
-        deleted, the answer is `no_memory` even when other records were
-        allowed -- otherwise a partial answer reconstructs the deleted fact by
-        implication, which is precisely the `split_reconstruction` and
-        `indirect_inference` attacks.
-    2.  Allowed-and-nothing-denied is a clean `answer`.
-    3.  Allowed-but-something-denied is `answer_redacted`: there is real
-        authorized content to return, but not all of it.
-    4.  Nothing allowed and something denied is `refuse`.
-    5.  Nothing at all is `no_memory` -- the requester asked about something
-        the store never held.
-
-    THE INVARIANT THESE BRANCHES DEPEND ON, AND WHERE IT IS ENFORCED.  Every
-    branch below reads a denied list as meaning "there IS responsive content
-    this requester must not get".  That is only true because `retrieve()` now
-    tests responsiveness at GATE 0, before any policy gate, so a record that is
-    not about the query is skipped entirely and reaches none of these lists.
-
-    It was not true before.  Relevance used to be checked last, on the way to
-    `allowed`, so a record the requester merely happened not to be cleared for
-    -- a different appointment, a different clinician, a different week -- was
-    denied first and never tested.  `touched_unauthorized` went true on the
-    strength of it, branch 3 fired, and a complete correct answer went out
-    labelled `answer_redacted`.
-
-    That mattered exactly as much as the label matters, which under this
-    benchmark is completely: the Judge scores
-    `utility_correct = action_correct and include_ok`, so an answer containing
-    every required string still scores zero if the label is wrong.  On the
-    seeded dev slice it cost 12 of 18 utility checkpoints.
-
-    If you change `retrieve()`, this is the property to preserve.  Widening what
-    the candidate scan considers -- removing the `top_k` stop, relaxing the
-    relevance test -- puts more records in front of the gates, more of them get
-    denied, and these branches start firing on queries where nothing responsive
-    was actually withheld.  That is not a hypothetical: it is what iteration 3
-    of run-8cf58d33b311 did, and U halved in one step.
-    """
     if decision.touched_deleted:
-        return "no_memory", f"{len(decision.denied_tombstone)} responsive record(s) tombstoned"
-    # Spelled out as the two lists rather than via `touched_unauthorized`, so
-    # that what the branch actually keys on is visible at the branch: responsive
-    # records denied by RBAC or by scope. The property is enforced upstream and
-    # named here because these two places have to be changed together.
+        return "no_memory", f"{len(decision.denied_tombstone)} responsive memory item(s) tombstoned"
     withheld = len(decision.denied_rbac) + len(decision.denied_scope)
     if decision.allowed and not withheld:
-        return "answer", f"{len(decision.allowed)} record(s) cleared for {requester_role}"
+        return "answer", f"{len(decision.allowed)} evidence item(s) authorized"
     if decision.allowed and withheld:
-        return (
-            "answer_redacted",
-            f"partially authorized: {withheld} responsive record(s) withheld",
-        )
+        return "answer_redacted", f"{withheld} responsive item(s) outside explicit scope"
     if withheld:
-        return "refuse", f"{withheld} record(s) denied"
-    return "no_memory", "no responsive records"
+        return "refuse", f"{withheld} responsive item(s) lack permission"
+    return "no_memory", "no responsive current memory"
 
 
 class GateMemAgent:
-    """SQL-backed, RBAC-filtered, tombstone-aware memory agent."""
-
-    def __init__(
-        self,
-        db_path: str = ":memory:",
-        llm: Callable[[str, list[dict[str, Any]]], dict[str, Any]] | None = None,
-        top_k: int = 8,
-    ) -> None:
+    def __init__(self, db_path: str = ":memory:",
+                 llm: Callable[[str, list[dict[str, Any]]], dict[str, Any]] | None = None,
+                 top_k: int = 12,
+                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> None:
         self.base_db_path = str(db_path)
-        self.store = MemoryStore(db_path)
+        self.store = MemoryStore(db_path, interpreter=interpreter)
         self.llm = llm
         self.top_k = top_k
         self.episode: dict[str, Any] | None = None
-        self.patient_id: str = ""
+        self.owner_id = ""
 
-    # -------------------- GateMem interface --------------------
+    def open_episode(self, episode: dict[str, Any]) -> None:
+        self.episode = episode
+        attached = self.store.conn.execute(
+            "SELECT value FROM store_meta WHERE key='online_episode'").fetchone()
+        if attached and bytes(attached[0]).decode() != episode["episode_id"]:
+            raise ValueError("episode isolation violation")
+        if not attached:
+            self._install_header(episode)
+            self.store.conn.execute("INSERT INTO store_meta VALUES ('online_episode',?)",
+                                    (episode["episode_id"].encode(),))
+            self.store.conn.commit()
+        else:
+            self.owner_id = self._infer_owner(episode)
+        self.store._seq = int(self.store.conn.execute(
+            "SELECT COALESCE(MAX(seq),0) FROM observations").fetchone()[0])
 
     def reset(self, episode: dict[str, Any]) -> None:
-        """Start a fresh episode.  A new store per episode is deliberate:
-        cross-episode residue is a `cross_patient` leak waiting to happen."""
         self.store.close()
-        self.patient_id = ""
-        self.store = MemoryStore(self._episode_db_path(episode.get("episode_id", "unknown")))
+        path = self._episode_db_path(episode.get("episode_id", "unknown"))
+        self.store = MemoryStore(path, interpreter=self.store.interpreter)
         self.episode = episode
+        self._install_header(episode)
+        self.store.conn.commit()
+
+    def _install_header(self, episode: dict[str, Any]) -> None:
         entities = episode.get("entities") or {}
-
-        for principal in entities.get("principals", []):
+        principals = entities.get("principals", [])
+        self.owner_id = self._infer_owner(episode)
+        metadata_turn = {
+            "turn_id": "__episode_metadata__", "turn_kind": "episode_metadata",
+            "speaker": {"principal_id": "__source__", "role": "source"},
+            "text": "", "metadata": entities,
+        }
+        source_id = self.store.ingest_turn(episode["episode_id"], metadata_turn, self.owner_id)
+        for principal in principals:
+            known = {"principal_id", "role", "display_name"}
             self.store.upsert_principal(
-                principal["principal_id"], principal.get("role", "unknown"),
-                principal.get("display_name", ""),
-            )
-            if principal.get("role") == "patient" and not self.patient_id:
-                self.patient_id = principal["principal_id"]
+                str(principal["principal_id"]), str(principal.get("role") or ""),
+                str(principal.get("display_name") or ""),
+                attributes={k: v for k, v in principal.items() if k not in known},
+                source_observation_id=source_id)
+        frequencies = self._id_frequencies(entities.get("relationships", []))
+        for relationship in entities.get("relationships", []):
+            subject, obj = self._relationship_endpoints(relationship, frequencies)
+            known = {"type", "subject_id", "object_id"}
+            known |= {key for key in relationship if key.endswith("_id")}
+            attrs = {k: v for k, v in relationship.items() if k not in known}
+            rel_id = self.store.upsert_relationship(
+                str(relationship.get("type") or relationship.get("predicate") or "related"),
+                subject, obj, episode_id=episode["episode_id"], attributes=attrs,
+                source_observation_id=source_id)
+            self.store.derive_permission_from_relationship_metadata(
+                rel_id, source_observation_id=source_id)
 
-        for rel in entities.get("relationships", []):
-            subject = rel.get("clinician_id") or rel.get("family_id") or rel.get("subject_id") or ""
-            self.store.upsert_relationship(
-                rel.get("type", ""), subject, rel.get("patient_id", self.patient_id),
-                rel.get("scope", ""),
-            )
+    @staticmethod
+    def _id_frequencies(relationships: list[dict[str, Any]]) -> Counter[str]:
+        return Counter(str(value) for rel in relationships for key, value in rel.items()
+                       if key.endswith("_id") and value)
+
+    @classmethod
+    def _relationship_endpoints(cls, relationship: dict[str, Any],
+                                frequencies: Counter[str]) -> tuple[str, str]:
+        if relationship.get("subject_id") and relationship.get("object_id"):
+            return str(relationship["subject_id"]), str(relationship["object_id"])
+        values = [(key, str(value)) for key, value in relationship.items()
+                  if key.endswith("_id") and value]
+        if not values:
+            return "", ""
+        object_key, object_id = max(values, key=lambda item: (frequencies[item[1]], item[0] in {"object_id", "owner_id"}))
+        subject_id = next((value for key, value in values if key != object_key), object_id)
+        return subject_id, object_id
+
+    @classmethod
+    def _infer_owner(cls, episode: dict[str, Any]) -> str:
+        entities = episode.get("entities") or {}
+        frequencies = cls._id_frequencies(entities.get("relationships", []))
+        principal_ids = [str(row.get("principal_id") or "")
+                         for row in entities.get("principals", [])]
+        if frequencies:
+            return max(principal_ids, key=lambda item: frequencies[item], default="")
+        return principal_ids[0] if principal_ids else ""
 
     def _episode_db_path(self, episode_id: str) -> str:
-        """One database file per episode.
-
-        Reusing a single file across episodes would leave the previous
-        patient's rows in `records`, and `CREATE TABLE IF NOT EXISTS` would not
-        clear them -- a `cross_patient` leak introduced by the storage layer
-        rather than by the policy. The file is unlinked first so a resumed run
-        does not inherit a half-written store.
-        """
         if self.base_db_path == ":memory:":
             return ":memory:"
-        from pathlib import Path as _Path
-
         safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in episode_id)
-        path = _Path(self.base_db_path).with_suffix("") / f"{safe}.sqlite"
+        path = Path(self.base_db_path).with_suffix("") / f"{safe}.sqlite"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.unlink(missing_ok=True)
         return str(path)
@@ -183,73 +156,74 @@ class GateMemAgent:
                     "role": getattr(turn, "speaker_role", ""),
                 },
             }
-        episode_id = (self.episode or {}).get("episode_id", "unknown")
-        self.store.ingest_turn(episode_id, turn, self.patient_id or "unknown")
+        self.store.ingest_turn((self.episode or {}).get("episode_id", "unknown"),
+                               turn, self.owner_id)
 
     def query(self, checkpoint: Any) -> dict[str, Any]:
         cp = _visible(checkpoint)
         asker = cp.get("asker") or {}
         requester_id = str(asker.get("principal_id") or "")
-        requester_role = str(asker.get("role") or "unknown")
-        as_of_seq = self.store.seq_of_turn(
-            cp.get("episode_id", ""), cp.get("as_of_turn_id", "")
-        )
-
+        requester_role = str(asker.get("role") or "")
+        episode_id = str(cp.get("episode_id") or (self.episode or {}).get("episode_id") or "")
+        as_of_seq = self.store.seq_of_turn(episode_id, str(cp.get("as_of_turn_id") or ""))
         decision = self.store.retrieve(
-            requester_id=requester_id,
-            requester_role=requester_role,
-            patient_id=self.patient_id or "unknown",
-            query=str(cp.get("query_text") or ""),
-            as_of_seq=as_of_seq,
-            checkpoint_id=cp.get("checkpoint_id"),
-            top_k=self.top_k,
-        )
+            requester_id=requester_id, requester_role=requester_role,
+            owner_id=self.owner_id, episode_id=episode_id,
+            query=str(cp.get("query_text") or ""), as_of_seq=as_of_seq,
+            checkpoint_id=cp.get("checkpoint_id"), top_k=self.top_k)
         action, rationale = sanitize_and_decide(decision, requester_role)
-
+        evidence = [{"record_id": item.record_id, "role": item.author_role,
+                     "text": item.body, "source_observation_id": item.source_observation_id,
+                     "status": item.status} for item in decision.allowed]
         if action in {"answer", "answer_redacted"} and self.llm is not None:
-            # The model only ever sees evidence that already cleared all three
-            # gates, so a jailbreak in the query cannot widen what is visible --
-            # it can only change how the visible subset is worded.
-            rendered = self.llm(
-                str(cp.get("query_text") or ""),
-                [
-                    {"record_id": e.record_id, "role": e.author_role, "text": e.body}
-                    for e in decision.allowed
-                ],
-            )
+            rendered = self.llm(str(cp.get("query_text") or ""), evidence)
             answer = str(rendered.get("answer") or "")
-            action = str(rendered.get("action") or action)
+            # Rendering cannot widen the authorization decision.
+            if str(rendered.get("action") or action) in {"answer", "answer_redacted"}:
+                action = str(rendered.get("action") or action)
         elif action in {"answer", "answer_redacted"}:
-            answer = " ".join(e.body for e in decision.allowed)
+            answer = " ".join(item.body for item in decision.allowed)
         elif action == "refuse":
             answer = REFUSAL_TEXT
         else:
             answer = NO_MEMORY_TEXT
-
+        denied_reasons = Counter(item["reason"] for item in decision.denied_details)
+        denied_concepts = Counter(concept for item in decision.denied_details
+                                  for concept in item.get("concepts", []))
         return {
-            "action": action,
-            "answer": answer,
-            "answer_structured": {},
-            "used_record_ids": [e.record_id for e in decision.allowed],
-            # THE EVIDENCE THE ANSWERER WRITES FROM.  `used_record_ids` names
-            # the records that cleared all three gates; this carries their
-            # bodies alongside, because an id alone is not something an answer
-            # can be written from.  A harness that had only the ids once spent
-            # a whole research run rendering "(body withheld)" into the answer
-            # prompt and scoring the resulting "I don't know" as a retrieval
-            # failure.  Nothing here widens what the policy allows: it is the
-            # same `decision.allowed` set, already gated, just not stripped of
-            # its content on the way out.
-            "evidence": [
-                {"record_id": e.record_id, "role": e.author_role, "text": e.body}
-                for e in decision.allowed
-            ],
+            "action": action, "answer": answer, "answer_structured": {},
+            "used_record_ids": [item.record_id for item in decision.allowed],
+            "evidence": evidence,
             "debug": {
-                "agent": "gatemem_rbac_sql",
-                "rationale": rationale,
+                "agent": "adaptive_evidence_memory", "rationale": rationale,
+                "requester_id": requester_id, "observed_role": requester_role,
+                "n_candidates": decision.candidates_considered,
                 "n_allowed": len(decision.allowed),
                 "n_denied_rbac": len(decision.denied_rbac),
                 "n_denied_scope": len(decision.denied_scope),
                 "n_denied_tombstone": len(decision.denied_tombstone),
+                "n_obsolete": len(decision.obsolete),
+                "n_outside_top_k": len(decision.outside_top_k),
+                "query_facets": decision.query_terms,
+                "supported_query_facets": decision.supported_query_facets,
+                "unsupported_query_facets": decision.unsupported_query_facets,
+                "source_group_counts": decision.source_group_counts,
+                "selection_counters": {
+                    "potentially_relevant_outside_limit": len(decision.outside_top_k),
+                    "result_limit_source_groups": self.top_k,
+                },
+                "denied_counts_by_reason": dict(denied_reasons),
+                "denied_counts_by_concept": dict(denied_concepts),
+                "denied_counts_by_sensitivity": {},
+                "denied_counts_by_required_relationship": {},
+                "relationship_labels": decision.relationship_labels,
+                "permission_facts": decision.permission_facts,
+                "decision_trace": decision.decision_trace,
+                "relevant_state": {
+                    "missing": decision.candidates_considered == 0,
+                    "obsolete": len(decision.obsolete),
+                    "denied": len(decision.denied_rbac) + len(decision.denied_scope),
+                    "outside_top_k": len(decision.outside_top_k),
+                },
             },
         }

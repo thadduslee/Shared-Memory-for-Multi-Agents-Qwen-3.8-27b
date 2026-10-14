@@ -168,7 +168,9 @@ def test_rows_default_to_healthy() -> None:
 # ======================================================================
 
 
-def test_a_failed_render_marks_itself_degraded() -> None:
+def test_a_failed_render_marks_itself_degraded(
+    monkeypatch,
+) -> None:
     """`_render_answer`'s fallback is correct; being silent about it was not."""
     import asyncio
 
@@ -195,12 +197,9 @@ def test_a_failed_render_marks_itself_degraded() -> None:
                 return ChatResult(text="", model="m", route="vllm",
                                   error="ConnectError: [Errno 111] Connection refused")
 
-        original = llm.get_llm_client
-        llm.get_llm_client = lambda: _Client()
-        try:
-            return await ev._render_answer(record, "standard_retrieval")
-        finally:
-            llm.get_llm_client = original
+        monkeypatch.setattr(config, "EVAL_TRANSPORT", "http")
+        monkeypatch.setattr(llm, "get_llm_client", lambda: _Client())
+        return await ev._render_answer(record, "standard_retrieval")
 
     output, _usage = asyncio.run(run())
     assert output["degraded"] is True

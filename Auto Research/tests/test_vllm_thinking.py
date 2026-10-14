@@ -122,9 +122,15 @@ def test_max_tokens_stays_absent_when_uncapped() -> None:
 
 
 def test_other_routes_never_get_the_template_kwargs() -> None:
-    """OpenRouter and OpenAI would reject the unknown body key."""
+    """A route explicitly declared non-vLLM never gets the private body key."""
     for route in ("openrouter", "openai"):
-        client = AsyncLLMClient()
+        client = AsyncLLMClient(routes={route: config.RouteConfig(
+            name=route,
+            base_url="https://example.invalid/v1",
+            api_key_env="UNSET_TEST_KEY",
+            max_concurrency=1,
+            is_vllm=False,
+        )})
         http = _CapturingHTTP()
         client._client = http  # type: ignore[assignment]
         _chat(client, route=route, model="Qwen/Qwen3.8-27B")

@@ -3,9 +3,10 @@
 WHAT BROKE (smoke run, 2026-08-25). Iteration 1's Architect saw
 "(no implementation yet -- this is iteration 1)" and designed a fresh API:
 `documents` / `retrieve_documents(user_id)` / `forget_document(id)`. The
-Developer was then handed `templates/` -- a green, 18/18-passing store whose
-contract is `records` / `MemoryStore.retrieve` / `tombstone` / `is_deleted` /
-`Decision` / `Evidence` -- and told to implement the Architect's design while
+Developer was then handed `templates/` -- a green store whose contract is the
+generic observation/derived-memory split, explicit evidence-backed permissions,
+`MemoryStore.retrieve`, tombstones, `Decision`, and `Evidence` -- and told to
+implement the Architect's design while
 `run_tests` enforced the template's. It could not satisfy both, broke 3 of the
 18 passing tests trying, burned all 5 of MAX_DEV_RETRIES and halted the
 iteration before the Evaluator, Judge or Critic ever ran.
@@ -84,12 +85,12 @@ def test_tests_are_ordered_before_implementation() -> None:
     paths = [
         Path("memory_system/agent.py"),
         Path("memory_system/store.py"),
-        Path("tests/test_rbac.py"),
+        Path("tests/test_adaptive_memory.py"),
         Path("memory_system/__init__.py"),
         Path("tests/test_forgetting.py"),
     ]
     ordered = [p.as_posix() for p in _code_view_order(paths)]
-    assert ordered[:2] == ["tests/test_forgetting.py", "tests/test_rbac.py"]
+    assert ordered[:2] == ["tests/test_adaptive_memory.py", "tests/test_forgetting.py"]
     assert all(part.startswith("memory_system/") for part in ordered[2:])
 
 
@@ -121,8 +122,8 @@ def test_the_contract_survives_a_budget_too_small_for_the_implementation(
 
     monkeypatch.setattr("nodes.architect.CODE_VIEW_MAX_CHARS", budget)
     view = _read_only_codebase_view(missing_workspace)
-    for symbol in ("def test_unassigned_clinician_is_denied",
-                   "def test_deletion_request_creates_tombstone"):
+    for symbol in ("def test_semantic_relationship_similarity_never_grants_access",
+                   "def test_tombstone_purges_raw_and_all_derived_layers_after_reopen"):
         assert symbol in view, symbol
     assert "[... code view truncated ...]" in view
     # ...and it is the IMPLEMENTATION that was dropped, which is the half of the
@@ -150,8 +151,8 @@ def test_the_view_carries_the_contract_the_developer_is_gated_on(
     """Both halves: the assertions, and the API they bind."""
     view = _read_only_codebase_view(missing_workspace)
     # the gate itself
-    assert "def test_unassigned_clinician_is_denied" in view
-    assert "def test_deletion_request_creates_tombstone" in view
+    assert "def test_semantic_relationship_similarity_never_grants_access" in view
+    assert "def test_tombstone_purges_raw_and_all_derived_layers_after_reopen" in view
     # the API those tests import, which the design must not rename
     for symbol in ("Decision", "Evidence", "def retrieve", "def tombstone", "def is_deleted"):
         assert symbol in view, symbol

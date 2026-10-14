@@ -22,11 +22,16 @@ at every layer that had a test.
 
 from __future__ import annotations
 
+import ast
 import json
 import logging
+import os
+import subprocess
+import sys
 from pathlib import Path
+from typing import ClassVar
 
-
+import config
 import nodes.medical_evaluator as me
 
 # ----------------------------------------------------------------------
@@ -38,19 +43,17 @@ def _runner_namespace() -> dict:
     """Exec the runner template far enough to get at its helpers.
 
     The runner is a source STRING written into the workspace, so it has no
-    import path of its own. Its `from memory_system.agent import GateMemAgent`
-    is satisfied by a stub, because nothing here calls it.
+    import path of its own. Compile only `_evidence`, so the unit test does not
+    execute the runner's process/bootstrap imports in the pytest process.
     """
-    import sys
-    import types
-
-    stub = types.ModuleType("memory_system.agent")
-    stub.GateMemAgent = object
-    package = types.ModuleType("memory_system")
-    sys.modules.setdefault("memory_system", package)
-    sys.modules["memory_system.agent"] = stub
+    tree = ast.parse(me._EVAL_RUNNER, filename="_eval_runner.py")
+    evidence = next(
+        node for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "_evidence"
+    )
     namespace: dict = {"__name__": "_eval_runner_under_test"}
-    exec(compile(me._EVAL_RUNNER, "_eval_runner.py", "exec"), namespace)
+    module = ast.fix_missing_locations(ast.Module(body=[evidence], type_ignores=[]))
+    exec(compile(module, "_eval_runner.py", "exec"), namespace)  # noqa: S102
     return namespace
 
 
@@ -127,7 +130,7 @@ class GateMemAgent:
 '''
 
 
-async def test_the_runner_subprocess_delivers_bodies(tmp_path: Path) -> None:
+def test_the_runner_subprocess_delivers_bodies(tmp_path: Path) -> None:
     """End to end through the real child process, which is where it broke."""
     workspace = tmp_path / "workspace"
     (workspace / "memory_system").mkdir(parents=True)
@@ -145,11 +148,26 @@ async def test_the_runner_subprocess_delivers_bodies(tmp_path: Path) -> None:
         "turns": [{"turn_id": "t01", "text": "ECG Tuesday March 17 at 11:00 AM"}],
     }) + "\n", encoding="utf-8")
 
-    records = await me._run_retrieval_shard({
-        "shard_index": 0, "workspace": str(workspace),
+    runner = workspace / "_eval_runner.py"
+    runner.write_text(me._EVAL_RUNNER, encoding="utf-8")
+    payload = json.dumps({
         "manifest_path": str(manifest), "episodes_path": str(episodes),
         "checkpoint_ids": ["ckpt_01"],
     })
+    process = subprocess.run(
+        [sys.executable, str(runner)], cwd=workspace, input=payload,
+        capture_output=True, text=True, timeout=10, check=False,
+        env={
+            **os.environ,
+            "GATEMEM_ORCHESTRATOR_ROOT": str(config.PROJECT_ROOT),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONPATH": str(workspace),
+        },
+    )
+    assert process.returncode == 0, process.stderr
+    line = next(line for line in process.stdout.splitlines()
+                if line.startswith("SHARD_RESULT="))
+    records = json.loads(line.removeprefix("SHARD_RESULT="))
 
     assert len(records) == 1 and not records[0].get("error"), records
     bodies = [item["text"] for item in records[0]["evidence"]]
@@ -217,7 +235,7 @@ async def test_a_model_that_answers_with_nothing_falls_back_to_the_gated_bodies(
 
     class _Result:
         text = '```json\n{"action": "answer", "answer": ""}\n```'
-        usage = {"total_tokens": 5}
+        usage: ClassVar[dict[str, int]] = {"total_tokens": 5}
         ok = True
         error = None
 

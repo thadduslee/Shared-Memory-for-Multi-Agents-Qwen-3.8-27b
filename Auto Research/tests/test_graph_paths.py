@@ -471,7 +471,7 @@ async def test_iteration_one_starts_from_the_template_baseline(monkeypatch) -> N
     await run_scenario("immediate_success", monkeypatch, MAX_ITERATIONS=1)
     workspace = config.RUNS_DIR / "iter_1" / "workspace"
     assert (workspace / "memory_system" / "store.py").is_file()
-    assert (workspace / "tests" / "test_rbac.py").is_file()
+    assert (workspace / "tests" / "test_adaptive_memory.py").is_file()
 
 
 async def test_later_iterations_inherit_the_previous_workspace(monkeypatch) -> None:

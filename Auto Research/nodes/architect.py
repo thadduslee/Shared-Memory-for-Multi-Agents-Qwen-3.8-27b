@@ -147,9 +147,13 @@ def _read_only_codebase_view(workspace: Path) -> str:
         if budget - len(header) <= 0:
             chunks.append("\n[... code view truncated ...]")
             break
-        body = text[: max(0, budget - len(header))]
+        available = max(0, budget - len(header))
+        body = text[:available]
         chunks.append(header + body)
         budget -= len(header) + len(body)
+        if len(body) < len(text):
+            chunks.append("\n[... code view truncated ...]")
+            break
     return "".join(chunks) if len(chunks) > 1 else "(workspace is empty)"
 
 

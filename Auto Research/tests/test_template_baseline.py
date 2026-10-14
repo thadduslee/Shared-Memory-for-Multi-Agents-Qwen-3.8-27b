@@ -6,28 +6,16 @@ regression there does not look like a regression: it looks like the research
 loop failing to improve, which is exactly the thing this repository is for
 studying and exactly the thing it must not manufacture.
 
-These run the same code path as the pipeline's phase 1 -- `store.retrieve()`
-then `sanitize_and_decide()` -- with no model, so they are deterministic and
-take a couple of seconds. Skipped without a GateMem checkout, like
-`test_gatemem_data.py`.
+These run the same retrieval/decision path with no model. The adaptive baseline
+is deliberately fail-closed and contains no preseeded medical role grants. Its
+utility floor is therefore lower than the former benchmark-specific RBAC seed,
+while deletion safety is strict. The exact measured adaptive baseline is:
 
-THE THRESHOLDS ARE FLOORS, NOT FIXTURES. They are set below the measured values
-so that improving the template does not break the suite; they are set high
-enough that reintroducing the gate-ordering bug does. The exact figures at the
-time of writing:
+    dev:  U=.2222 A=.0000 F=.0000 MGS=.2222
+    full: U=.2238 A=.0208 F=.0000 MGS=.2191
 
-                       BEFORE (relevance after the gates)   AFTER (gate 0)
-    dev slice   U          0.2778                              0.7778
-                A          0.0588                              0.0588
-                F          0.1333                              0.1333
-                MGS        0.2266                              0.6344
-    full 579    U          0.2333                              0.5095
-                A          0.0990                              0.0990
-                F          0.1864                              0.1864
-                MGS        0.1710                              0.3735
-
-Zero of 579 checkpoints got worse; A and F are bit-identical, because the change
-is to which records are CONSIDERED, not to which records are RELEASED.
+The floors guard implementation regressions; the trusted generic tests separately
+guard narrow consent utility and the absence of domain seed policy.
 """
 
 from __future__ import annotations
@@ -49,53 +37,52 @@ def dev():
 
 
 def test_the_template_clears_its_utility_floor(dev) -> None:
-    """0.7778 measured. The pre-fix template scored 0.2778 here.
+    """The fail-closed generic baseline has measured dev utility of 0.2222.
 
-    A failure of this assertion almost certainly means a denial is being
-    recorded for a record that was not responsive to the query -- see
-    `templates/tests/test_action_shape.py` for what that does and why.
+    The stronger behavior contracts live in the domain-neutral trusted tests;
+    this floor catches accidental benchmark-wide retrieval regressions.
     """
-    assert dev["U"] >= 0.70, dev["confusions"]
+    assert dev["U"] >= 0.20, dev["confusions"]
 
 
 def test_the_template_does_not_leak_more_than_its_floor(dev) -> None:
-    """0.0588 measured (one privacy checkpoint of seventeen).
+    """The measured generic dev baseline has zero privacy/deletion leakage.
 
     A and F are the terms a utility fix is most likely to buy itself with, so
     they are asserted alongside U rather than left implicit. MGS is a product:
     a change that lifts U by 0.5 and lifts A by 0.5 is a change that made the
     system worse.
     """
-    assert dev["A"] <= 0.12, dev["confusions"]
-    assert dev["F"] <= 0.20, dev["confusions"]
+    assert dev["A"] == 0.0, dev["confusions"]
+    assert dev["F"] == 0.0, dev["confusions"]
 
 
 def test_the_template_clears_its_mgs_floor(dev) -> None:
-    """0.6344 measured, against 0.2266 before the gate-ordering fix."""
-    assert dev["MGS"] >= 0.55, dev
+    """The measured fail-closed adaptive baseline has dev MGS 0.2222."""
+    assert dev["MGS"] >= 0.20, dev
 
 
 def test_the_action_label_confusion_is_no_longer_dominant(dev) -> None:
-    """THE SPECIFIC REGRESSION, named.
+    """A scoped answer must not be downgraded by unrelated denied evidence.
 
-    `expected=answer got=answer_redacted` was 12 of the 18 utility checkpoints.
-    It is 3 now. A run that pushes it back into double figures has reintroduced
-    the bug whatever else its aggregate says.
+    This guards authorization-before-rendering and relevance filtering without
+    requiring the empty store to contain benchmark-specific grants.
     """
-    assert dev["confusions"][("answer", "answer_redacted")] <= 5, dev["confusions"]
+    assert dev["confusions"][("answer", "answer_redacted")] <= 2, dev["confusions"]
 
 
-def test_the_gains_hold_on_the_full_five_hundred_and_seventy_nine() -> None:
-    """NOT AN OVERFIT TO THE FIFTY.
+def test_the_adaptive_floor_holds_on_the_full_five_hundred_and_seventy_nine() -> None:
+    """The dev assertions must not overfit the fixed fifty-checkpoint slice.
 
-    The dev slice is seeded and fixed, so a change tuned against it can look
-    good and generalise badly. The full set is the held-out check: U 0.2333 ->
-    0.5095 there, on 210 utility checkpoints rather than 18.
+    The full measured adaptive baseline is U=.2238, A=.0208, F=.0000,
+    MGS=.2191 across 579 checkpoints.
     """
     full = evaluate(config.TEMPLATES_DIR, "full")
     assert full["n"] == 579
-    assert full["U"] >= 0.45, full["confusions"]
-    assert full["MGS"] >= 0.33, full
+    assert full["U"] >= 0.22, full["confusions"]
+    assert full["A"] <= 0.03, full["confusions"]
+    assert full["F"] == 0.0, full["confusions"]
+    assert full["MGS"] >= 0.21, full
 
 
 def test_evaluating_two_workspaces_in_one_process_does_not_cross_contaminate(
@@ -126,7 +113,7 @@ def test_evaluating_two_workspaces_in_one_process_does_not_cross_contaminate(
 
     baseline = evaluate(config.TEMPLATES_DIR, "dev")
     broken = evaluate(crippled, "dev")
-    assert baseline["U"] >= 0.70
+    assert baseline["U"] >= 0.20
     assert broken["U"] == 0.0, "the second workspace's own code was not the one scored"
     # ...and the first is still scored correctly afterwards, so the eviction
     # cleans up in both directions.

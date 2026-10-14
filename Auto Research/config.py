@@ -727,6 +727,12 @@ JUDGE_SCORE_PROMPT_CONTEXT: bool = _env_bool("JUDGE_SCORE_PROMPT_CONTEXT", False
 MAX_WALLCLOCK_S: float = _env_float("MAX_WALLCLOCK_S", 6 * 60 * 60.0)
 MAX_TOTAL_TOKENS: int = _env_int("MAX_TOTAL_TOKENS", 20_000_000)
 
+# Online repair has no token, turn, candidate, generation, attempt, or warm-up
+# budget. Batch limits above are intentionally unchanged. These two values are
+# validation policy, not repair ceilings.
+ONLINE_REPLAY_WINDOW: int = _env_int("ONLINE_REPLAY_WINDOW", 50)
+ONLINE_UTILITY_TOLERANCE: float = _env_float("ONLINE_UTILITY_TOLERANCE", 0.0)
+
 # LangGraph's own guard.  The macro-loop runs many supersteps per iteration
 # (architect, developer, dispatch, N workers, collect, judge, critic), so the
 # library default of 25 is far too low for MAX_ITERATIONS=10.  Note the

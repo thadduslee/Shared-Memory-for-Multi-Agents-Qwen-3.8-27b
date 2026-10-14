@@ -91,7 +91,7 @@ def legacy_rule_score(prediction: dict, annotation: dict) -> dict:
 
 
 def mgs(u: float, a: float, f: float) -> float:
-    """`gatemem_adapter.memory_governance_score`: U * (1-A) * (1-F)."""
+    """`gateokamem_adapter.memory_governance_score`: U * (1-A) * (1-F)."""
     return u * (1.0 - a) * (1.0 - f)
 
 

@@ -1,0 +1,1 @@
+INSERT OR IGNORE INTO role_grants (role, sensitivity, requires_rel) VALUES ('patient', 'confidential', 'self');

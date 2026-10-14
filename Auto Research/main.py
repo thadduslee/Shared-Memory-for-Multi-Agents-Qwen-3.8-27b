@@ -28,10 +28,10 @@ from pathlib import Path
 # lives in a directory whose name contains a space and cannot be a package name.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import config  # noqa: E402
-import scoreboard  # noqa: E402
-from nodes._common import setup_logging, write_artifact  # noqa: E402
-from state import initial_state  # noqa: E402
+import config
+import scoreboard
+from nodes._common import setup_logging, write_artifact
+from state import initial_state
 
 log = logging.getLogger("orchestrator.main")
 
@@ -61,6 +61,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="probe every configured endpoint with a tiny request, then exit")
     parser.add_argument("--print-graph", action="store_true",
                         help="print the compiled graph's mermaid source and exit")
+    parser.add_argument("--online", action="store_true", help="durable prequential memory evolution")
+    parser.add_argument("--max-boundaries", type=int, default=None, help="online boundaries per invocation")
+    parser.add_argument("--resume", action="store_true", help="resume an online run using --thread-id or --checkpointer-path")
+    parser.add_argument("--retry-blocked", action="store_true",
+                        help="with --resume, retry an infrastructure-blocked online boundary")
+    parser.add_argument("--checkpointer-path", type=Path, default=None)
+    parser.add_argument("--disable-online-redesign", action="store_true")
+    parser.add_argument("--replay-window", type=int, default=config.ONLINE_REPLAY_WINDOW)
+    parser.add_argument("--utility-regression-tolerance", type=float, default=config.ONLINE_UTILITY_TOLERANCE)
+    parser.add_argument("--stream-order", default="episode-id-then-turn-position-v1",
+                        choices=["episode-id-then-turn-position-v1"])
     return parser.parse_args(argv)
 
 
@@ -135,7 +146,9 @@ async def preflight() -> int:
     import os
 
     from harness.profiles import (
-        ARCHITECT_PROFILE, EVALUATOR_PROFILE, JUDGE_PROFILE,
+        ARCHITECT_PROFILE,
+        EVALUATOR_PROFILE,
+        JUDGE_PROFILE,
     )
     from llm.client import AsyncLLMClient
 
@@ -339,7 +352,7 @@ async def run(args: argparse.Namespace) -> int:
     print(f"artifacts: {config.RUNS_DIR}")
 
     reason = str(final.get("halt_reason") or "")
-    clean = reason.startswith("target reached") or reason.startswith("iteration budget")
+    clean = reason.startswith(("target reached", "iteration budget"))
     return 0 if clean else 1
 
 
@@ -384,6 +397,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     try:
+        if args.online:
+            from graph import run_online
+            return asyncio.run(run_online(args))
         return asyncio.run(run(args))
     except KeyboardInterrupt:
         log.warning("interrupted; artifacts under %s are intact", config.RUNS_DIR)

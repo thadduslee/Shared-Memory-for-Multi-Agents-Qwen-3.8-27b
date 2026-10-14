@@ -186,20 +186,23 @@ _TARGETED_MIGRATIONS = {
     "A": """-- Critic attributed the loss to A (access-control violations) on
 -- privacy checkpoints where the RBAC join fell back to a table scan and the
 -- scope check was applied after truncation by top_k.
-ALTER TABLE records ADD COLUMN scope_tag TEXT NOT NULL DEFAULT '';
-CREATE INDEX IF NOT EXISTS idx_records_rbac ON records(patient_id, sensitivity, seq DESC);
-CREATE INDEX IF NOT EXISTS idx_rel_lookup ON relationships(rel_type, subject_id, patient_id);
+CREATE INDEX IF NOT EXISTS idx_permissions_rbac
+    ON permissions(episode_id, grantee_id, resource_owner_id, status, effect);
+CREATE INDEX IF NOT EXISTS idx_rel_lookup
+    ON relationships(episode_id, predicate, subject_id, object_id, status);
 """,
     "F": """-- Critic attributed the loss to F (active-forgetting failures): the
 -- tombstone check needed a per-record lookup, so a wide retrieval could
 -- truncate before the deleted record was seen.
-CREATE INDEX IF NOT EXISTS idx_tombstones_record ON tombstones(record_id, shredded);
-ALTER TABLE records ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;
-CREATE INDEX IF NOT EXISTS idx_records_live ON records(patient_id, deleted, seq DESC);
+CREATE INDEX IF NOT EXISTS idx_tombstones_target
+    ON tombstones(target_id, target_type, shredded);
+CREATE INDEX IF NOT EXISTS idx_memories_live
+    ON memories(episode_id, status, seq DESC);
 """,
     "U": """-- Critic attributed the loss to U (utility): authorized queries were
 -- missing evidence because the as-of ordering scan was unindexed.
-CREATE INDEX IF NOT EXISTS idx_records_asof ON records(episode_id, seq DESC, sensitivity);
+CREATE INDEX IF NOT EXISTS idx_memories_asof
+    ON memories(episode_id, seq DESC, status);
 """,
 }
 
@@ -243,7 +246,7 @@ def _architect_response(task: str) -> tuple[str, bool]:
         ),
         "work_order": [
             "Write memory_system/{schema.sql,store.py,agent.py,__init__.py}",
-            "Write tests/{test_rbac.py,test_forgetting.py}",
+            "Write tests/{test_adaptive_memory.py,test_forgetting.py}",
             "compile_check the package",
             "Apply the migration against a scratch SQLite database via sql_exec",
             "Run the RBAC and forgetting suites",

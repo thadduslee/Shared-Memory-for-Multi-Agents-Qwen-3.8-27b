@@ -1,114 +1,47 @@
-"""SQLite memory store: RBAC-filtered retrieval + active forgetting.
+"""Generic adaptive memory with provenance, scoped authorization, and forgetting.
 
-Two invariants this module exists to hold:
-
-1.  NOTHING LEAVES WITHOUT AN RBAC DECISION.  `retrieve()` is the only public
-    read path and every row it returns has passed the `role_grants` x
-    `relationships` join.  There is deliberately no "raw" accessor -- a
-    convenience method that skipped the join would be re-invented within a week
-    and would silently destroy the A metric.
-
-2.  DELETION IS OBSERVABLE BUT NOT READABLE.  A tombstoned record's *body*
-    becomes unavailable; its *existence* stays known to the store.  That
-    asymmetry is what lets the agent say "I have no memory of that" without
-    either (a) leaking the content or (b) confirming existence to the
-    requester.  A hard DELETE would collapse both cases into "unknown" and
-    make `update_delete_conflict` unanswerable.
+Fixed code supplies mechanisms. Domain concepts are values learned from raw
+observations. Relationships and semantic links aid organization and retrieval;
+only explicit permission evidence authorizes a non-owner.
 """
-
 from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import os
 import re
 import sqlite3
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-
-# Bumped by the Developer whenever it applies an Architect migration. This is
-# how a running store reports which DDL generation it was built for, and it is
-# what lets a later iteration tell "the migration was applied" apart from "the
-# migration silently no-opped" -- the two look identical in the data otherwise.
-#
-# 2: added `record_terms` and `store_meta` -- the responsiveness index. See the
-#    note above `retrieve()` for why a denial has to know whether the record it
-#    denied was about the query.
-SCHEMA_VERSION = 2
-
-# Default policy table.  `requires_rel` names the relationship the requester
-# must additionally hold; an empty string means the role grant alone suffices.
-DEFAULT_ROLE_GRANTS: tuple[tuple[str, str, str], ...] = (
-    ("patient", "routine", "self"),
-    ("patient", "restricted", "self"),
-    ("clinician", "routine", "assigned_clinician"),
-    ("clinician", "restricted", "assigned_clinician"),
-    ("clinician", "confidential", "assigned_clinician"),
-    ("nurse", "routine", "care_team"),
-    ("reception", "routine", "care_team"),
-    ("family_member", "routine", "family_contact"),
-    # THE ANCILLARY CARE TEAM.  These five roles ask 155 of the benchmark's 579
-    # checkpoints, and until this row set existed not one of them held a grant
-    # at ANY sensitivity tier.  The RBAC join in `retrieve` is a LEFT JOIN on
-    # (role, sensitivity): no matching row means `requires_rel` comes back NULL
-    # for every record the requester could ever see, so gate 2 denied the whole
-    # store and `sanitize_and_decide` had nothing left to do but `refuse`.  That
-    # is a structural zero on U, not a policy the benchmark is testing -- it
-    # cost 9 of the 18 utility failures in run-280411c75b99 on its own.
-    #
-    # Deliberately `routine` ONLY, and deliberately relationship-gated.  These
-    # roles need the logistics layer (appointments, callback lines, dispensing,
-    # discharge planning) and nothing below it.  Granting them `restricted` or
-    # `confidential` would raise U by a little and A by a lot, and MGS is a
-    # product -- see the tradeoff note in ARCHITECT_MANDATE.
-    #
-    # `billing` is POINTEDLY ABSENT, and adding it back is a regression.  It
-    # asks 49 checkpoints and not one of them is a utility query: every single
-    # one is a privacy or safety probe, 22 of them `role_mismatch`.  The
-    # benchmark uses billing as the role that must never be let in, so a grant
-    # here buys exactly 0 utility and cost 46 leaks when it was tried.
-    ("pharmacist", "routine", "care_team"),
-    ("scheduler", "routine", "care_team"),
-    ("social_worker", "routine", "care_team"),
-    ("lab_tech", "routine", "care_team"),
-)
-
-# Membership of the `care_team` pseudo-relationship.  Kept beside
-# DEFAULT_ROLE_GRANTS because the two must move together: a grant that names
-# `care_team` is inert unless the role is also listed here, which is the shape
-# the missing ancillary grants took before they were added above.
-_CARE_TEAM_ROLES: frozenset[str] = frozenset(
-    {"clinician", "nurse", "reception", "pharmacist", "scheduler",
-     "social_worker", "lab_tech"}
-)
-
-_CONFIDENTIAL_MARKERS = re.compile(
-    r"\b(confidential|restricted|hiv|psychiatric|termination|genetic|brca|"
-    r"methadone|hepatitis|shelter|substance|abuse)\b",
-    re.IGNORECASE,
-)
-_RESTRICTED_MARKERS = re.compile(
-    r"\b(note|diagnos|specialist|result|screening|counsel)\w*\b", re.IGNORECASE
-)
-_DELETE_REQUEST = re.compile(
-    r"\b(delete|remove|erase|forget|purge|scrub)\b.{0,80}?"
-    r"\b(memory|record|note|number|contact|entry|it|this|that)\b",
-    re.IGNORECASE | re.DOTALL,
-)
+SCHEMA_VERSION = 3
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def _loads(value: str, default: Any) -> Any:
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _stable_id(prefix: str, *values: Any) -> str:
+    return f"{prefix}_{hashlib.sha256(_json(values).encode()).hexdigest()[:24]}"
+
+
 @dataclass
 class Evidence:
-    """One record cleared for release to a specific requester."""
-
     record_id: str
     turn_id: str
     author_role: str
@@ -116,23 +49,27 @@ class Evidence:
     sensitivity: str
     body: str
     redacted: bool = False
+    source_observation_id: str = ""
+    status: str = "active"
 
 
 @dataclass
 class Decision:
-    """The outcome of one retrieval, including what was withheld and why.
-
-    `denied_tombstone` is tracked separately from `denied_rbac` because the two
-    require *different* agent behaviour: a tombstone hit means `no_memory`
-    (and silence about existence), whereas an RBAC denial means `refuse`.
-    Collapsing them is the single most common way to lose the F metric.
-    """
-
     allowed: list[Evidence] = field(default_factory=list)
     denied_rbac: list[str] = field(default_factory=list)
     denied_scope: list[str] = field(default_factory=list)
     denied_tombstone: list[str] = field(default_factory=list)
     query_terms: list[str] = field(default_factory=list)
+    denied_details: list[dict[str, Any]] = field(default_factory=list)
+    obsolete: list[str] = field(default_factory=list)
+    outside_top_k: list[str] = field(default_factory=list)
+    relationship_labels: list[str] = field(default_factory=list)
+    permission_facts: list[dict[str, Any]] = field(default_factory=list)
+    candidates_considered: int = 0
+    supported_query_facets: list[str] = field(default_factory=list)
+    unsupported_query_facets: list[str] = field(default_factory=list)
+    source_group_counts: dict[str, int] = field(default_factory=dict)
+    decision_trace: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def touched_deleted(self) -> bool:
@@ -144,36 +81,25 @@ class Decision:
 
 
 class MemoryStore:
-    """One SQLite file per run."""
+    """A generic store. Empty initialization creates schema, not policy rows."""
 
-    def __init__(self, db_path: str | Path = ":memory:") -> None:
+    def __init__(self, db_path: str | Path = ":memory:", *,
+                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> None:
         self.db_path = str(db_path)
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
+        self.interpreter = interpreter
         self._seq = 0
-        # Read from `store_meta` on first use and kept for the life of the
-        # connection; see `_index_key` for why it must not simply be generated.
         self._index_key_cache: bytes | None = None
         self.initialize()
 
-    # ------------------------------------------------------------------
-    # Schema / lifecycle
-    # ------------------------------------------------------------------
-
     def initialize(self, schema_sql: str | None = None) -> None:
         self.conn.executescript(schema_sql or SCHEMA_PATH.read_text(encoding="utf-8"))
-        self.conn.executemany(
-            "INSERT OR IGNORE INTO role_grants(role, sensitivity, requires_rel) VALUES (?, ?, ?)",
-            DEFAULT_ROLE_GRANTS,
-        )
+        self._seq = int(self.conn.execute(
+            "SELECT COALESCE(MAX(seq),0) FROM observations").fetchone()[0])
         self.conn.commit()
 
     def apply_migration(self, migration_sql: str) -> None:
-        """Apply an Architect-authored migration.
-
-        Executed as a script inside a transaction so a half-applied migration
-        cannot leave the store in a shape the retrieval SQL no longer matches.
-        """
         if not migration_sql.strip():
             return
         try:
@@ -185,507 +111,997 @@ class MemoryStore:
     def close(self) -> None:
         self.conn.close()
 
-    # ------------------------------------------------------------------
-    # Ingest
-    # ------------------------------------------------------------------
+    # Generic entities and relationships ---------------------------------
 
-    def upsert_principal(self, principal_id: str, role: str, display_name: str = "") -> None:
+    def upsert_principal(self, principal_id: str, role: str = "", display_name: str = "",
+                         *, attributes: dict[str, Any] | None = None,
+                         source_observation_id: str | None = None) -> None:
         self.conn.execute(
-            "INSERT OR REPLACE INTO principals(principal_id, role, display_name) VALUES (?, ?, ?)",
-            (principal_id, role, display_name),
+            """INSERT INTO principals VALUES (?,?,?,?,?,?)
+               ON CONFLICT(principal_id) DO UPDATE SET
+                 observed_role=excluded.observed_role,
+                 display_name=excluded.display_name,
+                 attributes_json=excluded.attributes_json""",
+            (principal_id, role, display_name, _json(attributes or {}),
+             source_observation_id, _now()),
         )
 
-    def upsert_relationship(
-        self, rel_type: str, subject_id: str, patient_id: str, scope: str = ""
-    ) -> None:
+    def upsert_relationship(self, rel_type: str, subject_id: str, object_id: str,
+                            scope: str = "", *, episode_id: str = "",
+                            attributes: dict[str, Any] | None = None,
+                            source_observation_id: str | None = None,
+                            derived_from_id: str | None = None,
+                            confidence: float | None = None) -> str:
+        attrs = dict(attributes or {})
+        if scope:
+            attrs.setdefault("scope", scope)
+        rel_id = _stable_id("rel", episode_id, subject_id, rel_type, object_id, attrs)
         self.conn.execute(
-            "INSERT INTO relationships(rel_type, subject_id, patient_id, scope) VALUES (?, ?, ?, ?)",
-            (rel_type, subject_id, patient_id, scope),
+            """INSERT OR IGNORE INTO relationships
+               (relationship_id,episode_id,subject_id,predicate,object_id,attributes_json,
+                status,valid_from,valid_until,source_observation_id,derived_from_id,
+                confidence,created_at,supersedes_id)
+               VALUES (?,?,?,?,?,?,'active',NULL,NULL,?,?,?,?,NULL)""",
+            (rel_id, episode_id, subject_id, rel_type, object_id, _json(attrs),
+             source_observation_id, derived_from_id, confidence, _now()),
         )
+        return rel_id
 
-    @staticmethod
-    def classify(text: str) -> str:
-        """Sensitivity tier for a turn body.
+    def add_semantic_link(self, episode_id: str, original_value: str, related_value: str,
+                          *, source_observation_id: str, relation: str = "related",
+                          confidence: float = 1.0) -> str:
+        """Persist an interpretation. It has no authorization effect."""
+        self._require_observation(source_observation_id)
+        link_id = _stable_id("sem", episode_id, original_value, related_value,
+                             relation, source_observation_id)
+        self.conn.execute(
+            "INSERT OR IGNORE INTO semantic_links VALUES (?,?,?,?,?,'active',?,?,?)",
+            (link_id, episode_id, original_value, related_value, relation,
+             source_observation_id, float(confidence), _now()),
+        )
+        self.conn.commit()
+        return link_id
 
-        Conservative by construction: anything matching a confidential marker is
-        confidential even if it also looks routine.  Under a multiplicative
-        metric, over-classifying costs a little U while under-classifying costs
-        a lot of A.
-        """
-        if _CONFIDENTIAL_MARKERS.search(text):
-            return "confidential"
-        if _RESTRICTED_MARKERS.search(text):
-            return "restricted"
-        return "routine"
+    # Observations and derived memory -------------------------------------
 
-    def ingest_turn(self, episode_id: str, turn: dict[str, Any], patient_id: str) -> str:
-        """Store one turn as a record, handling deletion requests inline."""
+    def ingest_turn(self, episode_id: str, turn: dict[str, Any], owner_id: str = "") -> str:
+        turn_id = str(turn.get("turn_id") or f"seq-{self._seq + 1}")
+        existing = self.conn.execute(
+            "SELECT observation_id FROM observations WHERE episode_id=? AND turn_id=?",
+            (episode_id, turn_id),
+        ).fetchone()
+        if existing:
+            return str(existing[0])
         self._seq += 1
         speaker = turn.get("speaker") or {}
         text = str(turn.get("text") or "")
-        sensitivity = self.classify(text)
-        record_id = f"{episode_id}:{turn.get('turn_id')}"
-
-        # INDEXED FROM THE CLEARTEXT, and before the branch below discards it.
-        # A confidential record's body becomes ciphertext three lines from here
-        # and there is no later point at which its terms can be derived without
-        # decrypting -- which is exactly what `retrieve()` must not have to do in
-        # order to decide whether a record it is about to DENY was responsive.
-        self._index_record(record_id, text)
-
-        ciphertext: bytes | None = None
-        key_id: str | None = None
-        body = text
-        if sensitivity == "confidential":
-            # Confidential content is stored encrypted so that a later deletion
-            # request can be honoured by destroying the key -- cryptographic
-            # shredding -- rather than by trusting a filter to keep hiding it.
-            key_id, ciphertext = self._encrypt(record_id, text)
-            body = ""
-
+        observation_id = _stable_id("obs", episode_id, turn_id)
+        observed_at = str(turn.get("timestamp") or _now())
         self.conn.execute(
-            """INSERT OR REPLACE INTO records
-               (record_id, episode_id, turn_id, author_id, author_role, patient_id,
-                kind, sensitivity, body, ciphertext, key_id, ts, seq)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                record_id, episode_id, str(turn.get("turn_id")),
-                str(speaker.get("principal_id") or "unknown"),
-                str(speaker.get("role") or "unknown"),
-                patient_id, str(turn.get("turn_kind") or "dialogue"),
-                sensitivity, body, ciphertext, key_id,
-                str(turn.get("timestamp") or _now()), self._seq,
-            ),
+            "INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (observation_id, episode_id, turn_id,
+             str(speaker.get("principal_id") or "unknown"),
+             str(speaker.get("role") or ""), str(turn.get("turn_kind") or ""),
+             text, _json(turn), observed_at, self._seq,
+             hashlib.sha256(_json(turn).encode()).hexdigest()),
         )
-
+        self._derive_clause_memories(episode_id, observation_id, text, owner_id, observed_at)
+        self._derive_explicit_permissions(episode_id, observation_id, text, owner_id,
+                                          str(speaker.get("principal_id") or ""), observed_at)
+        self._run_interpreter(episode_id, observation_id, turn, owner_id)
         if _DELETE_REQUEST.search(text):
-            self._honor_deletion_request(episode_id, text, requested_by=str(speaker.get("principal_id") or "unknown"))
+            self._honor_deletion_request(episode_id, text,
+                                         str(speaker.get("principal_id") or "unknown"))
         self.conn.commit()
-        return record_id
+        return observation_id
 
-    def _honor_deletion_request(self, episode_id: str, request_text: str, requested_by: str) -> int:
-        """Tombstone (and shred) every earlier record the request refers to.
+    def add_fact(self, episode_id: str, *, subject_id: str, predicate: str, value: Any,
+                 source_observation_id: str, text_value: str = "",
+                 concepts: list[str] | None = None, status: str = "active",
+                 valid_from: str | None = None, valid_until: str | None = None,
+                 supersedes_id: str | None = None, confidence: float | None = None,
+                 memory_type: str = "fact") -> str:
+        self._require_observation(source_observation_id)
+        seq = self.conn.execute(
+            "SELECT seq FROM observations WHERE observation_id=?", (source_observation_id,)
+        ).fetchone()[0]
+        memory_id = _stable_id("mem", source_observation_id, memory_type, subject_id,
+                               predicate, value, status)
+        self.conn.execute(
+            """INSERT OR IGNORE INTO memories
+               (memory_id,episode_id,memory_type,subject_id,predicate,value_json,text_value,
+                concepts_json,status,valid_from,valid_until,source_observation_id,
+                derived_from_id,confidence,created_at,seq,supersedes_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (memory_id, episode_id, memory_type, subject_id, predicate, _json(value),
+             text_value, _json(sorted(set(concepts or []))), status, valid_from,
+             valid_until, source_observation_id, source_observation_id, confidence,
+             _now(), seq, supersedes_id),
+        )
+        self._index_memory(memory_id, " ".join([predicate, text_value, *(concepts or [])]))
+        if supersedes_id:
+            self.conn.execute(
+                "UPDATE memories SET status='superseded' WHERE memory_id=? AND status='active'",
+                (supersedes_id,),
+            )
+        return memory_id
 
-        Matching is content-overlap based: the request quotes or paraphrases the
-        thing to forget, so we score prior records against the request's
-        distinctive tokens.  A deletion request that matched nothing would be
-        silently ignored, which is exactly the failure mode the `safety`
-        checkpoints hunt for, so an unmatched request falls back to the most
-        recent record contributed by the same principal.
-        """
-        terms = _distinctive_terms(request_text)
+    def grant_permission(self, episode_id: str, *, grantee_id: str,
+                         resource_owner_id: str, scope: list[str] | str,
+                         source_observation_id: str, exclusions: list[str] | None = None,
+                         purpose: str = "", valid_from: str | None = None,
+                         valid_until: str | None = None, effect: str = "allow",
+                         confidence: float = 1.0, supersedes_id: str | None = None) -> str:
+        if effect not in {"allow", "deny"}:
+            raise ValueError("permission effect must be allow or deny")
+        self._require_observation(source_observation_id)
+        scopes = [scope] if isinstance(scope, str) else list(scope)
+        permission_id = _stable_id("perm", episode_id, grantee_id, resource_owner_id,
+                                   effect, scopes, exclusions or [], source_observation_id)
+        self.conn.execute(
+            """INSERT OR IGNORE INTO permissions
+               (permission_id,episode_id,grantee_id,resource_owner_id,effect,scope_json,
+                purpose,exclusions_json,status,valid_from,valid_until,source_observation_id,
+                derived_from_id,confidence,created_at,supersedes_id)
+               VALUES (?,?,?,?,?,?,?,?,'active',?,?,?,?,?,?,?)""",
+            (permission_id, episode_id, grantee_id, resource_owner_id, effect,
+             _json(scopes), purpose, _json(exclusions or []), valid_from, valid_until,
+             source_observation_id, source_observation_id, confidence, _now(), supersedes_id),
+        )
+        if supersedes_id:
+            self.conn.execute("UPDATE permissions SET status='superseded' WHERE permission_id=?",
+                              (supersedes_id,))
+        # Co-scoped concepts are a provenance-bearing semantic interpretation.
+        # They improve retrieval, but authorization still requires this actual
+        # permission row and exact scope membership.
+        scope_concepts = sorted(_concepts(" ".join(scopes)) |
+                                _structural_concepts(" ".join(scopes)))
+        for index, left in enumerate(scope_concepts):
+            for right in scope_concepts[index + 1:]:
+                link_id = _stable_id("sem", episode_id, left, right,
+                                     "co_scoped", source_observation_id)
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO semantic_links VALUES (?,?,?,?,?,'active',?,?,?)",
+                    (link_id, episode_id, left, right, "co_scoped",
+                     source_observation_id, confidence, _now()))
+        self.conn.commit()
+        return permission_id
+
+    def revoke_permission(self, permission_id: str, *, source_observation_id: str) -> None:
+        self._require_observation(source_observation_id)
+        self.conn.execute("UPDATE permissions SET status='revoked' WHERE permission_id=?",
+                          (permission_id,))
+        row = self.conn.execute(
+            "SELECT episode_id,grantee_id,resource_owner_id FROM permissions WHERE permission_id=?",
+            (permission_id,),
+        ).fetchone()
+        if row:
+            self.add_fact(row["episode_id"], subject_id=row["grantee_id"],
+                          predicate="permission_revocation",
+                          value={"permission_id": permission_id,
+                                 "resource_owner_id": row["resource_owner_id"]},
+                          source_observation_id=source_observation_id,
+                          memory_type="revocation")
+        self.conn.commit()
+
+    # Retrieval and authorization ----------------------------------------
+
+    def retrieve(self, *, requester_id: str, requester_role: str = "",
+                 owner_id: str = "",
+                 query: str, episode_id: str | None = None,
+                 as_of_seq: int | None = None, checkpoint_id: str | None = None,
+                 top_k: int = 8) -> Decision:
+        # A shard can contain observations about more than one principal. A
+        # named query target therefore overrides the shard's default owner;
+        # self-access never spills onto another named principal's facts.
+        resource_owner_id = self._mentioned_principal(query) or owner_id
+        query_terms = _query_concepts(query)
+        # Entity names identify the shard but are poor relevance signals: if a
+        # query names its owner, that must not make every fact about that owner
+        # responsive.
+        for principal in self.conn.execute("SELECT principal_id,display_name FROM principals"):
+            query_terms -= _concepts(f"{principal['principal_id']} {principal['display_name']}")
+        decision = Decision(query_terms=sorted(query_terms))
+        if episode_id is None:
+            row = self.conn.execute(
+                "SELECT episode_id FROM observations ORDER BY seq DESC LIMIT 1").fetchone()
+            episode_id = str(row[0]) if row else ""
+        as_of_time = self._time_at_seq(episode_id, as_of_seq)
+        decision.relationship_labels = [r[0] for r in self.conn.execute(
+            """SELECT DISTINCT predicate FROM relationships
+               WHERE episode_id=? AND subject_id=? AND status='active' ORDER BY predicate""",
+            (episode_id, requester_id),
+        )]
+        permission_candidates = list(self.conn.execute(
+            """SELECT * FROM permissions WHERE episode_id=? AND grantee_id=?
+               AND resource_owner_id=? ORDER BY created_at DESC""",
+            (episode_id, requester_id, resource_owner_id),
+        ))
+        permissions = [row for row in permission_candidates
+                       if row["status"] == "active" and
+                       _is_current(row["valid_from"], row["valid_until"], as_of_time)]
+        excluded_query_terms: set[str] = set()
+        permitted_query_terms: set[str] = set()
+        for permission in permissions:
+            if permission["effect"] == "allow":
+                scope_text = " ".join(_loads(permission["scope_json"], []))
+                permitted_query_terms |= _scope_concepts(scope_text)
+                excluded_query_terms |= _concepts(
+                    " ".join(_loads(permission["exclusions_json"], [])))
+        decision.permission_facts = [
+            {**self._permission_summary(row),
+             "valid_at_query": bool(row["status"] == "active" and
+                                    _is_current(row["valid_from"], row["valid_until"], as_of_time)),
+             "query_time": as_of_time}
+            for row in permission_candidates
+        ]
+        permission_ids = [row["permission_id"] for row in permission_candidates]
+        active_permission_ids = [row["permission_id"] for row in permissions]
+        trace: dict[str, dict[str, Any]] = {}
+
+        def record_trace(row: sqlite3.Row, concepts: set[str], outcome: str,
+                         stage: str, rule: str) -> None:
+            trace[row["memory_id"]] = {
+                "trace_id": f"{checkpoint_id or 'query'}:record:{row['memory_id']}",
+                "record_id": row["memory_id"],
+                "source_observation_id": row["source_observation_id"],
+                "status": row["status"],
+                "record_valid_from": row["valid_from"],
+                "record_valid_until": row["valid_until"],
+                "classification": row["memory_type"],
+                "structural_concepts": sorted(
+                    value for value in concepts if value.endswith("_expression")),
+                "event_time_features": _temporal_features(
+                    row["text_value"], row["valid_from"] or row["created_at"]),
+                "outcome": outcome,
+                "decision_stage": stage,
+                "decision_rule": rule,
+                "permission_ids": permission_ids,
+                "permission_validity_at_query": {
+                    "query_time": as_of_time,
+                    "active_permission_ids": active_permission_ids,
+                },
+            }
+        query_topic_terms = query_terms - permitted_query_terms
         rows = self.conn.execute(
-            "SELECT record_id, body, ciphertext, key_id, seq FROM records "
-            "WHERE episode_id = ? ORDER BY seq",
-            (episode_id,),
+            """SELECT m.*,o.turn_id,o.observed_role,o.kind,o.raw_text AS source_text,
+                      CASE WHEN t.target_id IS NULL THEN 0 ELSE 1 END AS deleted
+               FROM memories m JOIN observations o ON o.observation_id=m.source_observation_id
+               LEFT JOIN tombstones t ON
+                 (t.target_id=m.memory_id AND t.target_type='memory') OR
+                 (t.target_id=m.source_observation_id AND t.target_type='observation')
+               WHERE m.episode_id=? AND m.subject_id=? AND (? IS NULL OR m.seq<=?)
+               ORDER BY m.seq DESC,m.memory_id""",
+            (episode_id, resource_owner_id, as_of_seq, as_of_seq),
         ).fetchall()
 
-        hits: list[str] = []
+        ranked: list[tuple[float, sqlite3.Row, set[str]]] = []
+        expanded = self._expand_terms(episode_id, query_terms)
+        prepared: list[tuple[float, bool, sqlite3.Row, set[str], set[str]]] = []
         for row in rows:
-            plaintext = row["body"] or (self._decrypt(row["key_id"], row["ciphertext"]) or "")
-            if not plaintext or _DELETE_REQUEST.search(plaintext):
+            if row["memory_type"] in {"utterance", "permission_evidence"}:
                 continue
-            overlap = terms & _distinctive_terms(plaintext)
-            if len(overlap) >= 2:
-                hits.append(row["record_id"])
-
-        for record_id in hits:
-            self.tombstone(record_id, requested_by=requested_by, reason="explicit deletion request")
-        return len(hits)
-
-    # ------------------------------------------------------------------
-    # Active forgetting
-    # ------------------------------------------------------------------
-
-    def tombstone(self, record_id: str, requested_by: str, reason: str = "") -> None:
-        """Mark a record deleted, purge its term index, and shred its key.
-
-        THE INDEX GOES WITH THE BODY. `record_terms` holds the record's
-        distinctive content words; leaving them behind after a shred would make
-        cryptographic shredding a half-measure -- the body would be
-        unrecoverable and its vocabulary would not be. Deleted in the same
-        transaction as the tombstone so there is no window in which one exists
-        without the other.
-
-        The cost of that is real and is the right trade: a tombstoned record's
-        responsiveness to a query becomes unknowable, so `_is_responsive`
-        assumes it. That is conservative in the direction F is scored in --
-        a deleted record is treated as relevant to anything, which produces
-        `no_memory` rather than a partial answer that reconstructs it.
-        """
-        self.conn.execute(
-            "INSERT OR REPLACE INTO tombstones(record_id, deleted_at, requested_by, reason, shredded) "
-            "VALUES (?, ?, ?, ?, 0)",
-            (record_id, _now(), requested_by, reason),
-        )
-        self.conn.execute("DELETE FROM record_terms WHERE record_id = ?", (record_id,))
-        row = self.conn.execute(
-            "SELECT key_id FROM records WHERE record_id = ?", (record_id,)
-        ).fetchone()
-        if row and row["key_id"]:
-            self.shred(record_id, row["key_id"])
-        else:
-            # Plaintext record: overwrite the body in place.  Leaving the text
-            # in the row and relying on a read-time filter is how deleted
-            # content comes back through an unexpected query path.
-            self.conn.execute("UPDATE records SET body = '' WHERE record_id = ?", (record_id,))
-        self.conn.commit()
-
-    def shred(self, record_id: str, key_id: str) -> None:
-        """Cryptographic shredding: destroy the key, keep the ciphertext.
-
-        After this, the ciphertext in `records` is unrecoverable by any query
-        path, including one an adversarial prompt talks the agent into taking.
-        The `crypto_keys` row survives with `key_material = NULL` as an audit
-        record that a key once existed and was destroyed.
-        """
-        self.conn.execute(
-            "UPDATE crypto_keys SET key_material = NULL, shredded_at = ? WHERE key_id = ?",
-            (_now(), key_id),
-        )
-        self.conn.execute("UPDATE records SET key_id = NULL WHERE record_id = ?", (record_id,))
-        self.conn.execute("UPDATE tombstones SET shredded = 1 WHERE record_id = ?", (record_id,))
-        self.conn.commit()
-
-    def is_deleted(self, record_id: str) -> bool:
-        row = self.conn.execute(
-            "SELECT 1 FROM tombstones WHERE record_id = ?", (record_id,)
-        ).fetchone()
-        return row is not None
-
-    # ------------------------------------------------------------------
-    # Crypto (keyed stream cipher over HMAC-SHA256; no third-party dependency)
-    # ------------------------------------------------------------------
-
-    def _encrypt(self, record_id: str, plaintext: str) -> tuple[str, bytes]:
-        key_id = hashlib.sha256(f"{record_id}:{os.urandom(8).hex()}".encode()).hexdigest()[:32]
-        key = os.urandom(32)
-        self.conn.execute(
-            "INSERT OR REPLACE INTO crypto_keys(key_id, key_material, shredded_at) VALUES (?, ?, NULL)",
-            (key_id, key),
-        )
-        return key_id, _xor_stream(key, plaintext.encode("utf-8"))
-
-    def _decrypt(self, key_id: str | None, ciphertext: bytes | None) -> str | None:
-        if not key_id or not ciphertext:
-            return None
-        row = self.conn.execute(
-            "SELECT key_material FROM crypto_keys WHERE key_id = ?", (key_id,)
-        ).fetchone()
-        if not row or row["key_material"] is None:
-            return None  # key shredded -> content is gone, permanently
-        return _xor_stream(row["key_material"], ciphertext).decode("utf-8", "replace")
-
-    # ------------------------------------------------------------------
-    # RBAC-filtered retrieval  (the "retrieval loop" of the brief)
-    # ------------------------------------------------------------------
-
-    def retrieve(
-        self,
-        *,
-        requester_id: str,
-        requester_role: str,
-        patient_id: str,
-        query: str,
-        as_of_seq: int | None = None,
-        checkpoint_id: str | None = None,
-        top_k: int = 8,
-    ) -> Decision:
-        """Return only what this requester is cleared to see.
-
-        THE ORDER OF THE THREE GATES MATTERS.  Tombstones are checked BEFORE
-        RBAC because a deleted record must read as `no_memory` even to a fully
-        authorized clinician; checking RBAC first would let an authorized
-        requester's allow-decision resurrect deleted content.
-
-        AND RESPONSIVENESS IS CHECKED BEFORE ALL THREE.  This is gate 0, and it
-        is not a policy gate -- it decides which records are *about the query*
-        and therefore which records are eligible to be denied at all.  A record
-        that fails it is skipped entirely: it appears in `allowed`, in
-        `denied_rbac`, in `denied_scope` and in `denied_tombstone` exactly
-        nowhere.
-
-        WHY THAT ORDERING IS THE WHOLE POINT.  This filter used to run LAST,
-        after all three gates, as a `continue` on the way to `allowed`.  So a
-        record the requester happened not to be cleared for -- about a different
-        appointment, a different clinician, a different week -- was denied
-        first and never tested for relevance at all.  It landed in
-        `denied_rbac`, `Decision.touched_unauthorized` went true, and
-        `sanitize_and_decide` read that as "there is responsive content this
-        requester may not have" and downgraded the action from `answer` to
-        `answer_redacted`.
-
-        The answer text was correct.  The evidence was correct.  The gates were
-        correct.  The LABEL was wrong, and the benchmark scores the label:
-        `utility_correct = action_correct and include_ok`.  Measured on the
-        seeded 50-checkpoint dev slice, that one confusion took 12 of the 18
-        utility checkpoints -- `expected=answer got=answer_redacted` -- and it
-        is the single largest term in U.
-
-        The invariant it establishes is what makes `sanitize_and_decide`'s
-        branch 3 sound: **a non-empty denied list always means there IS
-        responsive content the requester must not get**, never "some unrelated
-        record was skipped".
-
-        `top_k` REMAINS A HARD CAP on `allowed`.  Removing it (so that it
-        becomes an "evidence collection target" rather than a stop) was tried in
-        iteration 3 of run-8cf58d33b311: cleared records per query went from 8
-        to 21, more records were consequently evaluated and denied, `denied_rbac`
-        became non-empty on queries where it had been empty, and U fell from
-        0.4444 to 0.2222 in one step.  The wider evidence set also diluted the
-        answers -- the required strings started dropping out of them.  Breadth
-        is not free under a metric that scores the action label.
-        """
-        terms = _distinctive_terms(query)
-        decision = Decision(query_terms=sorted(terms))
-        query_hashes = self._term_hashes(terms)
-
-        sql = (
-            "SELECT r.record_id, r.turn_id, r.author_role, r.kind, r.sensitivity, "
-            "       r.body, r.ciphertext, r.key_id, r.patient_id, r.seq, "
-            "       t.record_id AS tomb, "
-            "       g.requires_rel AS requires_rel "
-            "FROM records r "
-            "LEFT JOIN tombstones t ON t.record_id = r.record_id "
-            # The RBAC join.  A missing `g` row means this role has no grant at
-            # this sensitivity tier at all -- the deny is structural, not a
-            # forgotten if-statement downstream.
-            "LEFT JOIN role_grants g ON g.role = ? AND g.sensitivity = r.sensitivity "
-            "WHERE r.patient_id = ? "
-        )
-        params: list[Any] = [requester_role, patient_id]
-        if as_of_seq is not None:
-            sql += "AND r.seq <= ? "
-            params.append(as_of_seq)
-        sql += "ORDER BY r.seq DESC"
-
-        for row in self.conn.execute(sql, params).fetchall():
-            record_id = row["record_id"]
-
-            # Gate 0: responsiveness.  Not a policy gate -- it decides which
-            # records this query is even ABOUT, and therefore which records are
-            # eligible to be denied.  See the docstring: running this after the
-            # policy gates instead of before them is what turned complete
-            # authorized answers into `answer_redacted`.
-            if not self._is_responsive(
-                record_id, query_hashes, tombstoned=row["tomb"] is not None
-            ):
+            concepts = (set(_loads(row["concepts_json"], [])) |
+                        _concepts(row["text_value"]) | _structural_concepts(row["text_value"]))
+            # Tombstoning intentionally purges content and its term index. Its
+            # prior relevance is therefore unknowable; fail closed before
+            # semantic filtering so extraction or reopening cannot resurrect it.
+            if row["deleted"]:
+                decision.candidates_considered += 1
+                decision.denied_tombstone.append(row["memory_id"])
+                decision.denied_details.append({"memory_id": row["memory_id"],
+                                                "reason": "tombstoned",
+                                                "concepts": []})
+                self._log(checkpoint_id, requester_id, row["memory_id"],
+                          "deny_tombstone", "tombstoned")
+                record_trace(row, set(), "denied", "deletion_gate", "tombstoned")
                 continue
+            score = _semantic_score(expanded, concepts)
+            topic_ok = (not query_topic_terms or
+                        _semantic_score(query_topic_terms, concepts) >= 0.75)
+            direct = topic_ok and (not query_terms or score >= 0.75)
+            context = _compound_context_concepts(row["source_text"])
+            prepared.append((score, direct, row, concepts, context))
 
-            # Gate 1: tombstone.
-            if row["tomb"] is not None:
-                decision.denied_tombstone.append(record_id)
-                self._log(checkpoint_id, requester_id, record_id, "deny_tombstone")
+        # A structured source observation is one provenance group. A matching
+        # heading (for example "deployment plan:" or "packing checklist:")
+        # lets its fragments compete as one source without treating an
+        # arbitrary co-located sentence as relevant.
+        relevant_groups = {
+            row["source_observation_id"]
+            for _, direct, row, _, context in prepared
+            if direct and context and bool(context & expanded)
+        }
+        direct_count = sibling_count = 0
+        for score, direct, row, concepts, context in prepared:
+            sibling = (not direct and row["source_observation_id"] in relevant_groups
+                       and bool(context & expanded))
+            if not direct and not sibling:
                 continue
-
-            # Gate 2: role grant.
-            if row["requires_rel"] is None:
-                decision.denied_rbac.append(record_id)
-                self._log(checkpoint_id, requester_id, record_id, "deny_rbac")
+            decision.candidates_considered += 1
+            direct_count += int(direct)
+            sibling_count += int(sibling)
+            if row["status"] in {"superseded", "revoked", "deleted"}:
+                decision.obsolete.append(row["memory_id"])
+                record_trace(row, concepts | context, "obsolete", "status_gate",
+                             f"record_status_{row['status']}")
                 continue
-
-            # Gate 3: relationship + scope.
-            if not self._relationship_ok(
-                requester_id, requester_role, patient_id, str(row["requires_rel"])
-            ):
-                decision.denied_scope.append(record_id)
-                self._log(checkpoint_id, requester_id, record_id, "deny_scope")
+            if not _is_current(row["valid_from"], row["valid_until"], as_of_time):
+                decision.obsolete.append(row["memory_id"])
+                record_trace(row, concepts | context, "obsolete", "record_time_gate",
+                             "record_not_valid_at_query_time")
                 continue
+            ranked.append((score if direct else 0.74, row, concepts | context))
 
-            plaintext = row["body"] or (self._decrypt(row["key_id"], row["ciphertext"]) or "")
-            if not plaintext:
-                # Body emptied by a tombstone we somehow did not see, or a key
-                # already shredded.  Treat as deleted, not as an empty allow.
-                decision.denied_tombstone.append(record_id)
-                self._log(checkpoint_id, requester_id, record_id, "deny_tombstone")
+        ranked.sort(key=lambda item: (item[1]["status"] == "active", item[0], item[1]["seq"]),
+                    reverse=True)
+        allowed: list[tuple[float, Evidence]] = []
+        for score, row, concepts in ranked:
+            if (requester_id != resource_owner_id and permissions and
+                    not (query_terms & permitted_query_terms)):
+                ok, reason = False, "outside_permission_scope"
+            else:
+                ok, reason = self._authorized(
+                    requester_id, resource_owner_id, concepts,
+                    row["text_value"], permissions, query_terms)
+            if not ok:
+                # A denied row that matched only the already-permitted part of
+                # the question is unrelated private context, not a partial
+                # denial. It is neither released nor allowed to change the
+                # action label.
+                matched = expanded & concepts
+                if permissions and matched and matched <= permitted_query_terms:
+                    record_trace(row, concepts, "suppressed", "authorization_gate", reason)
+                    continue
+                target = (decision.denied_rbac if reason == "no_explicit_permission"
+                          else decision.denied_scope)
+                target.append(row["memory_id"])
+                decision.denied_details.append({"memory_id": row["memory_id"],
+                                                "reason": reason,
+                                                "concepts": sorted(concepts)})
+                self._log(checkpoint_id, requester_id, row["memory_id"],
+                          "deny_permission" if reason == "no_explicit_permission" else "deny_scope",
+                          reason)
+                record_trace(row, concepts, "denied", "authorization_gate", reason)
                 continue
+            released_text = (row["text_value"] if requester_id == resource_owner_id else
+                             self._scoped_projection(row["text_value"], permissions))
+            if not released_text:
+                record_trace(row, concepts, "suppressed", "projection_gate",
+                             "empty_authorized_projection")
+                continue
+            allowed.append((score, Evidence(
+                row["memory_id"], row["turn_id"], row["observed_role"], row["kind"],
+                "scoped", released_text, source_observation_id=row["source_observation_id"],
+                status=row["status"])))
 
-            # NO RELEVANCE CHECK HERE ANY MORE.  It moved to gate 0, above.
-            # Leaving a second copy of it at this point would be harmless for
-            # `allowed` and actively wrong as documentation: it would suggest
-            # relevance is decided after the policy gates, which is precisely
-            # the ordering this module now exists to not have.
-
-            decision.allowed.append(
-                Evidence(
-                    record_id=record_id, turn_id=row["turn_id"],
-                    author_role=row["author_role"], kind=row["kind"],
-                    sensitivity=row["sensitivity"], body=plaintext,
-                )
+        selected = self._coverage_select(allowed, query_terms, top_k)
+        decision.allowed = [item[1] for item in selected]
+        if decision.allowed and permissions and not (query_terms & excluded_query_terms):
+            # Private rows that merely share the subject/topic with a wholly
+            # in-scope request stay invisible and do not turn a complete
+            # scoped answer into a misleading partial-denial label.
+            decision.denied_scope.clear()
+            decision.denied_details = [item for item in decision.denied_details
+                                       if item["reason"] != "outside_permission_scope"]
+        selected_ids = {item[1].record_id for item in selected}
+        decision.outside_top_k = [e.record_id for _, e in allowed
+                                  if e.record_id not in selected_ids]
+        ranked_by_id = {item[1]["memory_id"]: item[1] for item in ranked}
+        for _, evidence in allowed:
+            row = ranked_by_id[evidence.record_id]
+            concepts = (set(_loads(row["concepts_json"], [])) |
+                        _structural_concepts(row["text_value"]))
+            record_trace(
+                row, concepts,
+                "selected" if evidence.record_id in selected_ids else "outside_result_limit",
+                "result_selection",
+                "coverage_selected" if evidence.record_id in selected_ids else "source_group_limit",
             )
-            self._log(checkpoint_id, requester_id, record_id, "allow")
-            if len(decision.allowed) >= top_k:
-                break
-
+        selected_groups = {item[1].source_observation_id for item in selected}
+        allowed_groups = {item[1].source_observation_id for item in allowed}
+        supported = set().union(*(
+            (_concepts(item[1].body) | _structural_concepts(item[1].body)) & query_terms
+            for item in selected), set())
+        decision.supported_query_facets = sorted(supported)
+        decision.unsupported_query_facets = sorted(query_terms - supported)
+        decision.source_group_counts = {
+            "relevant_groups": len({row[1]["source_observation_id"] for row in ranked}),
+            "authorized_groups": len(allowed_groups),
+            "selected_groups": len(selected_groups),
+            "direct_fragments": direct_count,
+            "sibling_fragments_considered": sibling_count,
+            "authorized_fragments": len(allowed),
+            "selected_fragments": len(selected),
+            "fragments_outside_limit": len(decision.outside_top_k),
+        }
+        for evidence in decision.allowed:
+            self._log(checkpoint_id, requester_id, evidence.record_id, "allow", "explicit_scope")
+        decision.decision_trace = sorted(trace.values(), key=lambda item: item["trace_id"])
         self.conn.commit()
         return decision
 
-    def _relationship_ok(
-        self, requester_id: str, requester_role: str, patient_id: str, requires_rel: str
-    ) -> bool:
-        if not requires_rel:
-            return True
-        if requires_rel == "self":
-            return requester_id == patient_id
-        if requires_rel == "care_team":
-            return requester_role in _CARE_TEAM_ROLES
-        row = self.conn.execute(
-            "SELECT scope FROM relationships WHERE rel_type = ? AND subject_id = ? AND patient_id = ?",
-            (requires_rel, requester_id, patient_id),
-        ).fetchone()
-        if row is None and requires_rel == "assigned_clinician":
-            # Covering clinicians inherit the assigned grant for the duration of
-            # their coverage; without this, weekend handoffs destroy utility.
-            row = self.conn.execute(
-                "SELECT scope FROM relationships WHERE rel_type = 'covering_clinician' "
-                "AND subject_id = ? AND patient_id = ?",
-                (requester_id, patient_id),
-            ).fetchone()
-        return row is not None
+    def _authorized(self, requester_id: str, owner_id: str, concepts: set[str], text: str,
+                    permissions: list[sqlite3.Row],
+                    requested_concepts: set[str]) -> tuple[bool, str]:
+        # Generic ownership is independent of role labels and creates no seed rows.
+        if requester_id and requester_id == owner_id:
+            return True, "owner"
+        denies = [p for p in permissions if p["effect"] == "deny"]
+        allows = [p for p in permissions if p["effect"] == "allow"]
+        for row in denies:
+            if self._scope_match(row, concepts, text, requested_concepts)[0]:
+                return False, "explicit_restriction"
+        rejected_rule = "outside_permission_scope"
+        for row in allows:
+            matches, rule = self._scope_match(row, concepts, text, requested_concepts)
+            if matches:
+                return True, "explicit_permission"
+            if rule == "event_date_after_permission_valid_until":
+                rejected_rule = rule
+        return False, "no_explicit_permission" if not allows else rejected_rule
 
-    # ------------------------------------------------------------------
-    # Responsiveness index  (gate 0)
-    # ------------------------------------------------------------------
+    @staticmethod
+    def _scope_matches(row: sqlite3.Row, concepts: set[str], text: str,
+                       requested_concepts: set[str] | None = None) -> bool:
+        return MemoryStore._scope_match(row, concepts, text, requested_concepts)[0]
 
-    def _index_key(self) -> bytes:
-        """The per-store HMAC key for the term index, created once and kept.
+    @staticmethod
+    def _scope_match(row: sqlite3.Row, concepts: set[str], text: str,
+                     requested_concepts: set[str] | None = None) -> tuple[bool, str]:
+        scope_text = " ".join(_loads(row["scope_json"], []))
+        scope = _scope_concepts(scope_text)
+        exclusions = _concepts(" ".join(_loads(row["exclusions_json"], [])))
+        if requested_concepts and exclusions & requested_concepts:
+            return False, "permission_exclusion"
+        lowered = text.lower()
+        scoped_structure = (scope & concepts) & {
+            "time_expression", "date_expression", "location_expression"}
+        if (exclusions & concepts or
+                any(term in lowered for term in exclusions if len(term) > 3)) and not scoped_structure:
+            return False, "permission_exclusion"
+        event_date = _date_from_text(text, row["valid_from"] or "")
+        if event_date and row["valid_until"] and event_date > row["valid_until"][:10]:
+            return False, "event_date_after_permission_valid_until"
+        if scope & concepts:
+            return True, "scope_match"
+        return False, "outside_permission_scope"
 
-        Persisted in `store_meta` rather than held in memory because a resumed
-        run reopens the same file, and a fresh key would hash every query term
-        to a digest matching nothing -- which would make every record look
-        non-responsive and every answer `no_memory`. A silent total loss of U,
-        from a detail that looks like a cache.
-        """
-        if self._index_key_cache is None:
-            row = self.conn.execute(
-                "SELECT value FROM store_meta WHERE key = 'term_index_key'"
-            ).fetchone()
-            if row is None:
-                key = os.urandom(32)
-                self.conn.execute(
-                    "INSERT OR REPLACE INTO store_meta(key, value) VALUES ('term_index_key', ?)",
-                    (key,),
-                )
-                self.conn.commit()
-            else:
-                key = bytes(row["value"])
-            self._index_key_cache = key
-        return self._index_key_cache
+    @staticmethod
+    def _coverage_select(values: list[tuple[float, Evidence]], query_terms: set[str],
+                         top_k: int) -> list[tuple[float, Evidence]]:
+        groups: dict[str, list[tuple[float, Evidence]]] = {}
+        for item in values:
+            groups.setdefault(item[1].source_observation_id, []).append(item)
+        if top_k <= 0 or len(groups) <= top_k:
+            return values
+        chosen_groups: list[list[tuple[float, Evidence]]] = []
+        remaining = list(groups.values())
+        uncovered = set(query_terms)
+        while remaining and len(chosen_groups) < top_k:
+            def group_key(group, remaining_facets=uncovered):
+                concepts = set().union(*(
+                    _concepts(item[1].body) | _structural_concepts(item[1].body)
+                    for item in group))
+                return len(concepts & remaining_facets), max(item[0] for item in group)
+            best = max(remaining, key=group_key)
+            chosen_groups.append(best)
+            uncovered -= set().union(*(
+                _concepts(item[1].body) | _structural_concepts(item[1].body)
+                for item in best))
+            remaining.remove(best)
+        selected_sources = {group[0][1].source_observation_id for group in chosen_groups}
+        return [item for item in values if item[1].source_observation_id in selected_sources]
 
-    def _term_hashes(self, terms: set[str]) -> list[str]:
-        """Keyed digests of a term set, for comparison against `record_terms`.
+    @staticmethod
+    def _scoped_projection(text: str, permissions: list[sqlite3.Row]) -> str:
+        """Release only the structurally scoped fragment of a mixed clause."""
+        scope_text = " ".join(
+            value for row in permissions if row["effect"] == "allow"
+            for value in _loads(row["scope_json"], []))
+        structural = _scope_concepts(scope_text)
+        if structural & {"time_expression", "date_expression", "location_expression"}:
+            match = re.search(
+                r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
+                r"january|february|march|april|may|june|july|august|september|october|november|december)\b",
+                text, re.I)
+            if match:
+                return text[match.start():].strip()
+        return text
 
-        Truncated to 16 hex characters (64 bits). Long enough that an accidental
-        collision between two content words is not a thing that happens, short
-        enough that the index stays small on a per-episode store.
-        """
-        key = self._index_key()
-        return [
-            hmac.new(key, term.encode("utf-8"), hashlib.sha256).hexdigest()[:16]
-            for term in sorted(terms)
-        ]
+    # Forgetting ---------------------------------------------------------
 
-    def _index_record(self, record_id: str, text: str) -> None:
-        """Record the distinctive terms of one record, keyed-hashed.
+    def tombstone(self, target_id: str, requested_by: str, reason: str = "") -> None:
+        obs = self.conn.execute(
+            "SELECT 1 FROM observations WHERE observation_id=?", (target_id,)).fetchone()
+        target_type = "observation" if obs else "memory"
+        self.conn.execute("INSERT OR REPLACE INTO tombstones VALUES (?,?,?,?,?,1)",
+                          (target_id, target_type, _now(), requested_by, reason))
+        if target_type == "observation":
+            memory_ids = [r[0] for r in self.conn.execute(
+                "SELECT memory_id FROM memories WHERE source_observation_id=?", (target_id,))]
+            for memory_id in memory_ids:
+                self.conn.execute("DELETE FROM memory_terms WHERE memory_id=?", (memory_id,))
+            self.conn.execute(
+                "UPDATE observations SET raw_text='',raw_payload_json='{}' WHERE observation_id=?",
+                (target_id,))
+            self.conn.execute(
+                """UPDATE memories SET text_value='',value_json='{}',concepts_json='[]',status='deleted'
+                   WHERE source_observation_id=?""", (target_id,))
+            self.conn.execute("UPDATE permissions SET status='revoked' WHERE source_observation_id=?",
+                              (target_id,))
+            self.conn.execute("UPDATE semantic_links SET status='revoked' WHERE source_observation_id=?",
+                              (target_id,))
+        else:
+            self.conn.execute("DELETE FROM memory_terms WHERE memory_id=?", (target_id,))
+            self.conn.execute(
+                """UPDATE memories SET text_value='',value_json='{}',concepts_json='[]',status='deleted'
+                   WHERE memory_id=?""", (target_id,))
+        self.conn.commit()
 
-        Called from `ingest_turn` with the CLEARTEXT, before a confidential body
-        is replaced by ciphertext. `INSERT OR IGNORE` because `ingest_turn` uses
-        `INSERT OR REPLACE` on the record itself and a re-ingested turn must not
-        raise on its own unchanged terms.
-        """
-        hashes = self._term_hashes(_distinctive_terms(text))
-        if not hashes:
+    def is_deleted(self, target_id: str) -> bool:
+        return self.conn.execute(
+            "SELECT 1 FROM tombstones WHERE target_id=?", (target_id,)).fetchone() is not None
+
+    def _honor_deletion_request(self, episode_id: str, text: str, requested_by: str) -> int:
+        terms = _concepts(_DELETE_REQUEST.sub(" ", text))
+        rows = self.conn.execute(
+            "SELECT observation_id,raw_text FROM observations WHERE episode_id=? ORDER BY seq",
+            (episode_id,),
+        ).fetchall()
+        hits = [r["observation_id"] for r in rows
+                if r["raw_text"] and not _DELETE_REQUEST.search(r["raw_text"])
+                and len(terms & _concepts(r["raw_text"])) >= 2]
+        for observation_id in hits:
+            self.tombstone(observation_id, requested_by, "explicit deletion request")
+        return len(hits)
+
+    # Derivation helpers -------------------------------------------------
+
+    def _derive_clause_memories(self, episode_id: str, observation_id: str, text: str,
+                                owner_id: str, observed_at: str) -> None:
+        clauses = [c.strip(" -") for c in re.split(r"(?<=[.!?;])\s+", text)
+                   if c.strip(" -")]
+        source_context = _compound_context_concepts(text)
+        for clause in clauses or ([text] if text else []):
+            concepts = sorted(_concepts(clause) | _structural_concepts(clause) |
+                              source_context)
+            status = "cancelled" if _CANCEL.search(clause) else "active"
+            supersedes = None
+            if status == "cancelled" or _UPDATE.search(clause):
+                supersedes = self._find_prior_fact(episode_id, clause)
+            self.add_fact(episode_id, subject_id=self._mentioned_principal(clause) or owner_id,
+                          predicate=_predicate_from(concepts), value={"text": clause},
+                          text_value=clause, concepts=concepts, status=status,
+                          valid_from=observed_at, source_observation_id=observation_id,
+                          supersedes_id=supersedes, confidence=1.0,
+                          memory_type=("utterance" if clause.rstrip().endswith("?") or
+                                       _REQUEST_CUE.search(clause) else "derived_fact"))
+
+    def _derive_explicit_permissions(self, episode_id: str, observation_id: str, text: str,
+                                     owner_id: str, speaker_id: str, observed_at: str) -> None:
+        if not _AUTH_CUE.search(text) and not _PROHIBITION.search(text):
             return
-        self.conn.executemany(
-            "INSERT OR IGNORE INTO record_terms(record_id, term_hash) VALUES (?, ?)",
-            [(record_id, digest) for digest in hashes],
-        )
-
-    def _is_responsive(
-        self, record_id: str, query_hashes: list[str], *, tombstoned: bool
-    ) -> bool:
-        """Is this record about the query?  Gate 0 of `retrieve`.
-
-        Three cases, and the two defaults both fail OPEN -- towards treating a
-        record as responsive -- because the cost of the two errors is not
-        symmetric. A false negative silently drops evidence and, worse, silently
-        drops a DENIAL that should have shaped the action; a false positive at
-        most produces `answer_redacted` where `answer` would have done, which is
-        the conservative direction.
-
-        1.  The query has no distinctive terms at all ("what did they say?").
-            Nothing to match on, so everything in the patient's shard is
-            considered, exactly as before this index existed.
-        2.  The record is tombstoned. Its index rows were purged with its body
-            (see `tombstone`), so its responsiveness is unknowable and is
-            assumed. This is what keeps a deleted record able to force
-            `no_memory` rather than being quietly filtered out of the decision.
-        3.  Otherwise: a live record is responsive iff it shares at least one
-            distinctive term with the query.
-        """
-        if not query_hashes:
-            return True
-        if tombstoned:
-            return True
-        # The only interpolated part is a run of `?` markers, one per hash; every
-        # value is bound. SQLite has no array parameter, so a variable-length IN
-        # clause has no other shape. Suppressed explicitly rather than left to
-        # trip the Developer's `run_linter` on a finding that is not one.
-        placeholders = ",".join("?" for _ in query_hashes)
-        row = self.conn.execute(
-            "SELECT 1 FROM record_terms WHERE record_id = ? "  # noqa: S608
-            f"AND term_hash IN ({placeholders}) LIMIT 1",
-            [record_id, *query_hashes],
+        grantee = self._resolve_grantee(episode_id, text, speaker_id)
+        if not grantee or not owner_id or grantee == owner_id:
+            return
+        allow_text, exclusions = _permission_phrases(text)
+        prohibited = _prohibited_phrase(text)
+        if prohibited:
+            self.grant_permission(
+                episode_id, grantee_id=grantee, resource_owner_id=owner_id,
+                scope=[prohibited], source_observation_id=observation_id,
+                valid_from=observed_at, effect="deny")
+            self.conn.execute(
+                """UPDATE memories SET memory_type='permission_evidence'
+                   WHERE source_observation_id=? AND memory_type='derived_fact'""",
+                (observation_id,))
+            return
+        if not allow_text:
+            return
+        previous = self.conn.execute(
+            """SELECT permission_id FROM permissions WHERE episode_id=? AND grantee_id=?
+               AND resource_owner_id=? AND status='active' ORDER BY created_at DESC LIMIT 1""",
+            (episode_id, grantee, owner_id),
         ).fetchone()
-        return row is not None
-
-    def _log(self, checkpoint_id: str | None, requester_id: str, record_id: str, decision: str) -> None:
+        permission_id = self.grant_permission(
+            episode_id, grantee_id=grantee, resource_owner_id=owner_id,
+            scope=[allow_text], exclusions=exclusions,
+            source_observation_id=observation_id, valid_from=observed_at,
+            valid_until=_parse_valid_until(text, observed_at),
+            supersedes_id=str(previous[0]) if previous else None)
         self.conn.execute(
-            "INSERT INTO access_log(checkpoint_id, requester_id, record_id, decision, ts) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (checkpoint_id, requester_id, record_id, decision, _now()),
-        )
+            """UPDATE memories SET memory_type='permission_evidence'
+               WHERE source_observation_id=? AND memory_type='derived_fact'""",
+            (observation_id,))
+        if _REVOKE.search(text):
+            self.revoke_permission(permission_id, source_observation_id=observation_id)
+
+    def derive_permission_from_relationship_metadata(self, relationship_id: str,
+                                                     *, source_observation_id: str) -> str | None:
+        """Use explicit access metadata, never relationship identity, as evidence."""
+        row = self.conn.execute(
+            "SELECT * FROM relationships WHERE relationship_id=?", (relationship_id,)).fetchone()
+        if not row:
+            return None
+        attrs = _loads(row["attributes_json"], {})
+        evidence = " ".join(str(attrs[k]) for k in attrs if any(
+            cue in k.lower() for cue in ("access", "permission", "consent", "authorization")))
+        if not evidence:
+            return None
+        allow, exclusions = _permission_phrases(evidence)
+        return self.grant_permission(
+            row["episode_id"], grantee_id=row["subject_id"],
+            resource_owner_id=row["object_id"], scope=[allow or evidence],
+            exclusions=exclusions, source_observation_id=source_observation_id)
+
+    def _run_interpreter(self, episode_id: str, observation_id: str,
+                         turn: dict[str, Any], owner_id: str) -> None:
+        if self.interpreter is None:
+            return
+        try:
+            output = self.interpreter({"observation_id": observation_id,
+                                       "raw_text": str(turn.get("text") or ""),
+                                       "owner_id": owner_id})
+            if (not isinstance(output, dict) or
+                    set(output) - {"facts", "semantic_links", "permissions"} or
+                    not all(isinstance(output.get(key, []), list)
+                            for key in ("facts", "semantic_links", "permissions"))):
+                return
+            for fact in output.get("facts", []):
+                if not isinstance(fact, dict) or not {"predicate", "value"} <= set(fact):
+                    continue
+                self.add_fact(
+                    episode_id, subject_id=str(fact.get("subject_id") or owner_id),
+                    predicate=str(fact["predicate"]), value=fact["value"],
+                    text_value=str(fact.get("text_value") or ""),
+                    concepts=[str(x) for x in fact.get("concepts", [])],
+                    source_observation_id=observation_id,
+                    confidence=float(fact.get("confidence", 0.5)),
+                    memory_type="model_interpretation")
+            for link in output.get("semantic_links", []):
+                if isinstance(link, dict) and {"original_value", "related_value"} <= set(link):
+                    self.add_semantic_link(
+                        episode_id, str(link["original_value"]), str(link["related_value"]),
+                        source_observation_id=observation_id,
+                        confidence=float(link.get("confidence", 0.5)))
+            # Model output cannot invent authority: the source observation must
+            # itself carry an authorization cue.
+            if _AUTH_CUE.search(str(turn.get("text") or "")):
+                for perm in output.get("permissions", []):
+                    if isinstance(perm, dict) and {"grantee_id", "scope"} <= set(perm):
+                        self.grant_permission(
+                            episode_id, grantee_id=str(perm["grantee_id"]),
+                            resource_owner_id=str(perm.get("resource_owner_id") or owner_id),
+                            scope=perm["scope"], exclusions=perm.get("exclusions", []),
+                            source_observation_id=observation_id,
+                            valid_until=perm.get("valid_until"),
+                            confidence=float(perm.get("confidence", 0.5)))
+        except (TypeError, ValueError, KeyError):
+            return  # malformed extraction fails closed; raw observation remains
+
+    def _find_prior_fact(self, episode_id: str, text: str) -> str | None:
+        terms = _concepts(text) - {"cancel", "cancell", "update", "replac", "mov", "chang"}
+        best: tuple[int, str] | None = None
+        for row in self.conn.execute(
+            """SELECT memory_id,text_value FROM memories
+               WHERE episode_id=? AND status='active' ORDER BY seq DESC""", (episode_id,)):
+            overlap = len(terms & _concepts(row["text_value"]))
+            if overlap >= 2 and (best is None or overlap > best[0]):
+                best = (overlap, row["memory_id"])
+        return best[1] if best else None
+
+    def _resolve_grantee(self, episode_id: str, text: str, speaker_id: str) -> str:
+        lowered = text.lower()
+        matches: list[tuple[int, str]] = []
+        for row in self.conn.execute("SELECT principal_id,display_name FROM principals"):
+            names = [part for part in re.findall(r"[a-z0-9]+", row["display_name"].lower())
+                     if len(part) > 2]
+            positions = [lowered.find(name) for name in names if name in lowered]
+            if positions:
+                matches.append((min(positions), str(row["principal_id"])))
+        if matches:
+            return min(matches)[1]
+        if re.search(r"\b(you|she|he|they)\b", lowered):
+            row = self.conn.execute(
+                """SELECT observer_id FROM observations WHERE episode_id=? AND observer_id<>?
+                   ORDER BY seq DESC LIMIT 1""", (episode_id, speaker_id)).fetchone()
+            return str(row[0]) if row else ""
+        return ""
+
+    def _mentioned_principal(self, text: str) -> str:
+        """Return the earliest explicitly named principal, without using roles."""
+        normalized = " ".join(re.findall(r"[a-z0-9]+", text.lower()))
+        matches: list[tuple[int, int, str]] = []
+        for row in self.conn.execute("SELECT principal_id,display_name FROM principals"):
+            display = re.sub(r"\([^)]*\)", "", str(row["display_name"])).strip()
+            aliases = {" ".join(re.findall(r"[a-z0-9]+", display.lower())),
+                       " ".join(re.findall(r"[a-z0-9]+", str(row["principal_id"]).lower()))}
+            for alias in aliases - {""}:
+                if len(alias) < 3:
+                    continue
+                found = re.search(rf"(?:^| ){re.escape(alias)}(?: |$)", normalized)
+                if found:
+                    matches.append((found.start(), -len(alias), str(row["principal_id"])))
+        return min(matches)[2] if matches else ""
+
+    # Internal lookup helpers -------------------------------------------
+
+    def _require_observation(self, observation_id: str) -> None:
+        if not self.conn.execute(
+                "SELECT 1 FROM observations WHERE observation_id=?",
+                (observation_id,)).fetchone():
+            raise ValueError("derived memory requires an existing source observation")
+
+    def _permissions_at(self, episode_id: str, grantee_id: str, owner_id: str,
+                        as_of_time: str | None) -> list[sqlite3.Row]:
+        return [row for row in self.conn.execute(
+            """SELECT * FROM permissions WHERE episode_id=? AND grantee_id=?
+               AND resource_owner_id=? AND status='active' ORDER BY created_at DESC""",
+            (episode_id, grantee_id, owner_id),
+        ) if _is_current(row["valid_from"], row["valid_until"], as_of_time)]
+
+    @staticmethod
+    def _permission_summary(row: sqlite3.Row) -> dict[str, Any]:
+        return {"permission_id": row["permission_id"], "effect": row["effect"],
+                "scope": _loads(row["scope_json"], []),
+                "exclusions": _loads(row["exclusions_json"], []),
+                "valid_from": row["valid_from"], "valid_until": row["valid_until"],
+                "status": row["status"],
+                "source_observation_id": row["source_observation_id"]}
+
+    def _expand_terms(self, episode_id: str, terms: set[str]) -> set[str]:
+        expanded = set(terms)
+        for row in self.conn.execute(
+            """SELECT original_value,related_value FROM semantic_links
+               WHERE episode_id=? AND status='active'""", (episode_id,)):
+            left, right = _concepts(row[0]), _concepts(row[1])
+            if left & expanded:
+                expanded |= right
+            if right & expanded:
+                expanded |= left
+        return expanded
+
+    def _time_at_seq(self, episode_id: str, seq: int | None) -> str | None:
+        if seq is None:
+            row = self.conn.execute(
+                "SELECT observed_at FROM observations WHERE episode_id=? ORDER BY seq DESC LIMIT 1",
+                (episode_id,)).fetchone()
+        else:
+            row = self.conn.execute(
+                """SELECT observed_at FROM observations WHERE episode_id=? AND seq<=?
+                   ORDER BY seq DESC LIMIT 1""", (episode_id, seq)).fetchone()
+        return str(row[0]) if row else None
 
     def seq_of_turn(self, episode_id: str, turn_id: str) -> int | None:
         row = self.conn.execute(
-            "SELECT seq FROM records WHERE episode_id = ? AND turn_id = ?", (episode_id, turn_id)
-        ).fetchone()
-        return int(row["seq"]) if row else None
+            "SELECT seq FROM observations WHERE episode_id=? AND turn_id=?",
+            (episode_id, turn_id)).fetchone()
+        return int(row[0]) if row else None
+
+    def _index_key(self) -> bytes:
+        if self._index_key_cache is None:
+            row = self.conn.execute(
+                "SELECT value FROM store_meta WHERE key='term_index_key'").fetchone()
+            if row:
+                key = bytes(row[0])
+            else:
+                key = os.urandom(32)
+                self.conn.execute("INSERT INTO store_meta VALUES ('term_index_key',?)", (key,))
+            self._index_key_cache = key
+        return self._index_key_cache
+
+    def _index_memory(self, memory_id: str, text: str) -> None:
+        key = self._index_key()
+        hashes = [hmac.new(key, term.encode(), hashlib.sha256).hexdigest()[:16]
+                  for term in _concepts(text)]
+        self.conn.executemany("INSERT OR IGNORE INTO memory_terms VALUES (?,?)",
+                              [(memory_id, value) for value in hashes])
+
+    def _log(self, checkpoint_id: str | None, requester_id: str, memory_id: str,
+             decision: str, reason: str) -> None:
+        self.conn.execute("INSERT INTO access_log VALUES (NULL,?,?,?,?,?,?)",
+                          (checkpoint_id, requester_id, memory_id, decision, reason, _now()))
 
 
-# ----------------------------------------------------------------------
-# helpers
-# ----------------------------------------------------------------------
-
-_STOPWORDS = frozenset(
-    """a an and are as at be been but by can could did do does for from had has have
-    her him his i if in into is it its me my not of on or our out over she should so
-    that the their them then there these they this to was we were what when which who
-    will with would you your just now please tell give me""".split()
+_STOPWORDS = frozenset("""a an and are as at be been but by can could did do does for from had has have
+her him his i if in into is it its me my not of on or our out over she should so that the their them then
+there these they this to was we were what when which who will with would you your just now please tell give
+may receive only else through current currently latest detail details authorized""".split())
+_DELETE_REQUEST = re.compile(r"\b(delete|remove|erase|forget|purge|scrub)\b", re.I)
+_AUTH_CUE = re.compile(
+    r"\b(may receive|may access|can receive|can have|can hear|can access|authorized|"
+    r"consent|permission|access\s+(?:is|was|remains|:))\b",
+    re.I,
 )
+_REQUEST_CUE = re.compile(
+    r"\b(?:tell|give|show|send)\s+(?:me|us)\b|\b(?:can|could|would)\s+you\b|"
+    r"^\s*(?:what|when|where|who|why|how|is|are|do|does|did)\b",
+    re.I,
+)
+_PROHIBITION = re.compile(
+    r"\b(?:do not|don't|must not|cannot|can't|never)\s+(?:tell|share|disclose|give|send)\b",
+    re.I,
+)
+_REVOKE = re.compile(r"\b(revoke|revoked|no longer|stop sharing|withdraw)\b", re.I)
+_CANCEL = re.compile(r"\b(cancelled|canceled|voided|withdrawn)\b", re.I)
+_UPDATE = re.compile(r"\b(updated|replaced|instead of|moved|changed|supersedes?)\b", re.I)
+_MONTHS = {name.lower(): i for i, name in enumerate(
+    ("January", "February", "March", "April", "May", "June", "July", "August",
+     "September", "October", "November", "December"), 1)}
 
 
-def _distinctive_terms(text: str) -> set[str]:
-    """Content words, lowercased.  Used for both relevance and delete matching."""
-    tokens = re.findall(r"[a-z0-9][a-z0-9\-']{2,}", (text or "").lower())
-    return {token for token in tokens if token not in _STOPWORDS}
+def _stem(token: str) -> str:
+    result = token
+    # Two passes handle a plural wrapped around another ordinary suffix (for
+    # example "reservations" and "instructions") without a vocabulary.
+    for _ in range(2):
+        for suffix in ("ization", "ation", "ments", "ment", "ingly", "ing", "ed", "es", "s"):
+            minimum = 3 if suffix in {"s", "es"} else 4
+            if result.endswith(suffix) and len(result) - len(suffix) >= minimum:
+                result = result[:-len(suffix)]
+                break
+        else:
+            break
+    return result
 
 
-def _xor_stream(key: bytes, data: bytes) -> bytes:
-    """HMAC-SHA256 counter-mode keystream XOR.
+def _concepts(text: str) -> set[str]:
+    tokens = re.findall(r"[a-z0-9][a-z0-9_\-']{1,}", (text or "").lower())
+    normalized = [t[:-2] if t.endswith("'s") else t.strip("'") for t in tokens]
+    return {_stem(t) for t in normalized if t not in _STOPWORDS}
 
-    Chosen so the artifact has no third-party crypto dependency and the smoke
-    test runs anywhere.  It is a real stream cipher in structure -- destroying
-    `key` destroys the plaintext -- but it has no authentication tag.
-    # TODO(real): swap for AES-GCM via `cryptography` before any clinical use.
+
+def _structural_concepts(text: str) -> set[str]:
+    result: set[str] = set()
+    if re.search(r"\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:am|pm)\b", text, re.I):
+        result.add("time_expression")
+    if re.search(r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", text, re.I):
+        result.add("date_expression")
+    if re.search(r"\b(?:suite|room|building|address|venue|site)\b", text, re.I):
+        result.add("location_expression")
+    if re.search(r"\b\d+(?:\.\d+)?\s*[a-z%/]+\b", text, re.I):
+        result.add("measurement_expression")
+    return result
+
+
+def _temporal_features(text: str, reference: str = "") -> list[str]:
+    """Expose date/time tokens without copying their surrounding patient text."""
+    values = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", text or ""))
+    values.update(match.group(0).lower() for match in re.finditer(
+        r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        text or "", re.I))
+    values.update(match.group(0).lower() for match in re.finditer(
+        r"\b\d{1,2}:\d{2}(?:\s*(?:am|pm))?\b", text or "", re.I))
+    event_date = _date_from_text(text, reference)
+    if event_date:
+        values.add(event_date)
+    return sorted(values)
+
+
+def _compound_context_concepts(text: str) -> set[str]:
+    """Terms in a short heading that scopes a multi-fragment observation.
+
+    The heading is provenance-backed raw text, not an inferred domain label.
+    Requiring both a colon and list-like continuation prevents arbitrary
+    neighboring sentences from inheriting one another's relevance.
     """
-    out = bytearray()
-    counter = 0
-    while len(out) < len(data):
-        block = hmac.new(key, counter.to_bytes(8, "big"), hashlib.sha256).digest()
-        out.extend(block)
-        counter += 1
-    # strict=True documents (and enforces) the invariant that the keystream
-    # was generated to exactly len(data); a short keystream would silently
-    # truncate the ciphertext and leave the tail in plaintext.
-    return bytes(b ^ k for b, k in zip(data, out[: len(data)], strict=True))
+    prefix, marker, tail = (text or "").partition(":")
+    if not marker or len(prefix) > 160:
+        return set()
+    if ";" not in tail and "\n-" not in tail and "\n*" not in tail:
+        return set()
+    return _concepts(prefix) | _structural_concepts(prefix)
+
+
+def _query_concepts(text: str) -> set[str]:
+    result = _concepts(text) | _structural_concepts(text)
+    lowered = text.lower()
+    if re.search(r"\b(?:time|hour|arrival)\b", lowered):
+        result.add("time_expression")
+    if re.search(r"\b(?:date|day|future|today|tomorrow)\b", lowered):
+        result.add("date_expression")
+    if re.search(r"\b(?:location|place|where)\b", lowered):
+        result.add("location_expression")
+    result -= {"time", "hour", "arrival", "date", "day", "future", "today",
+               "tomorrow", "location", "place", "where"}
+    return result
+
+
+def _scope_concepts(text: str) -> set[str]:
+    result = _query_concepts(text)
+    # These words name authorization categories. Evidence must exhibit the
+    # corresponding structural feature rather than merely repeat the noun.
+    return result
+
+
+def _semantic_score(query: set[str], memory: set[str]) -> float:
+    if not query:
+        return 1.0
+    overlap = query & memory
+    if overlap:
+        return 1.0
+    best = 0.0
+    for left in query:
+        left_grams = {left[i:i+3] for i in range(max(0, len(left)-2))}
+        for right in memory:
+            right_grams = {right[i:i+3] for i in range(max(0, len(right)-2))}
+            if left_grams and right_grams:
+                best = max(best, 2 * len(left_grams & right_grams) /
+                           (len(left_grams) + len(right_grams)))
+    return best
+
+
+def _predicate_from(concepts: list[str]) -> str:
+    structural = [c for c in concepts if c.endswith("_expression")]
+    return structural[0] if structural else (concepts[0] if concepts else "statement")
+
+
+def _is_current(valid_from: str | None, valid_until: str | None, at: str | None) -> bool:
+    if at is None:
+        return True
+    return (not valid_from or valid_from <= at) and (not valid_until or at <= valid_until)
+
+
+def _permission_phrases(text: str) -> tuple[str, list[str]]:
+    normalized = re.sub(r"[_]+", " ", text)
+    match = re.search(
+        r"(?:may receive|may access|can receive|can have|can hear|can access|authorized(?: to)?|access(?: is|:))\s+(.+)",
+        normalized, re.I)
+    if not match:
+        parts = re.split(r"\b(?:but|and)\s+no\b|\bno\b", normalized, maxsplit=1,
+                         flags=re.I)
+        allow = parts[0].strip(" .,:;")
+        exclusions = ([parts[1].strip(" .,:;")] if len(parts) > 1 and parts[1].strip(" .,:;")
+                      else [])
+        return allow, exclusions
+    tail = match.group(1).strip()
+    parts = re.split(r"\b(?:but|except|nothing else|no)\b", tail, maxsplit=1, flags=re.I)
+    allow = re.sub(r"\bonly\b.*$", "", parts[0], flags=re.I).strip(" .,:;") or parts[0]
+    exclusions = []
+    if len(parts) > 1:
+        exclusions = [p.strip(" .,:;") for p in re.split(r",|\bor\b|\band\b", parts[1])
+                      if p.strip(" .,:;")]
+    return allow, exclusions
+
+
+def _prohibited_phrase(text: str) -> str:
+    match = _PROHIBITION.search(text)
+    return text[match.end():].strip(" .,:;") if match else ""
+
+
+def _parse_valid_until(text: str, observed_at: str) -> str | None:
+    dated = re.search(
+        r"\bthrough\s+(?:(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+)?([A-Za-z]+)\s+(\d{1,2})\b",
+        text, re.I)
+    try:
+        observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+    except ValueError:
+        observed = datetime.now(timezone.utc)
+    if dated and dated.group(1).lower() in _MONTHS:
+        return (f"{observed.year:04d}-{_MONTHS[dated.group(1).lower()]:02d}-"
+                f"{int(dated.group(2)):02d}T23:59:59+00:00")
+    weekday = re.search(
+        r"\bthrough\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",
+        text, re.I)
+    if not weekday:
+        return None
+    weekday_number = (
+        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
+    ).index(weekday.group(1).lower())
+    end = observed + timedelta(days=(weekday_number - observed.weekday()) % 7)
+    return end.replace(hour=23, minute=59, second=59, microsecond=0).isoformat()
+
+
+def _date_from_text(text: str, reference: str) -> str | None:
+    iso = re.search(r"\b\d{4}-\d{2}-\d{2}\b", text, re.I)
+    if iso:
+        return iso.group(0)
+    match = re.search(r"\b([A-Za-z]+)\s+(\d{1,2})\b", text, re.I)
+    if not match or match.group(1).lower() not in _MONTHS:
+        return None
+    try:
+        year = datetime.fromisoformat(reference.replace("Z", "+00:00")).year
+    except ValueError:
+        return None
+    return f"{year:04d}-{_MONTHS[match.group(1).lower()]:02d}-{int(match.group(2)):02d}"

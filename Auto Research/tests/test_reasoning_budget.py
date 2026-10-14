@@ -150,12 +150,15 @@ def test_finish_reason_is_carried_on_the_result() -> None:
     assert result.finish_reason == "length"
 
 
-def test_agent_call_names_the_finish_reason_in_its_error() -> None:
+def test_agent_call_names_the_finish_reason_in_its_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The transport seam is what the nodes actually read; assert its wording."""
     from harness.profiles import ARCHITECT_PROFILE
     from llm import client as client_module
     from nodes import _transport
 
+    monkeypatch.setattr(config, "AGENT_TRANSPORT", "http")
     client = AsyncLLMClient()
     client._client = _CapturingHTTP(_BUDGET_EXHAUSTED)  # type: ignore[assignment]
     client_module._CLIENT = client

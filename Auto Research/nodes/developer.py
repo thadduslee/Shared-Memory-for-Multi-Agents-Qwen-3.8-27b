@@ -488,6 +488,13 @@ def _turn_budget_block(state: DeveloperState, turns_used: int) -> str:
     `read_file`: they were over-reading, not under-working, and more budget is
     more room to over-read.
     """
+    if state.get("online_unbounded"):
+        return (
+            f"turn={turns_used} (observability only; no online turn ceiling)\n"
+            "ONLINE MILESTONES: inspect only files needed for the focused work order; "
+            "make the focused change; run compile_check, run_tests, and sql_exec early; "
+            "correct failures immediately; finish only after every mandatory gate passes."
+        )
     ceiling = _max_turns()
     remaining = max(0, ceiling - turns_used)
     line = f"turn={turns_used}/{ceiling} ({remaining} left)"
@@ -554,7 +561,8 @@ def _status_block(state: DeveloperState, box: DevToolbox, turns_used: int = 0) -
         f"iteration={state.get('iteration', 1)}\n"
         f"workspace_from={state.get('workspace_from', 'empty')}\n"
         f"schema_version={_schema_version(box.workspace)}\n"
-        f"retry={state.get('retry_count', 0)}/{config.MAX_DEV_RETRIES}\n"
+        f"retry={state.get('retry_count', 0)}/"
+        f"{'unbounded-online' if state.get('online_unbounded') else config.MAX_DEV_RETRIES}\n"
         f"{_turn_budget_block(state, turns_used)}\n"
         f"files_present={','.join(present)}\n"
         f"compile_ok={str(bool(state.get('compile_ok'))).lower()}\n"
@@ -1270,6 +1278,12 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
         update["smoke_ok"] = ok
     elif tool == "finish":
         update["done"] = True
+        data = observation.get("data") or {}
+        if state.get("online_unbounded") and data.get("status") == "unworkable":
+            update["unworkable"] = True
+            update["unworkable_reason"] = str(
+                data.get("reason") or data.get("summary") or "focused approach is unworkable"
+            )
 
     if not ok and tool == "run_linter":
         # Advisory, and said so in three places already: this module's header,
@@ -1316,7 +1330,8 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
     compile_ok = update.get("compile_ok", state.get("compile_ok", False))
     tests_ok = update.get("tests_ok", state.get("tests_ok", False))
     migration_ok = update.get("migration_ok", state.get("migration_ok", False))
-    if update.get("done") and not (compile_ok and tests_ok and migration_ok):
+    if (update.get("done") and not update.get("unworkable") and
+            not (compile_ok and tests_ok and migration_ok)):
         update["done"] = False
         update["retry_count"] = int(state.get("retry_count", 0)) + 1
         missing = [
@@ -1364,7 +1379,7 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
     # in `_stop_reason`, at the other door: an episode that inherited a working
     # workspace can satisfy every gate without touching a file, and the loop is
     # only self-improving if each iteration changes the code it inherited.
-    elif update.get("done") and not _built_anything(state):
+    elif update.get("done") and not update.get("unworkable") and not _built_anything(state):
         update["done"] = False
         update["retry_count"] = int(state.get("retry_count", 0)) + 1
         update["scratchpad"] = update["scratchpad"] + [{
@@ -1408,8 +1423,9 @@ def _stop_reason(state: DeveloperState) -> str:
     running a model.
     """
     if state.get("done"):
-        return "finish"
-    if int(state.get("retry_count", 0)) >= config.MAX_DEV_RETRIES:
+        return "unworkable" if state.get("unworkable") else "finish"
+    if (not state.get("online_unbounded") and
+            int(state.get("retry_count", 0)) >= config.MAX_DEV_RETRIES):
         return "exhausted"
     if (
         state.get("compile_ok")
@@ -1512,6 +1528,20 @@ class DeveloperSession:
             self.turns += 1
             turn = await dev_think(self.state, self.messages)
             self._apply(turn.update)
+            if self.state.get("online_unbounded") and not turn.result.ok:
+                # The online orchestrator owns bounded transport retries. Stop
+                # this call without converting an endpoint outage into design
+                # feedback; a retry re-enters this same session and workspace.
+                self.state["halt_reason"] = "transport"
+                self.messages.append({
+                    "role": "assistant",
+                    "content": turn.result.content or turn.result.text or "(transport failure)",
+                })
+                self.messages.append({
+                    "role": "user",
+                    "content": "Transport failed before a tool result. The orchestrator will retry this same session.",
+                })
+                return self.state
             executed = await self._execute(turn.actions)
             self._record(turn, executed)
             self._prune()
@@ -1554,14 +1584,44 @@ class DeveloperSession:
         # The two outer bounds. Both are reported as exhaustion, because that is
         # what they are from the Architect's point of view: the Developer did not
         # produce a build, and the report says which limit ended it.
-        if time.monotonic() >= self.deadline:
+        if not self.state.get("online_unbounded") and time.monotonic() >= self.deadline:
             log.warning("developer: episode wall clock (%.0fs) expired",
                         float(config.DSH_DEVELOPER_TIMEOUT_S))
             return "timeout"
-        if self.turns >= _max_turns():
-            log.warning("developer: turn ceiling (%d) reached", _max_turns())
+        ceiling = _max_turns()
+        if not self.state.get("online_unbounded") and self.turns >= ceiling:
+            log.warning("developer: turn ceiling (%d) reached", ceiling)
             return "turn_cap"
         return ""
+
+    def provide_external_feedback(self, feedback: dict[str, Any]) -> None:
+        """Resume this exact session after a private runner gate failed.
+
+        The workspace, toolbox, transcript, and candidate identity remain the
+        same. Only the failed gate is reopened; successful work is retained.
+        """
+        stage = str(feedback.get("stage") or "build_validation")
+        error = str(feedback.get("error") or "external validation failed")
+        self.state["done"] = False
+        self.state["unworkable"] = False
+        self.state["unworkable_reason"] = ""
+        self.state["halt_reason"] = None
+        self.state["last_stack_trace"] = error
+        if stage == "compile":
+            self.state["compile_ok"] = False
+        elif stage in {"invariants", "unit_tests", "tests", "build_validation"}:
+            self.state["tests_ok"] = False
+        elif stage == "migration":
+            self.state["migration_ok"] = False
+        self.messages.append({
+            "role": "user",
+            "content": (
+                "PRIVATE RUNNER FEEDBACK FOR THIS SAME CANDIDATE\n"
+                f"stage={stage}\n{error}\n\n"
+                "Correct this candidate in place, rerun the relevant mandatory gates immediately, "
+                "and finish only when they pass. Do not restart the design or broaden the work order."
+            ),
+        })
 
     # ------------------------------------------------------------------
     # state

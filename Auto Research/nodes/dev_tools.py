@@ -238,12 +238,23 @@ TOOL_SCHEMAS: tuple[dict[str, Any], ...] = (
             "description": (
                 "Declare the work order complete. REFUSED unless compile_ok, tests_ok and "
                 "migration_ok are all set by their tools having actually run in this episode; "
-                "a rejected finish costs a retry."
+                "a rejected finish costs a retry. In an online repair only, set status to "
+                "'unworkable' with a concrete reason when the focused Architect approach "
+                "cannot be implemented safely; do not use that status for an ordinary build "
+                "or test failure that you can correct."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "summary": {"type": "string", "description": "What you built and proved."}
+                    "summary": {"type": "string", "description": "What you built and proved."},
+                    "status": {
+                        "type": "string", "enum": ["complete", "unworkable"],
+                        "description": "Use unworkable only for a fundamental focused-design impasse."
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Required concrete reason when status is unworkable."
+                    }
                 },
                 "required": ["summary"],
             },
@@ -824,10 +835,21 @@ class DevToolbox:
         # allowed and still useful while iterating on one failure; it just does
         # not decide the gate.
         full_suite = target.strip().rstrip("/") in {"", ".", "tests"}
-        code, out, err = await _run(
-            [sys.executable, "-m", "pytest", target, "-q", "--no-header", "-p", "no:cacheprovider"],
-            cwd=self.workspace, timeout=300,
-        )
+        if os.environ.get('ONLINE_CANDIDATE_SANDBOX') == '1':
+            from online.validation import sandbox_command
+            path = self._resolve(target)
+            with tempfile.TemporaryDirectory(prefix='online-dev-tests-') as scratch:
+                code, out, err = await _run(
+                    sandbox_command(self.workspace, scratch, [sys.executable, '-m', 'pytest',
+                                    '/workspace/' + str(path.relative_to(self.workspace)), '-q',
+                                    '--no-header', '-p', 'no:cacheprovider']),
+                    cwd=self.workspace, timeout=300, env_extra={'PYTHONPATH': '/workspace'},
+                )
+        else:
+            code, out, err = await _run(
+                [sys.executable, "-m", "pytest", target, "-q", "--no-header", "-p", "no:cacheprovider"],
+                cwd=self.workspace, timeout=300,
+            )
         note = "" if full_suite else (
             f"\n[note] `{target}` is part of the suite, not the suite, so this run does "
             f'NOT set tests_ok. Run {{"tool": "run_tests", "args": {{"path": "tests"}}}} '
@@ -915,6 +937,11 @@ class DevToolbox:
         failed_statement = ""
         try:
             conn = sqlite3.connect(str(scratch))
+            if os.environ.get('ONLINE_CANDIDATE_SANDBOX') == '1':
+                conn.set_authorizer(lambda action, a, b, *_: sqlite3.SQLITE_DENY if
+                    action in {sqlite3.SQLITE_ATTACH, sqlite3.SQLITE_DETACH} or
+                    (action == sqlite3.SQLITE_FUNCTION and 'load_extension' in {a, b})
+                    else sqlite3.SQLITE_OK)
             conn.executescript(schema_path.read_text(encoding="utf-8"))
             applied = 0
             if migration.strip():
@@ -967,6 +994,10 @@ class DevToolbox:
         down with it, and a stale module in `sys.modules` would make the next
         iteration test the previous iteration's code.
         """
+        if os.environ.get('ONLINE_CANDIDATE_SANDBOX') == '1':
+            return ToolResult(False, 'run_sandbox_smoke_test',
+                              stderr='online candidates cannot access benchmark samples; '
+                                     'the runner performs private delta and observed replay validation')
         n = int(args.get("n", 3))
         runner = self.workspace / "_smoke_runner.py"
         runner.write_text(_SMOKE_RUNNER, encoding="utf-8")
@@ -1186,7 +1217,7 @@ def _apply_unified_diff(original: str, diff: str) -> str:
         index += 1
         while index < len(lines) and not hunk_header.match(lines[index]):
             line = lines[index]
-            if line.startswith("+++") or line.startswith("---"):
+            if line.startswith(("+++", "---")):
                 index += 1
                 continue
             if line.startswith("+"):
@@ -1198,10 +1229,9 @@ def _apply_unified_diff(original: str, diff: str) -> str:
                         f"context mismatch at line {cursor + 1}: expected {line[1:]!r}, found {got!r}"
                     )
                 cursor += 1
-            elif line.startswith(" ") or line == "":
-                if cursor < len(src):
-                    out.append(src[cursor])
-                    cursor += 1
+            elif (line.startswith(" ") or line == "") and cursor < len(src):
+                out.append(src[cursor])
+                cursor += 1
             index += 1
     if not saw_hunk:
         raise ValueError("diff contained no @@ hunk headers")

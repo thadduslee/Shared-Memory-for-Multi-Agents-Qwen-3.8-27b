@@ -1,5 +1,14 @@
 # GateMem Self-Improving Orchestrator (Medical Domain)
 
+**Online execution is available:** `MOCK_MODE=true python main.py --online
+--thread-id demo --max-boundaries 3`. It incrementally persists episode memory,
+freezes each event boundary, records immutable first attempts before judging,
+and blocks the current boundary in a feedback-driven repair loop until staged
+ingestion or failed checkpoints are resolved. Repair results remain separate;
+promotions affect only future official predictions. Resume with the same command
+plus `--resume`. See [the online protocol and controls](docs/online.md).
+The batch research loop below remains available unchanged.
+
 A LangGraph **macro-graph** that iteratively designs → codes → runs → judges → critiques a
 privacy-first, multi-principal shared-memory system, evaluated exclusively on the **medical**
 domain of the [GateMem](https://github.com/rzhub/GateMem) benchmark.
@@ -468,7 +477,7 @@ iteration died before the Evaluator, Judge or Critic ran at all.
 load-bearing: the template is ~47k characters, and under a plain alphabetical walk
 `memory_system/store.py` alone (22k) would consume the whole budget and push the tests off the
 end, showing the Architect an implementation with none of the assertions binding it.
-`ARCHITECT_CODE_VIEW_MAX_CHARS` (default 60000) is sized to fit the entire baseline — about 1%
+`ARCHITECT_CODE_VIEW_MAX_CHARS` (default 96000) is sized to fit the entire baseline — about 1%
 of the model's 1.31M-token context, and the highest-leverage context in the run.
 
 ### The `dsh` harness

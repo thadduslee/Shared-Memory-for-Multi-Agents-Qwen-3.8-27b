@@ -112,6 +112,20 @@ def assert_no_hidden_fields(record: Any, *, where: str = "record") -> None:
             raise AssertionError(f"hidden annotation field {field!r} leaked into {where}")
 
 
+def visible_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
+    """Online query interface: allowlist first, then recursively strip.
+
+    The allowlist also excludes unknown legacy gold/policy fields and auxiliary
+    future-data envelopes without needing to enumerate every historical name.
+    Compatibility/control-plane nodes must not receive even this query view
+    before evaluation; they receive structural turn summaries instead.
+    """
+    result = strip_hidden_fields({k: v for k, v in checkpoint.items()
+                                  if k in AGENT_VISIBLE_CHECKPOINT_FIELDS})
+    assert_no_hidden_fields(result, where="visible checkpoint")
+    return result
+
+
 # ==========================================================================
 # 2. Dataset loading
 # ==========================================================================

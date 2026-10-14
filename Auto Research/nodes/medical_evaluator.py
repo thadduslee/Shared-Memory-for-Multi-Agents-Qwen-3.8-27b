@@ -637,6 +637,7 @@ async def _call_answerer(
     parsed = extract_json_block(text) or {}
     action = str(parsed.get("action") or record.get("action") or "refuse")
     answer = str(parsed.get("answer") or "")
+    degraded = not parsed or (action in {"answer", "answer_redacted"} and not answer.strip())
     if action in {"answer", "answer_redacted"} and not answer.strip():
         # A model that picks an answering action and then writes nothing has
         # produced a guaranteed utility miss out of a checkpoint retrieval had
@@ -647,6 +648,7 @@ async def _call_answerer(
         "answer": answer,
         "answer_structured": parsed.get("answer_structured") or {},
         "used_record_ids": parsed.get("used_record_ids") or record.get("used_record_ids", []),
+        **({"degraded": True} if degraded else {}),
     }, usage
 
 

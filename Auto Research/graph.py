@@ -385,3 +385,86 @@ def default_checkpointer():
     from langgraph.checkpoint.memory import InMemorySaver
 
     return InMemorySaver()
+
+
+ONLINE_TOPOLOGY = """flowchart TD
+    START --> initialize_baseline --> deterministic_schedule --> load_boundary
+    load_boundary --> stage_delta --> private_parent_ingestion_probe
+    private_parent_ingestion_probe -->|compatible| commit_ingestion_and_cursor
+    private_parent_ingestion_probe -->|failure or redesign| architect_pre
+    architect_pre --> isolated_candidate --> migration_and_invariants
+    migration_and_invariants --> actual_delta_in_candidate --> causal_replay
+    causal_replay -->|no gain| structured_feedback --> architect_pre
+    causal_replay -->|eligible| atomic_version_images_cursor_commit
+    atomic_version_images_cursor_commit --> predict_all_queries
+    commit_ingestion_and_cursor --> predict_all_queries
+    predict_all_queries --> persist_first_attempts --> judge_all --> cumulative_metrics
+    cumulative_metrics --> critic --> pending_repair_evidence
+    pending_repair_evidence -->|failure| architect_post --> isolated_post_candidate
+    isolated_post_candidate --> build_feedback_loop --> targeted_replay
+    targeted_replay -->|no gain| post_feedback --> architect_post
+    targeted_replay -->|gain| broad_safety
+    broad_safety -->|regression| post_feedback
+    broad_safety -->|eligible| atomic_future_version_publish
+    atomic_future_version_publish -->|targets remain| architect_post
+    atomic_future_version_publish -->|resolved| advance_boundary
+    pending_repair_evidence -->|nothing pending| advance_boundary
+    advance_boundary -->|more| load_boundary
+    advance_boundary -->|done| finalize --> END
+"""
+
+
+async def run_online(args):
+    """Online graph uses an explicit SQLite state machine, independent of Send.
+
+    Keeping memory images and the ingestion cursor in the same transaction is
+    stronger than independently checkpointing a graph and an external database.
+    """
+    import json
+    import uuid
+    from pathlib import Path
+
+    from nodes.medical_evaluator import get_dataset
+    from online.backend import Backend, InfrastructureFailure
+    from online.runner import OnlineOptions, OnlineRunner, RepairBlocked
+
+    if args.print_graph:
+        print(ONLINE_TOPOLOGY)
+        return 0
+    if args.max_boundaries is not None and args.max_boundaries < 0:
+        raise ValueError('--max-boundaries must be nonnegative')
+    if args.resume and not (args.thread_id or args.checkpointer_path):
+        raise ValueError('--resume requires --thread-id or --checkpointer-path')
+    if args.retry_blocked and not args.resume:
+        raise ValueError('--retry-blocked requires --resume')
+    run_id = args.thread_id or ('online-' + uuid.uuid4().hex[:12])
+    if Path(run_id).name != run_id:
+        raise ValueError('--thread-id must be a simple run name')
+    run_dir = config.RUNS_DIR / run_id
+    if args.resume and args.checkpointer_path:
+        from online.storage import Journal
+        journal = Journal(args.checkpointer_path)
+        try:
+            manifest = journal.get('manifest')
+            if not manifest:
+                raise ValueError('no run at --checkpointer-path')
+            run_dir = Path(manifest['run_dir'])
+        finally:
+            journal.close()
+    options = OnlineOptions(disable_redesign=args.disable_online_redesign,
+                            replay_window=args.replay_window,
+                            utility_tolerance=args.utility_regression_tolerance,
+                            stream_order=args.stream_order,
+                            max_infra_retries=config.MAX_INFRA_RETRIES)
+    runner = OnlineRunner(get_dataset(), run_dir, backend=Backend(config.MOCK_MODE),
+                          options=options, resume=args.resume, retry_blocked=args.retry_blocked,
+                          checkpointer_path=args.checkpointer_path)
+    try:
+        result = await runner.run(args.max_boundaries if args.max_boundaries is not None else (3 if args.smoke else None))
+        print(json.dumps({'run_dir': str(run_dir), **result}, indent=2))
+        return 0
+    except (InfrastructureFailure, RepairBlocked) as exc:
+        print(f'Online run stopped durably: {exc}')
+        return 2
+    finally:
+        runner.close()
