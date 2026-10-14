@@ -56,10 +56,24 @@ class OnlineOptions:
     utility_tolerance: float = config.ONLINE_UTILITY_TOLERANCE
     stream_order: str = POLICY
     max_infra_retries: int = config.MAX_INFRA_RETRIES
+    max_stalled_attempts: int = config.ONLINE_MAX_STALLED_ATTEMPTS
+    max_duplicate_proposals: int = config.ONLINE_MAX_DUPLICATE_PROPOSALS
+    max_correction_rounds: int = config.ONLINE_MAX_CORRECTION_ROUNDS
+    # Opt-in: rebuild replay and promotion images from the episode's turns under
+    # each side's code, so ingestion-time repairs become measurable.
+    replay_reingest: bool = False
+    # Opt-in: predict and judge each replay side this many times; pass/fail is
+    # the majority, so one noisy judge call cannot make or break a candidate.
+    replay_votes: int = 1
 
     def __post_init__(self):
         if self.replay_window < 1 or self.max_infra_retries < 0:
             raise ValueError("invalid online replay/transport policy")
+        if min(self.max_stalled_attempts, self.max_duplicate_proposals,
+               self.max_correction_rounds) < 1:
+            raise ValueError("online stall limits must be at least one")
+        if self.replay_votes < 1 or self.replay_votes % 2 == 0:
+            raise ValueError("replay_votes must be a positive odd number")
         if not 0 <= self.utility_tolerance <= 1:
             raise ValueError("online utility tolerance must be between zero and one")
 
@@ -70,6 +84,12 @@ class BudgetExhausted(RuntimeError):
 
 class RepairBlocked(RuntimeError):
     pass
+
+
+# Rejections that repeat earlier work count toward the duplicate limit too.
+_DUPLICATE_REASONS = {
+    "equivalent_previous_attempt", "duplicate_source_change", "duplicate_replay_behavior",
+}
 
 
 _LEGACY_LIMIT_KEYS = {
@@ -100,6 +120,7 @@ class OnlineRunner:
         options=None,
         resume=False,
         retry_blocked=False,
+        abandon_blocked=False,
         checkpointer_path=None,
     ):
         self.dataset = dataset  # scoring side only; never passed wholesale to an agent
@@ -117,6 +138,7 @@ class OnlineRunner:
         self.backend = backend or Backend(config.MOCK_MODE)
         self.options = options or OnlineOptions()
         self.retry_blocked = retry_blocked
+        self.abandon_blocked = abandon_blocked
         self.schedule = build_schedule(dataset, self.options.stream_order)
         self.checkpoints = {row["checkpoint_id"]: row for row in dataset.checkpoints}
         fingerprint = digest({
@@ -544,12 +566,19 @@ class OnlineRunner:
                     self.journal.put("halt_reason", None)
                 self.retry_blocked = False
             elif status in {"repair_blocked", "data_quarantined", "budget_exhausted"}:
-                if not self.retry_blocked:
+                if not (self.retry_blocked or self.abandon_blocked):
                     raise RepairBlocked(self.journal.get("halt_reason"))
+                incident = self.journal.get("active_repair_incident")
+                if incident and self.abandon_blocked:
+                    self._abandon_incident(incident)
+                elif incident:
+                    self._transition(
+                        incident, "architect", stalled_rejections=0, duplicate_rejections=0,
+                        resume_note="operator requested retry of the same stalled boundary")
                 with self.journal.db:
                     self.journal.put("status", "ready")
                     self.journal.put("halt_reason", None)
-                self.retry_blocked = False
+                self.retry_blocked = self.abandon_blocked = False
 
             for event in self.schedule:
                 index = event["event_boundary_index"]
@@ -734,7 +763,8 @@ class OnlineRunner:
             current = [row for row in self.journal.official()
                        if row["event_boundary_index"] == index and row.get("score")]
             pending = self._record_pending_failures(current)
-            unresolved = [item["checkpoint_id"] for item in pending if not item.get("resolved")]
+            unresolved = [item["checkpoint_id"] for item in pending
+                          if not item.get("resolved") and not item.get("abandoned")]
             if unresolved:
                 incident = self._ensure_incident(
                     index,
@@ -750,7 +780,7 @@ class OnlineRunner:
                     raise RepairBlocked(reason)
                 await self.repair_incident(incident, event=event, header=header)
                 unresolved = [item for item in self.journal.get("pending_repairs", [])
-                              if not item.get("resolved")]
+                              if not item.get("resolved") and not item.get("abandoned")]
                 if unresolved:
                     raise RepairBlocked("active scored incident returned with unresolved targets")
                 state["repair_disposition"] = "resolved"
@@ -930,6 +960,7 @@ class OnlineRunner:
         prefix = f"boundary_{index:04d}"
         while (incident.get("unresolved_target_checkpoint_ids") or
                incident["trigger_type"] == "pre_ingestion"):
+            self._raise_if_stalled(incident)
             attempt_idx = self._next_attempt_index(index)
             candidate_number = len(incident.get("candidate_attempt_history") or []) + 1
             attempt_dir = self.run_dir / "events" / prefix / "attempts" / f"attempt_{attempt_idx:02d}"
@@ -983,6 +1014,15 @@ class OnlineRunner:
                     hidden_design_error = str(exc)
                 design = strip_hidden_fields(raw_design)
                 report["design"] = design
+                if isinstance(design, dict) and design.get("decision") == "NO_VIABLE_REPAIR":
+                    write_json(attempt_dir / "design.json", design)
+                    report["diagnosis"] = design.get("diagnosis")
+                    incident = self._reject(
+                        incident, report, attempt_idx, "architect_no_viable_repair",
+                        str(design.get("diagnosis") or "Architect found no viable focused repair"))
+                    self._block_stalled(
+                        incident, "Architect reported no viable focused repair: " +
+                        str(design.get("diagnosis") or "no diagnosis given"))
                 report["diagnosis"] = design.get("diagnosis") if isinstance(design, dict) else None
                 report["focused_goal"] = (
                     design.get("focused_goal") if isinstance(design, dict) else None)
@@ -1195,6 +1235,16 @@ class OnlineRunner:
                 }
                 rounds[-1]["feedback"] = feedback
                 report.setdefault("build_test_errors", []).append(feedback)
+                if len(rounds) > self.options.max_correction_rounds:
+                    report["build_validation"] = {
+                        "status": "failed_after_correction_limit", "rounds": rounds,
+                    }
+                    self._checkpoint_attempt(index, attempt_idx, report)
+                    write_json(attempt_dir / "build_validation.json", report["build_validation"])
+                    raise ValidationFailure(
+                        f"build still failing after {len(rounds) - 1} correction round(s): {exc}",
+                        stage="build_validation", origin=feedback["stage"],
+                        gate_reports=gate_reports) from exc
                 report["build_validation"] = {
                     "status": "failed_and_returned_to_same_developer", "rounds": rounds,
                 }
@@ -1413,27 +1463,47 @@ class OnlineRunner:
             boundary = row["event_boundary_index"]
             checkpoint = self.checkpoints[checkpoint_id]
             header = episode_header(self.dataset.episodes_by_id[checkpoint["episode_id"]])
-            _, event_state, image = self.journal.event(boundary)
-            image = self._migrate_to(image, event_state["frozen_version"], parent)
-            candidate_image = migrate_blob(image, sql)
+            if self.options.replay_reingest:
+                position = self.schedule[boundary - 1]["turn_position"]
+                key = f"{op}/{stage}_replay/{checkpoint_id}"
+                image = await self._rebuilt_image(
+                    self.workspace(parent), parent, "", checkpoint["episode_id"], position,
+                    key + "/parent/rebuild")
+                candidate_image = await self._rebuilt_image(
+                    work, parent, sql, checkpoint["episode_id"], position,
+                    key + "/candidate/rebuild")
+            else:
+                _, event_state, image = self.journal.event(boundary)
+                image = self._migrate_to(image, event_state["frozen_version"], parent)
+                candidate_image = migrate_blob(image, sql)
             results = {}
             for label, workspace, blob in (
                 ("parent", self.workspace(parent), image),
                 ("candidate", work, candidate_image),
             ):
-                prediction = await self.operation(
-                    f"{op}/{stage}_replay/{checkpoint_id}/{label}/predict",
-                    partial(self.backend.predict, workspace, blob, header,
-                            visible_checkpoint(checkpoint)),
-                )
-                assert_no_hidden_fields(prediction, where=f"{stage} evaluator prediction")
-                score = await self.operation(
-                    f"{op}/{stage}_replay/{checkpoint_id}/{label}/judge",
-                    partial(self.backend.judge, prediction, checkpoint),
-                )
+                votes = []
+                for vote in range(self.options.replay_votes):
+                    suffix = f"/vote_{vote + 1:02d}" if self.options.replay_votes > 1 else ""
+                    prediction = await self.operation(
+                        f"{op}/{stage}_replay/{checkpoint_id}/{label}/predict{suffix}",
+                        partial(self.backend.predict, workspace, blob, header,
+                                visible_checkpoint(checkpoint)),
+                    )
+                    assert_no_hidden_fields(prediction, where=f"{stage} evaluator prediction")
+                    score = await self.operation(
+                        f"{op}/{stage}_replay/{checkpoint_id}/{label}/judge{suffix}",
+                        partial(self.backend.judge, prediction, checkpoint),
+                    )
+                    votes.append((prediction, score))
+                passes = sum(bool(score.get("passed")) for _, score in votes)
+                majority = passes * 2 > len(votes)
+                # Report the first prediction that agrees with the majority.
+                prediction, score = next(item for item in votes
+                                         if bool(item[1].get("passed")) == majority)
                 results[label] = {
                     "prediction": prediction,
-                    "score": self._score_view(score),
+                    "score": {**self._score_view(score), "votes_passed": passes,
+                              "votes": len(votes)},
                     "behavior": self._behavior(prediction, score),
                 }
             parent_behavior = results["parent"]["behavior"]
@@ -1622,11 +1692,18 @@ class OnlineRunner:
             image = migrate_blob(row["memory"], sql)
             report["gate_status"]["migration"] = "passed"
             episode_info = episode_header(self.dataset.episodes_by_id[row["id"]])
-            reopened, _ = await self.operation(
-                op + "/broad/open/" + row["id"],
-                partial(self.backend.memory, work, image, episode_info, delta=[]),
-            )
-            self._preserve_images(image, reopened)
+            if self.options.replay_reingest:
+                # The committed image is re-derived from the same turns; raw
+                # observations must match and no tombstone may be lost.
+                reopened = await self._rebuilt_image(
+                    work, parent, sql, row["id"], row["cursor"], op + "/broad/rebuild/" + row["id"])
+                self._preserve_rebuilt(row["memory"], reopened)
+            else:
+                reopened, _ = await self.operation(
+                    op + "/broad/open/" + row["id"],
+                    partial(self.backend.memory, work, image, episode_info, delta=[]),
+                )
+                self._preserve_images(image, reopened)
             report["gate_status"]["data_preservation"] = "passed"
             self._isolation(reopened, row["id"], episode_info)
             report["gate_status"]["database_integrity"] = "passed"
@@ -1761,6 +1838,8 @@ class OnlineRunner:
             "promotion_history": promotions,
             "structured_feedback_history": [],
             "candidate_system_version": None,
+            "stalled_rejections": 0,
+            "duplicate_rejections": 0,
         }
         return self._transition(
             incident, "architect", partial_progress=True,
@@ -1790,9 +1869,53 @@ class OnlineRunner:
             "structured_feedback_history": feedback_history,
             "candidate_system_version": None,
             "last_rejection_reason": reason,
+            "stalled_rejections": int(incident.get("stalled_rejections") or 0) + 1,
+            "duplicate_rejections": (int(incident.get("duplicate_rejections") or 0) +
+                                     int(reason in _DUPLICATE_REASONS)),
         }
         incident = self._transition(incident, "rejected_with_feedback")
         return self._transition(incident, "architect")
+
+    def _raise_if_stalled(self, incident):
+        stalled = int(incident.get("stalled_rejections") or 0)
+        duplicates = int(incident.get("duplicate_rejections") or 0)
+        if stalled >= self.options.max_stalled_attempts:
+            self._block_stalled(
+                incident, f"{stalled} consecutive rejected candidates without a promotion")
+        if duplicates >= self.options.max_duplicate_proposals:
+            self._block_stalled(
+                incident, f"{duplicates} proposals duplicated earlier rejected work")
+
+    def _block_stalled(self, incident, why):
+        reason = (f"repair incident {incident['incident_id']} stalled at boundary "
+                  f"{incident['boundary_index']}: {why.rstrip('.')}. Resume with --retry-blocked to try "
+                  "again, or --abandon-blocked to record the targets as unrepaired and advance.")
+        self._transition(incident, "stalled", stall_reason=why)
+        with self.journal.db:
+            self.journal.put("status", "repair_blocked")
+            self.journal.put("halt_reason", reason)
+        log.warning(reason)
+        raise RepairBlocked(reason)
+
+    def _abandon_incident(self, incident):
+        """Record a stalled scored incident's targets as unrepaired and release the stream."""
+        if incident["trigger_type"] != "scored_checkpoint_failure":
+            raise RepairBlocked(
+                "only a scored incident can be abandoned; a staged delta that cannot be "
+                "ingested must be repaired or the run restarted")
+        targets = set(incident.get("unresolved_target_checkpoint_ids") or [])
+        pending = [{**item, "abandoned": True,
+                    "abandoned_at_boundary": incident["boundary_index"]}
+                   if item["checkpoint_id"] in targets else item
+                   for item in self.journal.get("pending_repairs", [])]
+        with self.journal.db:
+            self.journal.put("pending_repairs", pending)
+        self._save_incident({
+            **incident, "phase": "abandoned", "resolved": True,
+            "resolution": "abandoned_after_stall", "updated_at": time.time(),
+        })
+        log.warning("repair incident %s abandoned; %d target(s) recorded as unrepaired",
+                    incident["incident_id"], len(targets))
 
     @staticmethod
     def _attempt_ref(report, status):
@@ -2036,6 +2159,43 @@ class OnlineRunner:
             blob = migrate_blob(blob, sql)
         return blob
 
+    async def _rebuilt_image(self, workspace, parent, sql, episode_id, position, key):
+        """Re-derive an episode image from its visible turns under one workspace's code."""
+        episode = self.dataset.episodes_by_id[episode_id]
+        header = episode_header(episode)
+        empty, _ = await self.operation(
+            key + "/empty", partial(self.backend.memory, workspace, None, header, delta=[]))
+        empty = migrate_blob(self._migrate_to(empty, "version_0001", parent), sql)
+        turns = strip_hidden_fields(episode["turns"][:position + 1])
+        rebuilt, _ = await self.operation(
+            key + "/ingest", partial(self.backend.memory, workspace, empty, header, delta=turns))
+        return rebuilt
+
+    @staticmethod
+    def _preserve_rebuilt(before, after):
+        with tempfile.TemporaryDirectory() as tmp:
+            states = []
+            for name, blob in (("before", before), ("after", after)):
+                path = Path(tmp) / name
+                path.write_bytes(blob)
+                with sqlite3.connect(path) as connection:
+                    states.append((
+                        sorted(connection.execute(
+                            "SELECT episode_id,turn_id,raw_text,content_hash FROM observations")),
+                        {tuple(row) for row in connection.execute(
+                            "SELECT target_id,target_type FROM tombstones")},
+                    ))
+        (old_obs, old_tombs), (new_obs, new_tombs) = states
+        if old_tombs - new_tombs:
+            raise ValidationFailure("rebuilt image lost tombstones", stage="data_preservation",
+                                    table="tombstones",
+                                    row_difference={"lost": sorted(old_tombs - new_tombs)[:5]},
+                                    origin="reingest")
+        if old_obs != new_obs:
+            raise ValidationFailure("rebuilt image changed raw observations",
+                                    stage="data_preservation", table="observations",
+                                    origin="reingest")
+
     @staticmethod
     def _preserve_images(before, after):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2081,9 +2241,12 @@ class OnlineRunner:
                 "interrupted_candidates": sum(row["status"] == "interrupted" for row in attempts),
                 "unresolved_repair_incidents": sum(
                     bool(item.get("incident_id") and not item.get("resolved")) for item in incidents),
-                "pending_repairs": len([item for item in pending if not item.get("resolved")]),
+                "pending_repairs": len([item for item in pending if not item.get("resolved")
+                                        and not item.get("abandoned")]),
                 "unresolved_failures": sorted(item["checkpoint_id"] for item in pending
                                               if not item.get("resolved")),
+                "abandoned_failures": sorted(item["checkpoint_id"] for item in pending
+                                             if item.get("abandoned")),
                 "equivalent_attempt_rejections": sum(
                     report.get("rejection_reason") == "equivalent_previous_attempt"
                     for report in reports),

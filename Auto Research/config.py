@@ -732,6 +732,11 @@ MAX_TOTAL_TOKENS: int = _env_int("MAX_TOTAL_TOKENS", 20_000_000)
 # validation policy, not repair ceilings.
 ONLINE_REPLAY_WINDOW: int = _env_int("ONLINE_REPLAY_WINDOW", 50)
 ONLINE_UTILITY_TOLERANCE: float = _env_float("ONLINE_UTILITY_TOLERANCE", 0.0)
+# Stall policy: an incident that keeps failing blocks durably (resumable with
+# --retry-blocked, or skipped with --abandon-blocked) instead of looping forever.
+ONLINE_MAX_STALLED_ATTEMPTS: int = _env_int("ONLINE_MAX_STALLED_ATTEMPTS", 5)
+ONLINE_MAX_DUPLICATE_PROPOSALS: int = _env_int("ONLINE_MAX_DUPLICATE_PROPOSALS", 3)
+ONLINE_MAX_CORRECTION_ROUNDS: int = _env_int("ONLINE_MAX_CORRECTION_ROUNDS", 3)
 
 # LangGraph's own guard.  The macro-loop runs many supersteps per iteration
 # (architect, developer, dispatch, N workers, collect, judge, critic), so the
@@ -794,7 +799,7 @@ SEED_FROM_TEMPLATE: bool = _env_bool("SEED_FROM_TEMPLATE", True)
 #
 # Still a cap: a workspace grown past it is truncated rather than blowing out the
 # prompt, and `nodes.architect._code_view_order` decides what survives.
-ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 96_000)
+ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 112_000)
 
 # How much of the previous iteration's BUILD FAILURE is inlined into the
 # Architect's task text.

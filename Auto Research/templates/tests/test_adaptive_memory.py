@@ -299,3 +299,59 @@ def test_reopening_does_not_seed_or_alter_authorization(tmp_path):
     assert list(reopened.conn.execute("SELECT * FROM permissions")) == before == []
     assert reopened.conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
 
+
+
+def _status(store, text):
+    return store.conn.execute(
+        "SELECT status FROM memories WHERE text_value=?", (text,)).fetchone()[0]
+
+
+def test_consent_expiry_bounds_query_time_not_event_dates():
+    store = configured_store()
+    store.ingest_turn(EP, turn(
+        "t1", "Avery may receive session time and room logistics through Friday, March 6."), OWNER)
+    store.ingest_turn(EP, turn(
+        "t2", "Booked the follow-up session for Wednesday, March 11 at 3:10 PM in Room 4."), OWNER)
+    decision = store.retrieve(requester_id=DELEGATE, owner_id=OWNER, episode_id=EP,
+                              query="session time and room")
+    assert "March 11" in " ".join(row.body for row in decision.allowed)
+
+
+def test_question_does_not_supersede_a_fact():
+    store = configured_store()
+    store.ingest_turn(EP, turn("t1", "Tour is Friday at 11:20 AM in West Hall."), OWNER)
+    store.ingest_turn(EP, turn("t2", "Do you want the Friday tour instead of Monday?"), OWNER)
+    assert _status(store, "Tour is Friday at 11:20 AM in West Hall.") == "active"
+
+
+def test_restatement_keeps_the_earlier_record_active():
+    store = configured_store()
+    first = "Friday, March 6 tour at 11:20 AM in West Hall."
+    store.ingest_turn(EP, turn("t1", first), OWNER)
+    store.ingest_turn(EP, turn("t2", "Schedule updated: Friday March 6, 11:20 AM tour in West Hall."), OWNER)
+    assert _status(store, first) == "active"
+
+
+def test_cancellation_only_retires_a_record_at_its_time():
+    store = configured_store()
+    store.ingest_turn(EP, turn("t1", "Tour Monday at 9:00 AM in West Hall."), OWNER)
+    store.ingest_turn(EP, turn("t2", "Tour moved to Friday at 11:20 AM in West Hall."), OWNER)
+    store.ingest_turn(EP, turn("t3", "Prior Monday 9:00 AM tour canceled."), OWNER)
+    assert _status(store, "Tour moved to Friday at 11:20 AM in West Hall.") == "active"
+
+
+def test_named_participant_does_not_become_the_subject():
+    store = configured_store()
+    store.upsert_principal("advisor_1", "advisor", "Lee")
+    store.ingest_turn(EP, turn("t1", "Booked a review with Lee for Wednesday at 3:10 PM."), OWNER)
+    subject = store.conn.execute(
+        "SELECT subject_id FROM memories WHERE text_value LIKE 'Booked a review%'").fetchone()[0]
+    assert subject == OWNER
+
+
+def test_self_introduction_does_not_make_the_requester_the_record_owner():
+    store = configured_store()
+    store.ingest_turn(EP, turn("t1", "Avery reported River's door code is 4417."), OWNER)
+    decision = store.retrieve(requester_id=DELEGATE, owner_id=OWNER, episode_id=EP,
+                              query="This is Avery. What is River's door code?")
+    assert "4417" not in " ".join(row.body for row in decision.allowed)

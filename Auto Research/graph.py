@@ -437,6 +437,10 @@ async def run_online(args):
         raise ValueError('--resume requires --thread-id or --checkpointer-path')
     if args.retry_blocked and not args.resume:
         raise ValueError('--retry-blocked requires --resume')
+    if args.abandon_blocked and not args.resume:
+        raise ValueError('--abandon-blocked requires --resume')
+    if args.abandon_blocked and args.retry_blocked:
+        raise ValueError('choose one of --retry-blocked and --abandon-blocked')
     run_id = args.thread_id or ('online-' + uuid.uuid4().hex[:12])
     if Path(run_id).name != run_id:
         raise ValueError('--thread-id must be a simple run name')
@@ -454,10 +458,13 @@ async def run_online(args):
     options = OnlineOptions(disable_redesign=args.disable_online_redesign,
                             replay_window=args.replay_window,
                             utility_tolerance=args.utility_regression_tolerance,
+                            replay_reingest=args.replay_reingest,
+                            replay_votes=args.replay_votes,
                             stream_order=args.stream_order,
                             max_infra_retries=config.MAX_INFRA_RETRIES)
     runner = OnlineRunner(get_dataset(), run_dir, backend=Backend(config.MOCK_MODE),
                           options=options, resume=args.resume, retry_blocked=args.retry_blocked,
+                          abandon_blocked=args.abandon_blocked,
                           checkpointer_path=args.checkpointer_path)
     try:
         result = await runner.run(args.max_boundaries if args.max_boundaries is not None else (3 if args.smoke else None))

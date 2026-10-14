@@ -19,7 +19,7 @@ from gatemem_adapter import (
 from nodes.developer import _stop_reason, _turn_budget_block
 from online.backend import Backend, DeveloperApproachUnworkable, InfrastructureFailure
 from online.metrics import cumulative, promotion_regressions
-from online.runner import OnlineOptions, OnlineRunner
+from online.runner import OnlineOptions, OnlineRunner, RepairBlocked
 from online.schedule import build_schedule, compatibility, structural_summary
 from online.validation import ValidationFailure, migrate_blob
 from templates.memory_system.store import MemoryStore
@@ -666,7 +666,7 @@ async def test_resume_preserves_dossier_review_and_retry_state(tmp_path, dataset
         resumed.close()
 
 
-def test_trace_distinguishes_permission_time_event_date_and_cancelled_status(tmp_path):
+def test_trace_separates_permission_time_from_event_date_and_cancelled_status(tmp_path):
     store = MemoryStore(tmp_path / "trace.sqlite")
     try:
         permission_source = store.ingest_turn("episode", {
@@ -696,7 +696,10 @@ def test_trace_distinguishes_permission_time_event_date_and_cancelled_status(tmp
             query="appointment date", checkpoint_id="cp", top_k=12)
         future_trace = next(item for item in denied.decision_trace
                             if item["record_id"] == future)
-        assert future_trace["decision_rule"] == "event_date_after_permission_valid_until"
+        # Consent valid at query time releases a later-dated event; the
+        # permission's expiry bounds when it can be asked, not what it covers.
+        assert future_trace["outcome"] == "selected"
+        assert future in [item.record_id for item in denied.allowed]
         assert future_trace["event_time_features"] == ["2026-08-01"]
         assert future_trace["permission_validity_at_query"]["query_time"].startswith("2026-05-02")
         assert denied.permission_facts[0]["valid_until"] == "2026-06-01"
@@ -815,3 +818,222 @@ def test_utility_tolerance():
     new["0"]["utility_correct"] = False
     assert promotion_regressions(old, new, tolerance=0.09)
     assert not promotion_regressions(old, new, tolerance=0.10)
+
+
+def resume_runner(tmp_path, dataset, backend, **flags):
+    options = flags.pop("options", {})
+    return OnlineRunner(dataset, tmp_path / "run", backend=backend,
+                        options=OnlineOptions(**options), resume=True, **flags)
+
+
+async def test_stalled_incident_blocks_durably_then_abandon_advances(tmp_path, dataset):
+    limits = {"max_stalled_attempts": 3, "max_duplicate_proposals": 99}
+    backend = WorkflowBackend([{"marker": f"noop{i}", "answers": {"u_fail": "bad"},
+                                "diagnosis": f"idea {i}", "goal": f"goal {i}"}
+                               for i in range(1, 6)])
+    run = make_runner(tmp_path, dataset, backend, **limits)
+    try:
+        with pytest.raises(RepairBlocked, match="3 consecutive rejected candidates"):
+            await run.run()
+        assert len(backend.architect_calls) == 3
+        assert run.journal.get("status") == "repair_blocked"
+        assert run.journal.get("event_boundary_index") == 1
+        assert run.journal.get("active_repair_incident")["phase"] == "stalled"
+    finally:
+        run.close()
+
+    blocked = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan()]), options=limits)
+    try:
+        with pytest.raises(RepairBlocked):
+            await blocked.run()  # neither flag: stays blocked, nothing proposed
+        assert blocked.journal.get("event_boundary_index") == 1
+    finally:
+        blocked.close()
+
+    resumed = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan()]),
+                            options=limits, abandon_blocked=True)
+    try:
+        result = await resumed.run()
+        assert result["status"] == "complete"
+        assert result["adaptation"]["abandoned_failures"] == ["u_fail"]
+        assert result["adaptation"]["pending_repairs"] == 0
+        official = {row["checkpoint_id"]: row for row in resumed.journal.official()}
+        assert official["u_fail"]["score"]["passed"] is False
+        assert resumed.journal.get("repair_incidents")[0]["resolution"] == "abandoned_after_stall"
+    finally:
+        resumed.close()
+
+
+async def test_retry_blocked_resets_stall_count_and_repairs(tmp_path, dataset):
+    limits = {"max_stalled_attempts": 2, "max_duplicate_proposals": 99}
+    backend = WorkflowBackend([{"marker": f"noop{i}", "answers": {"u_fail": "bad"},
+                                "diagnosis": f"idea {i}", "goal": f"goal {i}"}
+                               for i in range(1, 4)])
+    run = make_runner(tmp_path, dataset, backend, **limits)
+    try:
+        with pytest.raises(RepairBlocked):
+            await run.run()
+    finally:
+        run.close()
+    resumed = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan("after_retry")]),
+                            options=limits, retry_blocked=True)
+    try:
+        result = await resumed.run()
+        assert result["status"] == "complete"
+        assert resumed.committed != "version_0001"
+        assert result["adaptation"]["abandoned_failures"] == []
+    finally:
+        resumed.close()
+
+
+async def test_duplicate_proposals_block_after_limit(tmp_path, dataset):
+    duplicate = {"marker": "noop", "answers": {"u_fail": "bad"},
+                 "diagnosis": "same diagnosis", "goal": "same goal"}
+    backend = WorkflowBackend([duplicate])
+    run = make_runner(tmp_path, dataset, backend, max_stalled_attempts=99)
+    try:
+        with pytest.raises(RepairBlocked, match="duplicated earlier rejected work"):
+            await run.run()
+        rows = reports(run)
+        assert [row["rejection_reason"] for row in rows] == [
+            "no_measurable_improvement"] + ["equivalent_previous_attempt"] * 3
+        assert len(backend.developer_calls) == 1
+    finally:
+        run.close()
+
+
+class NeverCorrects(WorkflowBackend):
+    async def correct(self, workspace, design, feedback):
+        self.correction_calls.append((str(Path(workspace).resolve()), copy.deepcopy(feedback)))
+        return {"status": "still broken"}
+
+
+async def test_build_failure_stops_after_correction_limit(tmp_path, dataset):
+    backend = NeverCorrects([{**fix_plan("broken"), "compile_once": True}, fix_plan("fixed")])
+    run = make_runner(tmp_path, dataset, backend, max_correction_rounds=3)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        first = reports(run)[0]
+        assert first["rejection_reason"] == "implementation_failure"
+        assert first["build_validation"]["status"] == "failed_after_correction_limit"
+        assert len(backend.correction_calls) == 3
+        assert "3 correction round(s)" in first["structured_feedback"]["rejection_detail"]
+    finally:
+        run.close()
+
+
+async def test_mock_architect_reports_no_viable_repair_and_blocks(tmp_path, dataset):
+    run = make_runner(tmp_path, dataset, Backend(mock=True))
+    try:
+        with pytest.raises(RepairBlocked, match="no viable focused repair"):
+            await run.run()
+        rows = reports(run)
+        assert [row["rejection_reason"] for row in rows] == [
+            "no_measurable_improvement", "architect_no_viable_repair"]
+        assert run.journal.get("status") == "repair_blocked"
+    finally:
+        run.close()
+
+
+class FlakyJudge(WorkflowBackend):
+    """The candidate's correct answer to u_fail is judged fail, pass, pass, ..."""
+
+    def __init__(self, plans):
+        super().__init__(plans)
+        self.good_u_fail_judgements = 0
+
+    async def judge(self, prediction, checkpoint):
+        score = await super().judge(prediction, checkpoint)
+        if checkpoint["checkpoint_id"] == "u_fail" and prediction["output"]["answer"] == "good":
+            self.good_u_fail_judgements += 1
+            passed = self.good_u_fail_judgements != 1
+            score = {**score, "passed": passed, "utility_correct": passed}
+        return score
+
+
+async def test_one_noisy_judgement_rejects_a_fix_without_votes(tmp_path, dataset):
+    run = make_runner(tmp_path, dataset, FlakyJudge([fix_plan()]))
+    try:
+        with pytest.raises(RepairBlocked):
+            await run.run()
+        assert reports(run)[0]["rejection_reason"] == "no_measurable_improvement"
+    finally:
+        run.close()
+
+
+async def test_replay_votes_take_the_majority(tmp_path, dataset):
+    backend = FlakyJudge([fix_plan()])
+    run = make_runner(tmp_path, dataset, backend, replay_votes=3)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        pair = reports(run)[0]["targeted_replay"]["pairs"]["u_fail"]
+        assert pair["transition"] == "failing_to_passing"
+        assert backend.good_u_fail_judgements == 3
+    finally:
+        run.close()
+
+
+async def test_reingest_rebuilds_both_sides_from_turns_and_promotes(tmp_path, dataset):
+    backend = WorkflowBackend([fix_plan()])
+    run = make_runner(tmp_path, dataset, backend, replay_reingest=True)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        rebuilt = {Path(workspace).parent.name if "attempt_" in workspace else "parent"
+                   for workspace, delta, _ in backend.memory_calls
+                   if delta and [turn["turn_id"] for turn in delta] == ["t1"]}
+        assert {"parent", "attempt_01"} <= rebuilt
+    finally:
+        run.close()
+
+
+class DropsDeletion(WorkflowBackend):
+    async def develop(self, workspace, design):
+        outcome = await super().develop(workspace, design)
+        if "forgetful" in design.get("migration_sql", ""):
+            store = Path(workspace) / "memory_system" / "store.py"
+            # Subtle enough to pass the trusted tests: a deletion request now
+            # needs four shared terms instead of two to tombstone a turn.
+            store.write_text(store.read_text().replace(
+                'and len(terms & _concepts(r["raw_text"])) >= 2]',
+                'and len(terms & _concepts(r["raw_text"])) >= 4]'))
+        return outcome
+
+
+async def test_reingest_rejects_candidate_that_loses_a_tombstone(tmp_path, dataset):
+    dataset.episodes[0]["turns"].append({
+        "turn_id": "t2", "text": "Please delete the North Hall meeting note.",
+        "speaker": {"principal_id": "owner", "role": "member"},
+        "turn_kind": "message", "timestamp": "2026-01-02T00:00:00Z",
+    })
+    for checkpoint in dataset.checkpoints:
+        checkpoint["as_of_turn_id"] = "t2"
+    backend = DropsDeletion([fix_plan("forgetful"), fix_plan("faithful")])
+    run = make_runner(tmp_path, dataset, backend, replay_reingest=True)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        first, second = reports(run)
+        assert first["rejection_reason"] == "safety_regression"
+        assert "lost tombstones" in first["structured_feedback"]["rejection_detail"]
+        assert second["promotion_eligible"]
+    finally:
+        run.close()
+
+
+async def test_missing_sandbox_blocks_as_infrastructure_not_as_an_ingestion_incident(
+        tmp_path, dataset, monkeypatch):
+    import online.validation
+    monkeypatch.setattr(online.validation.shutil, "which", lambda name: None)
+    backend = WorkflowBackend([fix_plan()])
+    run = make_runner(tmp_path, dataset, backend)
+    try:
+        with pytest.raises(InfrastructureFailure, match="ingest: transport retry limit"):
+            await run.run()
+        assert run.journal.get("status") == "infrastructure_blocked"
+        assert run.journal.get("repair_incidents") == []
+        assert backend.architect_calls == []
+    finally:
+        run.close()

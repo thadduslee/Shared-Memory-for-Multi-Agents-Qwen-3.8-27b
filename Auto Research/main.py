@@ -65,11 +65,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-boundaries", type=int, default=None, help="online boundaries per invocation")
     parser.add_argument("--resume", action="store_true", help="resume an online run using --thread-id or --checkpointer-path")
     parser.add_argument("--retry-blocked", action="store_true",
-                        help="with --resume, retry an infrastructure-blocked online boundary")
+                        help="with --resume, retry an infrastructure-blocked or stalled online boundary")
+    parser.add_argument("--abandon-blocked", action="store_true",
+                        help="with --resume, record a stalled boundary's targets as unrepaired and advance")
     parser.add_argument("--checkpointer-path", type=Path, default=None)
     parser.add_argument("--disable-online-redesign", action="store_true")
     parser.add_argument("--replay-window", type=int, default=config.ONLINE_REPLAY_WINDOW)
     parser.add_argument("--utility-regression-tolerance", type=float, default=config.ONLINE_UTILITY_TOLERANCE)
+    parser.add_argument("--replay-reingest", action="store_true",
+                        help="rebuild replay/promotion images from turns so ingestion repairs can register")
+    parser.add_argument("--replay-votes", type=int, default=1,
+                        help="odd number of predict+judge runs per replay side; majority decides")
     parser.add_argument("--stream-order", default="episode-id-then-turn-position-v1",
                         choices=["episode-id-then-turn-position-v1"])
     return parser.parse_args(argv)

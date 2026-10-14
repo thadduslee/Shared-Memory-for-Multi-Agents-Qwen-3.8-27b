@@ -42,12 +42,18 @@ class Backend:
             payload['workspace'] = '/workspace'
             payload['database'] = '/scratch/memory.sqlite'
             try:
+                command = sandbox_command(workspace, tmp, [sys.executable, '/worker.py'],
+                                          worker=Path(__file__).with_name('worker.py'),
+                                          runtime_only=True)
+            except ValidationFailure as exc:
+                # A missing sandbox is an operator problem, not something a
+                # memory design can repair: block instead of opening an incident.
+                raise InfrastructureFailure(str(exc)) from exc
+            try:
                 # The durable runner is single-writer and sequential. Use a
                 # bounded child here without requiring an asyncio child watcher.
                 proc = subprocess.run(  # noqa: ASYNC221
-                    sandbox_command(workspace, tmp, [sys.executable, '/worker.py'],
-                                    worker=Path(__file__).with_name('worker.py'), runtime_only=True),
-                    cwd=tmp, input=json.dumps(payload), capture_output=True, text=True, timeout=90, check=False,
+                    command, cwd=tmp, input=json.dumps(payload), capture_output=True, text=True, timeout=90, check=False,
                     env={**os.environ, 'PYTHONDONTWRITEBYTECODE': '1', 'PYTHONPATH': '/workspace'})
             except subprocess.TimeoutExpired as exc:
                 raise ValidationFailure('memory implementation timed out') from exc
@@ -134,7 +140,11 @@ class Backend:
                 pending.extend(item)
         if self.mock:
             # Offline path exercises a real additive schema migration, not a
-            # scripted benchmark answer or a fabricated score.
+            # scripted benchmark answer or a fabricated score. It has one idea;
+            # once that idea was rejected it says so instead of repeating it.
+            if context.get('previous_rejected_candidate'):
+                return {'decision': 'NO_VIABLE_REPAIR',
+                        'diagnosis': 'The only mock repair (a lookup index) was already rejected.'}
             if 'online_lookup' in (Path(workspace) / 'memory_system/schema.sql').read_text():
                 return {'decision': 'NO_CHANGE', 'diagnosis': 'The focused repair is already present.',
                         'focused_goal': 'avoid a duplicate change', 'work_order': []}
@@ -155,7 +165,7 @@ class Backend:
                   sorted((Path(workspace) / 'memory_system').glob('*')) if p.suffix in {'.py', '.sql'}}
         task = ('Analyze only this visible causal incident and implementation. Return JSON with exactly one '
                 'focused diagnosis and exactly one focused repair: decision '
-                '(DATA_MIGRATION or CODE_OR_SCHEMA_CHANGE), diagnosis (one causal statement), '
+                '(DATA_MIGRATION, CODE_OR_SCHEMA_CHANGE, or NO_VIABLE_REPAIR), diagnosis (one causal statement), '
                 'focused_goal (one outcome), work_order (a one-item actionable list), and migration_sql '
                 '(idempotent SQLite SQL or an empty string), trace_citations (one or more exact trace_id '
                 'values from the dossier), addressed_decision_rule (the exact decision_rule on a cited '
@@ -164,7 +174,16 @@ class Backend:
                 'Do not bundle unrelated improvements. '
                 'Preserve open_episode, ingest and query interfaces. Never specialize for checkpoint IDs, '
                 'queries, expected answers, medical terms, or benchmark phrases. Existing data and '
-                'authorization/tombstone state must be preserved. If previous_rejected_candidate is present, '
+                'authorization/tombstone state must be preserved. HOW YOUR REPAIR IS MEASURED: targeted '
+                'replay re-queries the memory database stored at the failing boundary, after your '
+                'migration_sql, using your candidate code. It does NOT re-run ingestion, and no existing '
+                'row may be updated or deleted. So a change to how turns are parsed, split, linked or '
+                'superseded at ingest cannot change the replay and will be rejected as '
+                'no_measurable_improvement. Only query-time logic (retrieval, ranking, authorization, '
+                'selection, action and projection) or additive derived rows that cite an existing '
+                'observation can turn a failing target into a passing one. If no focused repair within '
+                'these limits can do that, return decision NO_VIABLE_REPAIR with a diagnosis saying why; '
+                'the run then stops for an operator instead of retrying. If previous_rejected_candidate is present, '
                 'the next diagnosis must be materially different from its diagnosis, work order, migration, '
                 'source diff, and behavior and must directly address the exact rejection reason. Relationship '
                 'or semantic similarity alone must never grant permission.\n' +

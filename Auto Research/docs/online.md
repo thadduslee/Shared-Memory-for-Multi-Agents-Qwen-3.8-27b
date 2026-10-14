@@ -31,13 +31,23 @@ Useful online controls are:
 - `--checkpointer-path PATH`: address the authoritative SQLite journal
   directly. With `--resume`, its manifest determines the artifact directory.
 - `--retry-blocked`: after the operator fixes an external infrastructure
-  problem, retry the same durably blocked boundary.
+  problem, or after a stalled incident, retry the same durably blocked boundary
+  with the stall counters reset.
+- `--abandon-blocked`: record a stalled scored incident's targets as unrepaired
+  (their official failures stand) and advance the stream. A staged delta that
+  cannot be ingested cannot be abandoned.
 - `--disable-online-redesign`: run compatible boundaries without redesign and
   durably block, without advancing, when a repair incident occurs.
 
-The online repair loop has no orchestrator-imposed token, wall-clock,
-per-candidate, per-generation, Architect, Developer-turn, candidate-attempt, or
-redesign-attempt limit. Token and elapsed-time use remain recorded. Provider
+The online repair loop has no token, wall-clock, per-generation or
+Developer-turn limit. Token and elapsed-time use remain recorded. It does stop
+when it stalls: after `ONLINE_MAX_STALLED_ATTEMPTS` (5) consecutive rejected
+candidates without a promotion, after `ONLINE_MAX_DUPLICATE_PROPOSALS` (3)
+rejections for duplicating earlier work, or when the Architect returns
+`NO_VIABLE_REPAIR`, the incident moves to phase `stalled` and the run to
+`repair_blocked` without advancing. A candidate whose build still fails after
+`ONLINE_MAX_CORRECTION_ROUNDS` (3) Developer corrections is rejected as
+`implementation_failure`. Provider
 request/context limits still apply, and transport retries remain finite so a
 frozen request cannot hang forever. Exhausted transport retries produce
 `infrastructure_blocked`; they do not become design feedback and do not advance
@@ -162,7 +172,7 @@ For scored failures, official rows are never rewritten. Candidate replay rows
 live in the `repairs` table and `repair_predictions.jsonl`. A promoted version
 only serves future official boundaries.
 
-## Repetition prevention without attempt limits
+## Repetition prevention
 
 The runner compares each proposal with all rejected attempts for the same
 incident class and safe parent, including durable history from interrupted
@@ -172,7 +182,7 @@ scores, and failed targets. An equivalent proposal can skip Developer work; an
 equivalent source diff or replay behavior skips unnecessary downstream work.
 The rejection is `equivalent_previous_attempt`, identifies the duplicated
 attempt, returns that fact to the Architect, and remains at the same boundary.
-There is no attempt cap.
+Duplicates count toward the stall limits above.
 
 ## Rejection feedback and diagnostics
 

@@ -294,7 +294,9 @@ class MemoryStore:
         # A shard can contain observations about more than one principal. A
         # named query target therefore overrides the shard's default owner;
         # self-access never spills onto another named principal's facts.
-        resource_owner_id = self._mentioned_principal(query) or owner_id
+        # A requester introducing themselves ("This is Dr. Lee ...") names who is
+        # asking, not whose records are wanted.
+        resource_owner_id = self._mentioned_principal(query, exclude=requester_id) or owner_id
         query_terms = _query_concepts(query)
         # Entity names identify the shard but are poor relevance signals: if a
         # query names its owner, that must not make every fact about that owner
@@ -532,14 +534,10 @@ class MemoryStore:
         for row in denies:
             if self._scope_match(row, concepts, text, requested_concepts)[0]:
                 return False, "explicit_restriction"
-        rejected_rule = "outside_permission_scope"
         for row in allows:
-            matches, rule = self._scope_match(row, concepts, text, requested_concepts)
-            if matches:
+            if self._scope_match(row, concepts, text, requested_concepts)[0]:
                 return True, "explicit_permission"
-            if rule == "event_date_after_permission_valid_until":
-                rejected_rule = rule
-        return False, "no_explicit_permission" if not allows else rejected_rule
+        return False, "no_explicit_permission" if not allows else "outside_permission_scope"
 
     @staticmethod
     def _scope_matches(row: sqlite3.Row, concepts: set[str], text: str,
@@ -560,9 +558,6 @@ class MemoryStore:
         if (exclusions & concepts or
                 any(term in lowered for term in exclusions if len(term) > 3)) and not scoped_structure:
             return False, "permission_exclusion"
-        event_date = _date_from_text(text, row["valid_from"] or "")
-        if event_date and row["valid_until"] and event_date > row["valid_until"][:10]:
-            return False, "event_date_after_permission_valid_until"
         if scope & concepts:
             return True, "scope_match"
         return False, "outside_permission_scope"
@@ -606,7 +601,14 @@ class MemoryStore:
                 r"january|february|march|april|may|june|july|august|september|october|november|december)\b",
                 text, re.I)
             if match:
-                return text[match.start():].strip()
+                start = match.start()
+                # Keep a leading qualifier such as "prior" or "new": dropping it
+                # turns "prior Monday ... canceled" into a different statement.
+                lead = re.search(r"\b(?:" + "|".join(_TEMPORAL_QUALIFIERS) + r")\s+$",
+                                 text[:start], re.I)
+                if lead:
+                    start = lead.start()
+                return text[start:].strip()
         return text
 
     # Forgetting ---------------------------------------------------------
@@ -660,23 +662,25 @@ class MemoryStore:
 
     def _derive_clause_memories(self, episode_id: str, observation_id: str, text: str,
                                 owner_id: str, observed_at: str) -> None:
-        clauses = [c.strip(" -") for c in re.split(r"(?<=[.!?;])\s+", text)
-                   if c.strip(" -")]
+        clauses = [c.strip(" -") for c in _CLAUSE_BREAK.split(text) if c.strip(" -")]
         source_context = _compound_context_concepts(text)
         for clause in clauses or ([text] if text else []):
             concepts = sorted(_concepts(clause) | _structural_concepts(clause) |
                               source_context)
             status = "cancelled" if _CANCEL.search(clause) else "active"
+            utterance = clause.rstrip().endswith("?") or bool(_REQUEST_CUE.search(clause))
             supersedes = None
-            if status == "cancelled" or _UPDATE.search(clause):
-                supersedes = self._find_prior_fact(episode_id, clause)
-            self.add_fact(episode_id, subject_id=self._mentioned_principal(clause) or owner_id,
+            # A question or request proposes a change; it does not make one.
+            if not utterance and (status == "cancelled" or _UPDATE.search(clause)):
+                supersedes = self._find_prior_fact(
+                    episode_id, clause, observation_id, cancelling=status == "cancelled")
+            subject = self._mentioned_principal(clause, skip_participants=True) or owner_id
+            self.add_fact(episode_id, subject_id=subject,
                           predicate=_predicate_from(concepts), value={"text": clause},
                           text_value=clause, concepts=concepts, status=status,
                           valid_from=observed_at, source_observation_id=observation_id,
                           supersedes_id=supersedes, confidence=1.0,
-                          memory_type=("utterance" if clause.rstrip().endswith("?") or
-                                       _REQUEST_CUE.search(clause) else "derived_fact"))
+                          memory_type="utterance" if utterance else "derived_fact")
 
     def _derive_explicit_permissions(self, episode_id: str, observation_id: str, text: str,
                                      owner_id: str, speaker_id: str, observed_at: str) -> None:
@@ -780,16 +784,32 @@ class MemoryStore:
         except (TypeError, ValueError, KeyError):
             return  # malformed extraction fails closed; raw observation remains
 
-    def _find_prior_fact(self, episode_id: str, text: str) -> str | None:
+    def _find_prior_fact(self, episode_id: str, text: str, observation_id: str = "",
+                         *, cancelling: bool = False) -> str | None:
         terms = _concepts(text) - {"cancel", "cancell", "update", "replac", "mov", "chang"}
-        best: tuple[int, str] | None = None
+        best: tuple[int, str, set[str]] | None = None
         for row in self.conn.execute(
             """SELECT memory_id,text_value FROM memories
-               WHERE episode_id=? AND status='active' ORDER BY seq DESC""", (episode_id,)):
-            overlap = len(terms & _concepts(row["text_value"]))
+               WHERE episode_id=? AND status='active' AND source_observation_id<>?
+               ORDER BY seq DESC""", (episode_id, observation_id)):
+            old_terms = _concepts(row["text_value"])
+            overlap = len(terms & old_terms)
             if overlap >= 2 and (best is None or overlap > best[0]):
-                best = (overlap, row["memory_id"])
-        return best[1] if best else None
+                best = (overlap, row["memory_id"], old_terms)
+        if best is None:
+            return None
+        # A cancellation names when the cancelled thing was; it must share a
+        # weekday or clock time with the record it retires.
+        when = _clock_and_weekdays(text)
+        if cancelling and when and not when & _clock_and_weekdays(
+                self.conn.execute("SELECT text_value FROM memories WHERE memory_id=?",
+                                  (best[1],)).fetchone()[0]):
+            return None
+        # An update that repeats nearly everything the earlier record said is a
+        # confirmation of the same fact, not a replacement for it.
+        if not cancelling and best[0] >= 0.8 * len(best[2]):
+            return None
+        return best[1]
 
     def _resolve_grantee(self, episode_id: str, text: str, speaker_id: str) -> str:
         lowered = text.lower()
@@ -809,11 +829,18 @@ class MemoryStore:
             return str(row[0]) if row else ""
         return ""
 
-    def _mentioned_principal(self, text: str) -> str:
-        """Return the earliest explicitly named principal, without using roles."""
+    def _mentioned_principal(self, text: str, *, skip_participants: bool = False,
+                             exclude: str = "") -> str:
+        """Return the earliest explicitly named principal, without using roles.
+
+        With skip_participants, a name right after a preposition ("with Dr. Lee",
+        "booked by Sam") is a participant in the fact, not its subject.
+        """
         normalized = " ".join(re.findall(r"[a-z0-9]+", text.lower()))
         matches: list[tuple[int, int, str]] = []
         for row in self.conn.execute("SELECT principal_id,display_name FROM principals"):
+            if exclude and row["principal_id"] == exclude:
+                continue
             display = re.sub(r"\([^)]*\)", "", str(row["display_name"])).strip()
             aliases = {" ".join(re.findall(r"[a-z0-9]+", display.lower())),
                        " ".join(re.findall(r"[a-z0-9]+", str(row["principal_id"]).lower()))}
@@ -821,8 +848,12 @@ class MemoryStore:
                 if len(alias) < 3:
                     continue
                 found = re.search(rf"(?:^| ){re.escape(alias)}(?: |$)", normalized)
-                if found:
-                    matches.append((found.start(), -len(alias), str(row["principal_id"])))
+                if not found:
+                    continue
+                before = normalized[:found.start()].split()
+                if skip_participants and before and before[-1] in _PARTICIPANT_CUES:
+                    continue
+                matches.append((found.start(), -len(alias), str(row["principal_id"])))
         return min(matches)[2] if matches else ""
 
     # Internal lookup helpers -------------------------------------------
@@ -925,6 +956,11 @@ _PROHIBITION = re.compile(
 )
 _REVOKE = re.compile(r"\b(revoke|revoked|no longer|stop sharing|withdraw)\b", re.I)
 _CANCEL = re.compile(r"\b(cancelled|canceled|voided|withdrawn)\b", re.I)
+# Split clauses at sentence punctuation, but not after a title abbreviation.
+_CLAUSE_BREAK = re.compile(
+    r"(?<=[.!?;])(?<!\bDr\.)(?<!\bMr\.)(?<!\bMs\.)(?<!\bMrs\.)(?<!\bProf\.)(?<!\bSt\.)\s+")
+_PARTICIPANT_CUES = frozenset({"with", "by", "from", "to", "via", "see", "seeing"})
+_TEMPORAL_QUALIFIERS = ("prior", "previous", "original", "earlier", "new", "updated", "rescheduled")
 _UPDATE = re.compile(r"\b(updated|replaced|instead of|moved|changed|supersedes?)\b", re.I)
 _MONTHS = {name.lower(): i for i, name in enumerate(
     ("January", "February", "March", "April", "May", "June", "July", "August",
@@ -963,6 +999,12 @@ def _structural_concepts(text: str) -> set[str]:
     if re.search(r"\b\d+(?:\.\d+)?\s*[a-z%/]+\b", text, re.I):
         result.add("measurement_expression")
     return result
+
+
+def _clock_and_weekdays(text: str) -> set[str]:
+    return {match.group(0).lower() for match in re.finditer(
+        r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b|\b\d{1,2}:\d{2}\b",
+        text or "", re.I)}
 
 
 def _temporal_features(text: str, reference: str = "") -> list[str]:
