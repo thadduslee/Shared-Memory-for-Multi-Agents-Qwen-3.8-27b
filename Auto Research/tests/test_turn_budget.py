@@ -119,7 +119,7 @@ def test_all_gates_green_inside_the_window_says_finish(tmp_path, monkeypatch) ->
     monkeypatch.setattr(config, "DEVELOPER_MAX_TURNS", 20)
     monkeypatch.setattr(config, "DEVELOPER_LANDING_TURNS", 5)
     block = dev._status_block(
-        state(compile_ok=True, tests_ok=True, migration_ok=True),
+        state(compile_ok=True, tests_ok=True, migration_ok=True, smoke_ok=True),
         _Box(tmp_path), turns_used=17,
     )
     assert "LAND IT" in block
@@ -139,7 +139,8 @@ def test_the_landing_call_is_ordered_cheapest_first() -> None:
     assert dev._landing_call(state()) == "compile_check"
     assert dev._landing_call(state(compile_ok=True)) == "run_tests"
     assert dev._landing_call(state(compile_ok=True, tests_ok=True)) == "sql_exec"
-    assert dev._landing_call(state(compile_ok=True, tests_ok=True, migration_ok=True)) == ""
+    assert dev._landing_call(state(compile_ok=True, tests_ok=True, migration_ok=True)) == "run_sandbox_smoke_test"
+    assert dev._landing_call(state(compile_ok=True, tests_ok=True, migration_ok=True, smoke_ok=True)) == ""
 
 
 # ======================================================================

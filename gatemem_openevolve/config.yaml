@@ -1,0 +1,89 @@
+# OpenEvolve configuration for the GateMem medical memory system.
+#
+# Run:
+#   python openevolve/openevolve-run.py \
+#     gatemem_openevolve/initial_program.txt \
+#     gatemem_openevolve/evaluator.py \
+#     --config gatemem_openevolve/config.yaml --iterations 20
+
+max_iterations: 20
+checkpoint_interval: 5
+random_seed: 1337
+
+# The packed workspace is not a .py file and must not be fenced as one; the
+# language only controls how the prompt fences it.
+language: "python"
+file_suffix: ".txt"
+
+# The packed template is ~79k chars. The default cap is 10k, which would reject
+# generation 0 itself before a single iteration ran.
+max_code_length: 200000
+
+# Diff mode, not full rewrite. A full rewrite of an 79k-char workspace is both
+# unaffordable per call and a licence to silently drop a file -- and dropping
+# tests/ or schema.sql is the failure that looks like a score change.
+diff_based_evolution: true
+
+llm:
+  # OpenEvolve resolves `${VAR}` for `api_key` ONLY (`config.py::_resolve_env_var`,
+  # called from `LLMModelConfig.__post_init__` on that one field). `api_base` and
+  # the model `name` written as `${VAR}` are passed through LITERALLY, and the run
+  # then fails every iteration with "Connection error" -- which reads like a dead
+  # endpoint rather than an unsubstituted string. So both are written out here.
+  api_base: "http://localhost:8000/v1"
+  api_key: "${GATEMEM_LLM_API_KEY}"
+  models:
+    # THE FULL SLUG, with the `Qwen/` prefix. The bare `qwen3.8-27b` does not
+    # match `VLLM_THINKING_MODEL_PREFIXES`, so the thinking-disable silently does
+    # not apply -- see scripts/serve/serve_evaluator.sh.
+    - name: "Qwen/Qwen3.8-27B"
+      weight: 1.0
+      temperature: 0.7
+      max_tokens: 16000
+      timeout: 900
+
+prompt:
+  # Resolved against the WORKER process CWD, not this file, so it is absolute.
+  # Change this one line if the repo moves; `build_initial.py --check` verifies it.
+  template_dir: "/home/lweilun/Shared-Memory-for-Multi-Agents-Qwen-3.2-27b/gatemem_openevolve/templates"
+  system_message: "system_message"
+  num_top_programs: 2
+  num_diverse_programs: 1
+  # The evaluator returns the failing-checkpoint list as an artifact, and this is
+  # what feeds it back into the next generation's prompt. It IS the critic
+  # channel; turning it off removes the only evidence the model gets.
+  include_artifacts: true
+  max_artifact_bytes: 24576
+  # The workspace is large by construction, so the "your program is long,
+  # consider simplifying" nudge would fire on every generation forever.
+  suggest_simplification_after_chars: null
+
+database:
+  population_size: 40
+  num_islands: 3
+  migration_interval: 10
+  # MAP-Elites axes. Both are raw continuous metrics from the evaluator, never
+  # pre-binned -- the database bins them. Picking A and F as the axes keeps a
+  # cell for "leaks nothing but answers little" and one for "answers everything
+  # but leaks", so the population cannot collapse onto a single trade-off.
+  feature_dimensions: ["access_violation_rate", "forgetting_failure_rate"]
+  feature_bins: 5
+
+evaluator:
+  # Stage 1 is the 50-checkpoint dev slice; stage 2 is all 579. The threshold is
+  # DEV_GATE_MGS from the LangGraph orchestrator, deliberately the same number so
+  # the two harnesses gate at the same place.
+  cascade_evaluation: true
+  cascade_thresholds: [0.80]
+  # Each worker forks shard subprocesses AND makes its own LLM call. Keep this
+  # well under the SoCLaaS concurrency ceiling.
+  parallel_evaluations: 2
+  timeout: 1800
+  enable_artifacts: true
+  # The judge here is the deterministic rule scorer; no second model call.
+  use_llm_feedback: false
+
+evolution_trace:
+  enabled: true
+  format: "jsonl"
+  include_prompts: true

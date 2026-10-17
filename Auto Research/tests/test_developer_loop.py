@@ -131,11 +131,16 @@ async def test_several_tools_in_one_turn_all_run(monkeypatch, tmp_path) -> None:
         _native([_call("finish", "c5", summary="green")]),
     ])
 
-    final = await dev.DeveloperSession(_state(workspace)).run()
+    final = await dev.DeveloperSession(_state(workspace, smoke_ok=True)).run()
 
     tools = [step["action"]["tool"] for step in final["scratchpad"]]
     assert tools[:2] == ["compile_check", "sql_exec"], "both calls in the first turn ran"
-    assert final["done"] is True
+    # With smoke a mandatory gate, an episode that has built something and has
+    # every gate green stops on its own (`gates_green`) before the scripted
+    # `finish` is ever consumed -- which is the intended exit. "Ended green
+    # without a halt reason" is the assertion; `done` is only set by `finish`.
+    assert final.get("halt_reason") is None
+    assert all(final[g] for g in ("compile_ok", "tests_ok", "migration_ok", "smoke_ok"))
 
 
 async def test_a_double_wrapped_arguments_object_is_unwrapped(monkeypatch, tmp_path) -> None:
@@ -244,9 +249,14 @@ async def test_a_failed_tool_is_seen_and_retried(monkeypatch, tmp_path) -> None:
         _native([_call("finish", "c6", summary="fixed")]),
     ])
 
-    final = await dev.DeveloperSession(_state(workspace)).run()
+    final = await dev.DeveloperSession(_state(workspace, smoke_ok=True)).run()
 
-    assert final["done"] is True
+    # With smoke a mandatory gate, an episode that has built something and has
+    # every gate green stops on its own (`gates_green`) before the scripted
+    # `finish` is ever consumed -- which is the intended exit. "Ended green
+    # without a halt reason" is the assertion; `done` is only set by `finish`.
+    assert final.get("halt_reason") is None
+    assert all(final[g] for g in ("compile_ok", "tests_ok", "migration_ok", "smoke_ok"))
     assert final["compile_ok"] is True
     assert final["retry_count"] == 1, "exactly the one real failure was charged"
     # The model was shown the SyntaxError before it wrote the fix.

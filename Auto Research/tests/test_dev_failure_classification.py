@@ -178,9 +178,9 @@ def test_an_episode_that_read_for_sixty_turns_and_built_nothing_is_inconclusive(
 
 def test_all_gates_green_but_no_finish_is_still_a_design_failure() -> None:
     classification, reason = classify_failure(final(
-        compile_ok=True, tests_ok=True, migration_ok=True,
+        compile_ok=True, tests_ok=True, migration_ok=True, smoke_ok=True,
         gate_attempts={g: {"ran": 1, "ok": True}
-                       for g in ("compile_ok", "tests_ok", "migration_ok")},
+                       for g in ("compile_ok", "tests_ok", "migration_ok", "smoke_ok")},
     ))
     assert classification == CLASSIFY_DESIGN
     assert "did not finish" in reason
@@ -194,10 +194,10 @@ def test_all_gates_green_but_no_finish_is_still_a_design_failure() -> None:
 def test_the_report_separates_failed_gates_from_never_run_gates() -> None:
     entry = report(gate_attempts={"tests_ok": {"ran": 1, "ok": False}}, retry_count=1)
     assert entry["gates_failed"] == ["tests_ok"]
-    assert entry["gates_never_ran"] == ["compile_ok", "migration_ok"]
+    assert entry["gates_never_ran"] == ["compile_ok", "migration_ok", "smoke_ok"]
     # ...and the old undifferentiated list is still there for anything that
     # reads it, so this is additive rather than a rename.
-    assert entry["missing_gates"] == ["compile_ok", "tests_ok", "migration_ok"]
+    assert entry["missing_gates"] == ["compile_ok", "tests_ok", "migration_ok", "smoke_ok"]
 
 
 def test_the_report_carries_the_transport_errors_deduplicated() -> None:

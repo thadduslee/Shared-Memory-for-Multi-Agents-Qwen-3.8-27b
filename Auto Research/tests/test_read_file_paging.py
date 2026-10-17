@@ -63,7 +63,7 @@ def test_a_short_file_comes_back_whole(toolbox: DevToolbox) -> None:
 
 
 def test_a_long_file_is_paged_from_the_top(toolbox: DevToolbox) -> None:
-    (toolbox.workspace / "store.py").write_text(_numbered(600))
+    (toolbox.workspace / "store.py").write_text(_numbered(DevToolbox.READ_FILE_LINES + 380))
 
     first = _read(toolbox, "store.py")
 
@@ -74,7 +74,7 @@ def test_a_long_file_is_paged_from_the_top(toolbox: DevToolbox) -> None:
 
 
 def test_offset_reaches_the_part_the_first_window_missed(toolbox: DevToolbox) -> None:
-    (toolbox.workspace / "store.py").write_text(_numbered(600))
+    (toolbox.workspace / "store.py").write_text(_numbered(DevToolbox.READ_FILE_LINES + 380))
 
     result = _read(toolbox, "store.py", offset=400, limit=5)
 
@@ -85,7 +85,7 @@ def test_offset_reaches_the_part_the_first_window_missed(toolbox: DevToolbox) ->
 
 def test_the_windows_together_cover_the_whole_file(toolbox: DevToolbox) -> None:
     """The property that actually matters: nothing is unreachable."""
-    text = _numbered(600)
+    text = _numbered(DevToolbox.READ_FILE_LINES + 380)
     (toolbox.workspace / "store.py").write_text(text)
 
     seen, offset = [], 1
@@ -97,7 +97,7 @@ def test_the_windows_together_cover_the_whole_file(toolbox: DevToolbox) -> None:
         offset = result.data["last_line"] + 1
 
     assert "".join(seen) == text
-    assert len(seen) == 3, "600 lines at 220 per window"
+    assert len(seen) == 2, "READ_FILE_LINES + 380 lines is two windows"
 
 
 def test_limit_is_capped_not_trusted(toolbox: DevToolbox) -> None:
@@ -133,24 +133,24 @@ def test_an_offset_past_the_end_is_clamped(toolbox: DevToolbox) -> None:
 
 def test_an_incomplete_read_says_so_and_gives_the_next_call(toolbox: DevToolbox) -> None:
     """A silent truncation is what made the Developer invent the dump hack."""
-    (toolbox.workspace / "store.py").write_text(_numbered(600))
+    (toolbox.workspace / "store.py").write_text(_numbered(DevToolbox.READ_FILE_LINES + 380))
 
     result = _read(toolbox, "store.py")
 
     assert "NOT THE WHOLE FILE" in result.stdout
-    assert '"offset": 221' in result.stdout
+    assert f'"offset": {DevToolbox.READ_FILE_LINES + 1}' in result.stdout
     assert '"path": "store.py"' in result.stdout
-    assert "of 600" in result.stdout
+    assert f"of {DevToolbox.READ_FILE_LINES + 380}" in result.stdout
 
 
 def test_the_footer_reports_the_real_totals(toolbox: DevToolbox) -> None:
-    text = _numbered(600)
+    text = _numbered(DevToolbox.READ_FILE_LINES + 380)
     (toolbox.workspace / "store.py").write_text(text)
 
     result = _read(toolbox, "store.py")
 
     assert f"({len(text)} chars total)" in result.stdout
-    assert result.data["lines"] == 600
+    assert result.data["lines"] == DevToolbox.READ_FILE_LINES + 380
 
 
 # ----------------------------------------------------------------------
@@ -161,7 +161,7 @@ def test_the_footer_reports_the_real_totals(toolbox: DevToolbox) -> None:
 def test_the_observation_keeps_the_head_of_a_file(toolbox: DevToolbox) -> None:
     """THE regression. The old cap kept the tail, so the top was never visible."""
     (toolbox.workspace / "store.py").write_text(
-        "import sqlite3\n" + _numbered(600))
+        "import sqlite3\n" + _numbered(DevToolbox.READ_FILE_LINES + 380))
 
     observation = _read(toolbox, "store.py").observation()
 

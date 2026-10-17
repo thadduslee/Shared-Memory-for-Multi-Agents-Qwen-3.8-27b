@@ -39,6 +39,7 @@ def test_deepseek_models_are_pinned(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config.openrouter_provider_preferences("deepseek/deepseek-v4-flash-0731") == {
         "order": ["DeepSeek", "Fireworks"],
         "allow_fallbacks": False,
+        "only": ["DeepSeek", "Fireworks"],
     }
 
 
@@ -69,6 +70,7 @@ def test_default_policy_pins_deepseek_and_refuses_fallbacks() -> None:
     assert preferences == {
         "order": ["DeepSeek", "Fireworks", "Novita"],
         "allow_fallbacks": False,
+        "only": ["DeepSeek", "Fireworks", "Novita"],
     }
 
 
@@ -113,6 +115,7 @@ def test_pin_is_sent_on_the_openrouter_route() -> None:
     assert http.payloads[0]["provider"] == {
         "order": ["DeepSeek", "Fireworks", "Novita"],
         "allow_fallbacks": False,
+        "only": ["DeepSeek", "Fireworks", "Novita"],
     }
 
 

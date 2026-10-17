@@ -56,6 +56,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dev-gate", type=float, default=None)
     parser.add_argument("--thread-id", default=None,
                         help="checkpointer thread id; reuse one to resume an interrupted run")
+    parser.add_argument("--resume-from", type=int, default=None, metavar="N",
+                        help="continue a run in RUNS_DIR from the end of iteration N, rebuilding "
+                             "the loop's state from the artifacts on disk")
     parser.add_argument("--log-level", default=None, choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     parser.add_argument("--preflight", action="store_true",
                         help="probe every configured endpoint with a tiny request, then exit")
@@ -123,6 +126,92 @@ def check_transport_deps() -> str | None:
         f"Run `python main.py --preflight --real` to check every endpoint at once."
     )
 
+
+
+def resume_state(state: dict, n: int) -> dict:
+    """The loop's state at the end of iteration `n`, rebuilt from RUNS_DIR.
+
+    WHY FROM DISK. The checkpointer is in-memory, so a run that stops -- a halt,
+    a crash, a killed process -- takes its graph state with it. Everything the
+    next iteration needs was written to disk anyway: every judged round's
+    report (the score history, hence the champion), the last critique and its
+    attribution, the notebook and its full history, and each workspace. This
+    reads them back.
+
+    Iterations after `n` are moved aside, not deleted, so the resumed run
+    re-designs iteration n+1 from a clean directory and the abandoned attempt
+    stays on disk for the record.
+    """
+    runs = config.RUNS_DIR
+    rows, failures = [], []
+    last = None
+    for i in range(n + 1):
+        d = config.iteration_dir(i)
+        report = d / "dev" / "judge_report.json"
+        if report.is_file():
+            r = json.loads(report.read_text(encoding="utf-8"))
+            rows.append(scoreboard.score_row(
+                iteration=i, stage="dev", phase=str(r.get("phase") or ""),
+                utility=float(r["U"]), access=float(r["A"]), forgetting=float(r["F"]),
+                mgs=float(r["MGS"]), n_checkpoints=int(r.get("n_scored") or 0),
+                workspace=str((d / "workspace").resolve()),
+            ))
+            last = (i, r)
+        failure = d / "developer_failure.json"
+        if failure.is_file():
+            f = json.loads(failure.read_text(encoding="utf-8"))
+            failures.append({"iteration": i, "signature": f.get("signature")})
+    if last is None:
+        raise SystemExit(f"--resume-from {n}: no judged iteration found under {runs}")
+
+    # Move later iterations aside so iteration n+1 is designed and built fresh.
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    for d in sorted(runs.glob("iter_*")):
+        suffix = d.name[len("iter_"):]
+        if suffix.isdigit() and int(suffix) > n:
+            d.rename(runs / f"{d.name}_abandoned_{stamp}")
+            log.warning("resume: moved %s aside -> %s_abandoned_%s", d.name, d.name, stamp)
+
+    # The notebook as it stood after iteration n, from its append-only history.
+    from nodes._recap import HISTORY_FILENAME, notes_from_notebook, write_notebook
+    notes: list[str] = []
+    history = runs / HISTORY_FILENAME
+    if history.is_file():
+        sections = history.read_text(encoding="utf-8").split("\n## after iteration ")
+        for section in sections[1:]:
+            head, _, body = section.partition("\n")
+            if head.strip().isdigit() and int(head.strip()) == n:
+                notes = [line[2:].strip() for line in body.splitlines() if line.startswith("- ")]
+        if notes:
+            write_notebook(config.critique_summary_path(), notes)
+    if not notes:
+        path = config.critique_summary_path()
+        notes = notes_from_notebook(path.read_text(encoding="utf-8")) if path.is_file() else []
+
+    i_last, r_last = last
+    d_last = config.iteration_dir(i_last)
+    critique = d_last / "critique.md"
+    attribution = d_last / "attribution.json"
+    schema = d_last / "workspace" / "memory_system" / "schema.sql"
+    state.update({
+        "iteration_count": n,
+        "score_history": rows,
+        "mgs_score": float(r_last["MGS"]),
+        "utility_score": float(r_last["U"]),
+        "access_violation_rate": float(r_last["A"]),
+        "forgetting_failure_rate": float(r_last["F"]),
+        "critique": critique.read_text(encoding="utf-8") if critique.is_file() else "",
+        "critique_iteration": i_last,
+        "attribution": json.loads(attribution.read_text(encoding="utf-8")) if attribution.is_file() else {},
+        "notebook_notes": notes,
+        "sql_schema": schema.read_text(encoding="utf-8") if schema.is_file() else "",
+        "memory_codebase": str((d_last / "workspace").resolve()),
+        "dev_failure_history": failures,
+    })
+    best, best_i = scoreboard.best_of(state)
+    log.info("resume: state rebuilt through iteration %d -- %d scored rounds, champion "
+             "iteration %d (MGS %.4f), %d notebook note(s)", n, len(rows), best_i, best, len(notes))
+    return state
 
 async def preflight() -> int:
     """Verify every configured endpoint answers, before spending a real budget.
@@ -224,6 +313,10 @@ async def preflight() -> int:
 async def run(args: argparse.Namespace) -> int:
     from graph import build_graph, default_checkpointer
 
+    if args.resume_from is not None:
+        # A resumed run starts at the Architect: the seed was measured in the
+        # original run's iteration 0, and re-measuring it would add a round.
+        config.EVALUATE_SEED = False
     graph = build_graph(checkpointer=default_checkpointer())
 
     if args.print_graph:
@@ -233,6 +326,8 @@ async def run(args: argparse.Namespace) -> int:
     thread_id = args.thread_id or f"run-{uuid.uuid4().hex[:12]}"
     workspace = config.iteration_dir(1) / "workspace"
     state = initial_state(workspace=str(workspace), started_at=time.monotonic())
+    if args.resume_from is not None:
+        state = resume_state(state, int(args.resume_from))
 
     log.info("=" * 78)
     log.info("GateMem self-improving orchestrator | thread=%s", thread_id)
@@ -250,7 +345,7 @@ async def run(args: argparse.Namespace) -> int:
     final = await graph.ainvoke(
         state,
         config={
-            "recursion_limit": config.RECURSION_LIMIT,
+            "recursion_limit": config.recursion_limit(),
             "configurable": {"thread_id": thread_id},
         },
     )

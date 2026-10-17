@@ -32,6 +32,15 @@ export DEVELOPER_TRANSPORT=http      # a tool schema has nowhere to go on dsh
 # nothing, and the http path is where `temperature` and `max_tokens` are
 # actually honoured. See the capabilities note in harness/profiles.py.
 export CRITIC_TRANSPORT=http
+# The Architect too. It has no tools, so dsh buys it nothing, and the dsh path
+# pins reasoning effort high and ignores max_tokens: 700-1,570s per design
+# call and 16 of 39 replies with no parseable JSON across two runs. See
+# config.ARCHITECT_TRANSPORT.
+export ARCHITECT_TRANSPORT=http
+# 65536, not 32768: reasoning shares this budget on the http route and one
+# design call at effort=low spent all 32k thinking. The transport also retries
+# a starved reply once at double the budget (LLM_LENGTH_RETRY_CEILING).
+export ARCHITECT_MAX_TOKENS="${ARCHITECT_MAX_TOKENS:-65536}"
 export OPENROUTER_REASONING_EFFORT="${OPENROUTER_REASONING_EFFORT:-low}"
 # Runaway guard, paired with DSH_CRITIC_TIMEOUT_S=1800. Uncapped, the Critic
 # inherits the harness default of 256000 and times out every iteration.
@@ -45,7 +54,9 @@ export VLLM_BASE_URL=http://localhost:8002/v1
 export VLLM_API_KEY="${LOCAL_API_KEY:-sk-local-dummy-key}"
 export EVALUATOR_MODEL=Qwen/Qwen3.8-27B
 export EVAL_TRANSPORT=http
-export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-4096}"
+# 16384: the answerer reasons now (EVALUATOR_THINKING); 4096 was measured as all
+# reasoning and no content on medical prompts.
+export EVALUATOR_MAX_TOKENS="${EVALUATOR_MAX_TOKENS:-16384}"
 
 export JUDGE_ROUTE=openai
 export OPENAI_BASE_URL=http://localhost:8002/v1
@@ -77,3 +88,7 @@ export MAX_WALLCLOCK_S="${MAX_WALLCLOCK_S:-172800}"
 export MAX_TOTAL_TOKENS="${MAX_TOTAL_TOKENS:-100000000}"
 
 unset _REPO_ROOT
+
+# DeepSeek v4 flash on OpenRouter: DeepInfra's fp8 endpoint ONLY (2026-09-27).
+export OPENROUTER_PROVIDER_ORDER="${OPENROUTER_PROVIDER_ORDER:-deepinfra/fp8}"
+export OPENROUTER_ALLOW_FALLBACKS="${OPENROUTER_ALLOW_FALLBACKS:-false}"

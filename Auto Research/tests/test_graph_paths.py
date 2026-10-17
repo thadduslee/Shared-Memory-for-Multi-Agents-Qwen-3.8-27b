@@ -53,6 +53,10 @@ async def run_scenario(scenario: str, monkeypatch, **overrides) -> dict:
     from state import initial_state
 
     monkeypatch.setattr(config, "MOCK_SCENARIO", scenario)
+    # The scripted scenarios number their rounds from iteration 1. Iteration 0
+    # (the seed evaluation) is exercised by its own test below; here it is off
+    # unless a caller turns it on.
+    monkeypatch.setattr(config, "EVALUATE_SEED", False)
     for key, value in overrides.items():
         monkeypatch.setattr(config, key, value)
 
@@ -60,7 +64,7 @@ async def run_scenario(scenario: str, monkeypatch, **overrides) -> dict:
     state = initial_state(
         workspace=str(config.iteration_dir(1) / "workspace"), started_at=time.monotonic()
     )
-    return await graph.ainvoke(state, config={"recursion_limit": config.RECURSION_LIMIT})
+    return await graph.ainvoke(state, config={"recursion_limit": config.recursion_limit()})
 
 
 def stages_run(runs_dir: Path) -> set[str]:
@@ -148,7 +152,7 @@ async def test_the_next_architect_is_shown_where_the_developer_failed(monkeypatc
     # gets past the red test to call `sql_exec`, which is what a stuck real loop
     # looks like too. Both belong in the report -- the Architect needs to know
     # the migration was never even attempted.
-    assert report["missing_gates"] == ["tests_ok", "migration_ok"], report["missing_gates"]
+    assert report["missing_gates"] == ["tests_ok", "migration_ok", "smoke_ok"], report["missing_gates"]
     # The assertion, not pytest's trailing "1 failed, 17 passed" scoreboard.
     assert report["last_error"].startswith("AssertionError:")
     assert "tombstone gate did not fire" in report["last_error"]
@@ -656,3 +660,59 @@ async def test_read_file_without_a_path_says_so() -> None:
         assert not result.ok
         assert "requires args.path" in result.stderr
         assert "no such file" not in result.stderr
+
+
+async def test_the_seed_is_measured_as_iteration_0_before_any_design(monkeypatch) -> None:
+    """With EVALUATE_SEED on, the template is scored before the Architect runs once."""
+    # A target the scripted scores cannot reach, or the seed itself satisfies it
+    # at iteration 0 and the run (correctly) never designs anything.
+    final = await run_scenario("happy_path", monkeypatch, EVALUATE_SEED=True,
+                               MAX_ITERATIONS=1, MGS_TARGET=0.99)
+
+    assert (config.RUNS_DIR / "iter_0" / "workspace" / "memory_system").is_dir(), \
+        "iteration 0 materialises the seed as shipped"
+    assert (config.RUNS_DIR / "iter_0" / "dev" / "judge_report.json").is_file(), \
+        "the seed is judged"
+    assert (config.RUNS_DIR / "iter_0" / "critique.md").is_file(), \
+        "and critiqued, so the first design reads a real critique"
+    assert (config.RUNS_DIR / "iter_1" / "design.json").is_file(), \
+        "iteration 1 is still designed afterwards"
+    assert int(final.get("iteration_count", 0)) >= 1
+    rows = [r for r in (final.get("score_history") or []) if int(r.get("iteration", -1)) == 0]
+    assert rows, "iteration 0 has a scored row, so a champion can be the seed itself"
+
+
+async def test_the_probe_runs_before_the_full_slice_and_passes_the_build_on(monkeypatch) -> None:
+    """With the probe on, a green build is measured on the fixed probe subset first."""
+    final = await run_scenario("happy_path", monkeypatch, PROBE_CHECKPOINTS=10, MAX_ITERATIONS=1, MGS_TARGET=0.99)
+
+    probe = config.RUNS_DIR / "iter_1" / "probe"
+    assert (probe / "judge_report.json").is_file(), "the probe stage was judged"
+    assert (config.RUNS_DIR / "iter_1" / "dev" / "judge_report.json").is_file(), "then the full dev slice"
+    stages = [(r["iteration"], r["stage"]) for r in (final.get("score_history") or [])]
+    assert (1, "probe") in stages and (1, "dev") in stages
+    assert stages.index((1, "probe")) < stages.index((1, "dev")), "probe before dev"
+    import scoreboard
+    assert scoreboard.best_of(final)[1] == 1, "the champion is decided on the dev stage, not the probe"
+
+
+@pytest.mark.asyncio
+async def test_a_full_length_run_survives_every_stage_in_mock(monkeypatch, tmp_path) -> None:
+    """THE REHEARSAL. Twenty iterations with the seed evaluation and the probe
+    stage on, in mock: every superstep the real loop takes, in minutes.
+
+    Three run-ending defects shipped in one week -- a probe bar anchored on an
+    outlier (nine wasted rounds), a probe failure that skipped the iteration
+    budget (ran to iteration 21 of 20), a fixed recursion limit (both runs
+    killed at iteration 17) -- and each would have failed here. The real runs
+    were the integration test, at ten minutes an iteration on a shared GPU.
+    """
+    monkeypatch.setattr(config, "RUNS_DIR", tmp_path)
+    final = await run_scenario(
+        "max_iterations", monkeypatch,
+        MAX_ITERATIONS=20, EVALUATE_SEED=True, PROBE_CHECKPOINTS=3, PROBE_TOLERANCE=0.10,
+    )
+    assert str(final.get("halt_reason") or "").startswith("iteration budget"), final.get("halt_reason")
+    assert int(final.get("iteration_count", 0)) == 20
+    judged = {int(r["iteration"]) for r in final.get("score_history") or [] if r.get("stage") == "dev"}
+    assert judged >= set(range(1, 21)), sorted(judged)

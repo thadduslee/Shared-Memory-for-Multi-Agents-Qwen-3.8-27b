@@ -20,10 +20,10 @@ tests pin the three paths.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import pytest
 
-from harness.profiles import DEVELOPER_PROFILE
 from nodes.dev_tools import DevToolbox
 
 SCHEMA = "CREATE TABLE principals (id TEXT PRIMARY KEY);"
@@ -89,10 +89,15 @@ def test_the_architect_migration_is_used_when_no_override_is_given(tmp_path) -> 
     assert result.data["applied"] == 1
 
 
-def test_a_missing_schema_is_reported_not_raised(tmp_path) -> None:
-    result = call(DevToolbox(tmp_path, migration_sql="", iteration=1), {})
-    assert not result.ok
-    assert "schema.sql does not exist" in result.stderr
+def test_a_missing_schema_file_is_not_a_failure(tmp_path: Path) -> None:
+    """On a task template the schema lives in code: with no schema.sql the gate
+    checks the migration alone, on an empty scratch database, and says so."""
+    box = DevToolbox(workspace=tmp_path)
+    (tmp_path / "memory_system").mkdir()
+    box.migration_sql = ""
+    result = asyncio.run(box.call("sql_exec", {}))
+    assert result.ok, result.stderr
+    assert "schema lives in code" in result.stdout
 
 
 def test_the_schema_documents_the_override() -> None:
@@ -175,7 +180,9 @@ async def test_the_developer_clears_every_gate_despite_a_broken_migration(
         "migration_sql": PLACEHOLDER_MIGRATION, "workspace": str(workspace),
         "iteration": 1, "workspace_from": "template", "scratchpad": [],
         "retry_count": 0, "compile_ok": False, "tests_ok": False,
-        "migration_ok": False, "lint_ok": False, "smoke_ok": False, "done": False,
+        "migration_ok": False, "lint_ok": False,
+        # smoke_ok is a mandatory gate now; this test is about sql_exec, so it is pre-set
+        "smoke_ok": True, "done": False,
         "pass_rate": 0.0, "last_stack_trace": None,
     }
     final = await dev.DeveloperSession(state).run()
@@ -183,6 +190,8 @@ async def test_the_developer_clears_every_gate_despite_a_broken_migration(
     assert final["compile_ok"], "compile gate"
     assert final["migration_ok"], "migration gate -- this is the one that was unclearable"
     assert final["tests_ok"], "tests gate"
-    assert final["done"], "finish must be accepted once all three are green"
+    # Every gate green plus a real migration applied is the `gates_green` exit,
+    # which fires before the scripted `finish` is consumed; `done` is finish's.
+    assert final.get("halt_reason") is None, "the episode ended green, not exhausted"
     tools = [s["action"].get("tool") for s in final["scratchpad"]]
     assert "sql_exec" in tools

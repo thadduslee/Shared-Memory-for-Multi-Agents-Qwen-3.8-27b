@@ -1,0 +1,73 @@
+# Local vLLM run with the self-driving Developer.
+#
+#   python gatemem_openevolve/run_evolution.py --iterations 20
+#
+# Every model call in this pipeline goes to the endpoint below. Nothing else
+# here needs one: the judge is `judge_gatemem.rule_score`, which is
+# deterministic, and the eval runner constructs the agent with no llm wired in.
+
+max_iterations: 20
+checkpoint_interval: 2
+random_seed: 1337
+
+language: "python"
+file_suffix: ".txt"
+max_code_length: 300000
+
+# The Developer returns a WORKSPACE, not a diff -- see developer.py's docstring.
+# `run_evolution.py` forces this to false as well, so the two cannot disagree.
+diff_based_evolution: false
+
+llm:
+  # The local vLLM server: `vllm serve Qwen/Qwen3.8-27B --port 8002
+  #   --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder`
+  # Tool calling is what makes the Developer loop possible at all; without
+  # `--enable-auto-tool-choice` the model emits its tool syntax as prose and the
+  # loop never runs a single tool.
+  api_base: "http://localhost:8002/v1"
+  api_key: "${GATEMEM_LLM_API_KEY}"
+  models:
+    # The FULL slug, matching --served-model-name. The bare `qwen3.8-27b` does
+    # not match VLLM_THINKING_MODEL_PREFIXES and the thinking-disable silently
+    # does not apply.
+    - name: "Qwen/Qwen3.8-27B"
+      weight: 1.0
+      temperature: 0.7
+      # Per COMPLETION inside the tool loop, not per iteration. Most turns use
+      # 40-100 tokens, but an edit turn carries the replacement text inline and
+      # was observed hitting an 8000-token ceiling MID-CALL -- which returns an
+      # empty message and looks exactly like the model declining to act.
+      max_tokens: 32000
+      timeout: 1200
+
+prompt:
+  template_dir: "/home/lweilun/Shared-Memory-for-Multi-Agents-Qwen-3.2-27b/gatemem_openevolve/templates"
+  system_message: "system_message"
+  num_top_programs: 2
+  num_diverse_programs: 1
+  include_artifacts: true
+  max_artifact_bytes: 24576
+  suggest_simplification_after_chars: null
+
+database:
+  population_size: 40
+  num_islands: 3
+  migration_interval: 10
+  feature_dimensions: ["access_violation_rate", "forgetting_failure_rate"]
+  feature_bins: 5
+
+evaluator:
+  cascade_evaluation: true
+  cascade_thresholds: [0.80]
+  # Each worker holds one Developer conversation open for many turns against a
+  # single-GPU server. Two is the ceiling that keeps latency sane; raising it
+  # queues turns behind each other rather than going faster.
+  parallel_evaluations: 2
+  timeout: 3600
+  enable_artifacts: true
+  use_llm_feedback: false
+
+evolution_trace:
+  enabled: true
+  format: "jsonl"
+  include_prompts: true

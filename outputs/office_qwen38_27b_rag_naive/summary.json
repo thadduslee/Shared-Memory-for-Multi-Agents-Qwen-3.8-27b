@@ -1,0 +1,100 @@
+{
+  "n_checkpoints": 547,
+  "n_utility": 154,
+  "n_utility_scored": 154,
+  "n_privacy": 171,
+  "n_privacy_scored": 171,
+  "n_privacy_context_scored": 171,
+  "n_privacy_e2e_scored": 171,
+  "n_safety": 222,
+  "n_safety_scored": 222,
+  "n_safety_context_scored": 222,
+  "n_safety_e2e_scored": 222,
+  "action_accuracy": 0.793418647166362,
+  "utility_accuracy": 0.538961038961039,
+  "privacy_leakage_rate": 0.1695906432748538,
+  "deletion_leakage_rate": 0.05405405405405406,
+  "privacy_answer_leakage_rate": 0.1695906432748538,
+  "deletion_answer_leakage_rate": 0.05405405405405406,
+  "privacy_context_leakage_rate": 0.9005847953216374,
+  "deletion_context_leakage_rate": 0.8108108108108109,
+  "privacy_e2e_leakage_rate": 0.9239766081871345,
+  "deletion_e2e_leakage_rate": 0.8108108108108109,
+  "over_refusal_rate": 0.13636363636363635,
+  "compliance_utility_score": 0.4233659496817392,
+  "compliance_utility_e2e_score": 0.007751770909665651,
+  "metric_semantics": {
+    "privacy_leakage_rate": "answer-level privacy leakage in final output",
+    "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+    "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+    "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+    "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+    "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+  },
+  "gated_by_action": false,
+  "runtime": {
+    "total_s": 10472.44829183817,
+    "ingest_s": 365.8656226503663,
+    "query_s": 10106.582669187803,
+    "avg_total_s_per_ckpt": 19.14524367794912
+  },
+  "llm": {
+    "latency_s_total": 10096.854623699095,
+    "tokens": {
+      "input_tokens": 1101300,
+      "output_tokens": 519514,
+      "total_tokens": 1620814,
+      "avg_total_tokens_per_ckpt": 2963.09689213894
+    }
+  },
+  "rule_based": {
+    "n_checkpoints": 547,
+    "n_utility": 154,
+    "n_utility_scored": 154,
+    "n_privacy": 171,
+    "n_privacy_scored": 171,
+    "n_privacy_context_scored": 171,
+    "n_privacy_e2e_scored": 171,
+    "n_safety": 222,
+    "n_safety_scored": 222,
+    "n_safety_context_scored": 222,
+    "n_safety_e2e_scored": 222,
+    "action_accuracy": 0.793418647166362,
+    "utility_accuracy": 0.538961038961039,
+    "privacy_leakage_rate": 0.1695906432748538,
+    "deletion_leakage_rate": 0.05405405405405406,
+    "privacy_answer_leakage_rate": 0.1695906432748538,
+    "deletion_answer_leakage_rate": 0.05405405405405406,
+    "privacy_context_leakage_rate": 0.9005847953216374,
+    "deletion_context_leakage_rate": 0.8108108108108109,
+    "privacy_e2e_leakage_rate": 0.9239766081871345,
+    "deletion_e2e_leakage_rate": 0.8108108108108109,
+    "over_refusal_rate": 0.13636363636363635,
+    "compliance_utility_score": 0.4233659496817392,
+    "compliance_utility_e2e_score": 0.007751770909665651,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    },
+    "gated_by_action": false,
+    "runtime": {
+      "total_s": 10472.44829183817,
+      "ingest_s": 365.8656226503663,
+      "query_s": 10106.582669187803,
+      "avg_total_s_per_ckpt": 19.14524367794912
+    },
+    "llm": {
+      "latency_s_total": 10096.854623699095,
+      "tokens": {
+        "input_tokens": 1101300,
+        "output_tokens": 519514,
+        "total_tokens": 1620814,
+        "avg_total_tokens_per_ckpt": 2963.09689213894
+      }
+    }
+  }
+}

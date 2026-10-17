@@ -200,14 +200,17 @@ def test_the_baseline_marker_is_cleared_when_the_workspace_is_reseeded(runs: Pat
 # ======================================================================
 
 
-def test_a_plateau_re_seeds_every_iteration_from_the_same_parent(runs: Path) -> None:
+def test_a_plateau_re_seeds_every_iteration_from_the_same_parent(runs: Path, monkeypatch) -> None:
     """WHY THE LINEAR SETTING EXISTS, on run-b5d7565ddb4a's real numbers.
 
     A tie is never adopted, so a run that stops improving stops moving its
     champion, and every later iteration is seeded from the same workspace.
     Iterations 17 and 18 of that run are siblings rather than successors: both
     are iteration 4 plus one patch, and 18 contains none of 17's work.
+    With LINEAGE_TIE_EPS > 0 (the default since 2026-09-27) the plateau
+    advances instead -- see test_a_plateau_advances_under_the_near_tie_rule.
     """
+    monkeypatch.setattr(config, "LINEAGE_TIE_EPS", 0.0)
     for iteration, marker in ((4, "iter4"), (17, "iter17")):
         seed_iteration(runs, iteration, marker)
     history = [
@@ -366,3 +369,16 @@ def test_a_degraded_iteration_is_still_a_valid_parent(runs: Path, monkeypatch) -
     assert (parent, reason) == (13, scoreboard.LINEAGE_SKIPPED_FAILED)
     _, provenance = prepare_workspace(15, parent=parent, reason=reason)
     assert provenance == "iter_13"
+
+
+def test_a_plateau_advances_under_the_near_tie_rule(monkeypatch) -> None:
+    """Same numbers, default margin: 18 inherits 17, the champion stays 4."""
+    monkeypatch.setattr(config, "LINEAGE_TIE_EPS", 0.01)
+    history = [
+        scoreboard.score_row(iteration=4, stage="dev", phase="p",
+                             utility=0.6111, access=0.1176, forgetting=0.0, mgs=0.539216),
+        scoreboard.score_row(iteration=17, stage="dev", phase="p",
+                             utility=0.6111, access=0.1176, forgetting=0.0, mgs=0.539216),
+    ]
+    assert scoreboard.champion_iteration({"score_history": history}, fallback=17) == 17
+    assert scoreboard.best_of({"score_history": history})[1] == 4

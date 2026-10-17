@@ -221,10 +221,15 @@ def openrouter_provider_preferences(model: str) -> dict[str, object] | None:
         return None
     if not any(model.startswith(prefix) for prefix in OPENROUTER_PIN_MODEL_PREFIXES):
         return None
-    return {
+    prefs: dict[str, object] = {
         "order": list(OPENROUTER_PROVIDER_ORDER),
         "allow_fallbacks": OPENROUTER_ALLOW_FALLBACKS,
     }
+    # `only` makes the pin exclusive: with fallbacks off OpenRouter still
+    # treats `order` as a preference list; `only` refuses every other host.
+    if not OPENROUTER_ALLOW_FALLBACKS:
+        prefs["only"] = list(OPENROUTER_PROVIDER_ORDER)
+    return prefs
 
 
 # --------------------------------------------------------------------------
@@ -250,6 +255,15 @@ def openrouter_provider_preferences(model: str) -> dict[str, object] | None:
 # openrouter route with "openai/gpt-4.1", which is not a reasoning model and has
 # no business being sent a reasoning block.
 OPENROUTER_REASONING_EFFORT: Final[str] = _env("OPENROUTER_REASONING_EFFORT", "low")
+
+# A REPLY THAT SPENT ITS WHOLE BUDGET THINKING IS RETRIED WITH A BIGGER ONE.
+# On the http route reasoning tokens share `max_tokens` with the answer, and
+# DeepSeek at effort=low still spent all 32,768 on one design call -- returning
+# NO content, `finish_reason=length`. The router classed that as transient and
+# re-sent the identical request, which overflowed identically (same token count
+# to the digit), three times, and the run died. `agent_call` now retries such a
+# reply ONCE with the budget doubled, up to this ceiling. 0 disables it.
+LLM_LENGTH_RETRY_CEILING: int = _env_int("LLM_LENGTH_RETRY_CEILING", 131_072)
 OPENROUTER_REASONING_MODEL_PREFIXES: Final[tuple[str, ...]] = tuple(
     prefix.strip()
     for prefix in _env("OPENROUTER_REASONING_MODEL_PREFIXES", "deepseek/").split(",")
@@ -289,6 +303,26 @@ def openrouter_reasoning(model: str) -> dict[str, object] | None:
 # Prefix-gated exactly like the OpenRouter block above: a non-thinking model
 # served on the same vLLM route would reject the unknown template kwarg.
 VLLM_DISABLE_THINKING: Final[bool] = _env_bool("VLLM_DISABLE_THINKING", True)
+
+# THE ANSWERER REASONS, BECAUSE THE BASELINES' DID. Every baseline output in
+# outputs/ was produced by the bench's own client, which never sends
+# `enable_thinking`, against a vLLM whose Qwen3 template default is thinking
+# ON (medical 2026-08-26: ~280 hidden reasoning tokens per answer, unreported
+# by that vLLM; office 2026-09-21: ~880, reported). The disable above was added
+# for the timeouts and silently scored our memory against a different answerer
+# in both domains. Measured on the 27 office expected-answer checkpoints the
+# keyed2 champion hard-refused, same evidence: thinking off 3/27 answered,
+# thinking on 22/27, zero refusals. So the EVALUATOR role keeps the template
+# default; the judge and the probe stay non-thinking (the judge is our own and
+# scores the baselines the same way; the probe is a 16-token liveness ping).
+# The timeout that motivated the disable is handled where it belongs:
+# EVALUATOR_TIMEOUT_S below, and the starved-reply retry in nodes/_transport.
+EVALUATOR_THINKING: Final[bool] = _env_bool("EVALUATOR_THINKING", True)
+#: Per-call read timeout for the answerer. The office baselines averaged ~19s
+#: per reasoning answer at low concurrency; sixteen in flight on one GPU is
+#: several times that, and HTTP_TIMEOUT_S (120s) was sized for a non-thinking
+#: reply.
+EVALUATOR_TIMEOUT_S: Final[float] = _env_float("EVALUATOR_TIMEOUT_S", 900.0)
 VLLM_THINKING_MODEL_PREFIXES: Final[tuple[str, ...]] = tuple(
     prefix.strip()
     for prefix in _env("VLLM_THINKING_MODEL_PREFIXES", "Qwen/,qwen/").split(",")
@@ -296,13 +330,17 @@ VLLM_THINKING_MODEL_PREFIXES: Final[tuple[str, ...]] = tuple(
 )
 
 
-def vllm_chat_template_kwargs(model: str) -> dict[str, object] | None:
-    """vLLM `chat_template_kwargs` for `model`, or None to leave it alone.
+def vllm_chat_template_kwargs(model: str, role: str | None = None) -> dict[str, object] | None:
+    """vLLM `chat_template_kwargs` for `model` in `role`, or None to leave it alone.
 
-    Setting VLLM_DISABLE_THINKING=0 restores the model's own default template,
-    which is the escape hatch if a future evaluator model needs to reason.
+    None means the model's own template default -- for Qwen3, thinking ON.
+    The evaluator gets that default (see EVALUATOR_THINKING); every other role
+    on a thinking model gets `enable_thinking: False`. VLLM_DISABLE_THINKING=0
+    turns the disable off for everyone.
     """
     if not VLLM_DISABLE_THINKING:
+        return None
+    if role == "evaluator" and EVALUATOR_THINKING:
         return None
     if not any(model.startswith(prefix) for prefix in VLLM_THINKING_MODEL_PREFIXES):
         return None
@@ -420,6 +458,19 @@ EVAL_SHARD_SIZE: int = _env_int("EVAL_SHARD_SIZE", 10)
 # and you earn the right to spend the full 579-checkpoint run.
 DEV_GATE_MGS: float = _env_float("DEV_GATE_MGS", 0.80)
 
+# THE PROBE GATE. Before a build is paid for at full size, it answers a small,
+# FIXED, stratified subset of the dev slice -- the same checkpoints every
+# round -- and must not score far below the best probe seen so far. Three
+# rounds of runs_*_generic_fixed2 (a retrieval re-ordering that lost 91
+# checkpoints, a gate refactor that produced 542 no_memory, a relaxed gate
+# whose prompts overflowed the model) would each have been caught here in
+# ~30 seconds instead of ~6 minutes. 0 disables the probe.
+PROBE_CHECKPOINTS: int = _env_int("PROBE_CHECKPOINTS", 40)
+# How far below the best probe score a build may fall and still be evaluated
+# in full. Generous on purpose: the probe exists to catch collapses, not to
+# second-guess small regressions the full slice measures properly.
+PROBE_TOLERANCE: float = _env_float("PROBE_TOLERANCE", 0.10)
+
 # MGS_TARGET is the *stop condition*: reach it and the research loop is done.
 # Deliberately distinct from (and above) DEV_GATE_MGS -- a system can be worth
 # scaling up to full evaluation well before it is actually finished.
@@ -497,13 +548,28 @@ LINEAGE_SKIP_FAILED_BUILDS: bool = _env_bool("LINEAGE_SKIP_FAILED_BUILDS", True)
 # more than a larger ceiling would be. Note the failing episodes were 76% and
 # 87% `read_file`: they were over-reading, not under-working, and a bigger
 # budget is more room to over-read.
-DEVELOPER_MAX_TURNS: int = _env_int("DEVELOPER_MAX_TURNS", 60)
-DEVELOPER_LANDING_TURNS: int = _env_int("DEVELOPER_LANDING_TURNS", 12)
+# 60 -> 80 and 12 -> 16, AFTER the reading was fixed, not instead of fixing it.
+# The note above is still right that a bigger budget is more room to over-read;
+# what changed is that read_file now returns whole files, every tool call a
+# turn emits is executed, and a redundant re-read is labelled -- so a turn
+# spent reading is now one read, not a quarter of one. With that in place the
+# measured success distribution (p90 = 54 turns, max = 58 against a cap of 60)
+# is the reason for the extra headroom.
+DEVELOPER_MAX_TURNS: int = _env_int("DEVELOPER_MAX_TURNS", 80)
+DEVELOPER_LANDING_TURNS: int = _env_int("DEVELOPER_LANDING_TURNS", 16)
 
 # How much better than the champion an iteration must score to BECOME the
 # champion. 0.0 means "strictly greater by any margin". Raise it to require a
 # real margin on a noisy slice; a tie is never adopted at any setting.
 ROLLBACK_TOLERANCE: float = _env_float("ROLLBACK_TOLERANCE", 0.0)
+
+# NEAR-TIE LINEAGE. The champion is still the best score; but the next
+# workspace may inherit the most RECENT build within this margin of it, so an
+# idea that ties the champion is kept long enough to be improved. Try 19: a
+# memory that read deletions with the model scored 0.1866 against a 0.1898
+# rule-only champion and was erased by the rollback -- inside the noise of a
+# 579-checkpoint slice. 0.0 restores "always the champion".
+LINEAGE_TIE_EPS: float = _env_float("LINEAGE_TIE_EPS", 0.01)
 
 # How many times one iteration may be re-run when the Developer episode died of
 # INFRASTRUCTURE rather than of the design -- transport timeouts, empty replies,
@@ -513,7 +579,11 @@ ROLLBACK_TOLERANCE: float = _env_float("ROLLBACK_TOLERANCE", 0.0)
 # mandatory gates: tests_ok, migration_ok" when the truth was that `run_tests`
 # and `sql_exec` had never been called at all. See
 # nodes/developer.py::classify_failure.
-MAX_INFRA_RETRIES: int = _env_int("MAX_INFRA_RETRIES", 2)
+# 2 -> 3. Two was one short on runs_medical_generic_fixed: three consecutive
+# empty `finish_reason=length` replies ended the run at iteration 5. The retry
+# itself now changes the request (see LLM_LENGTH_RETRY_CEILING), so a third
+# attempt is no longer the same call a third time.
+MAX_INFRA_RETRIES: int = _env_int("MAX_INFRA_RETRIES", 3)
 
 # ---- The answerer's health: when a stage's scores stop meaning anything ----
 #
@@ -765,6 +835,13 @@ CRITIC_BASE_URL: str = _env("CRITIC_BASE_URL", "") or AGENT_BASE_URL
 CRITIC_API_KEY_ENV: str = _env("CRITIC_API_KEY_ENV", "") or AGENT_API_KEY_ENV
 CRITIC_ROUTE: str = _env("CRITIC_ROUTE", "") or AGENT_ROUTE
 CRITIC_TRANSPORT: str = _env("CRITIC_TRANSPORT", "")  # dsh | http | "" (inherit)
+# The Architect has no tools either, so dsh buys it nothing -- and on the dsh
+# path the SDK pins reasoning effort high and ignores max_tokens, which is how
+# one design call came to cost 700-1,570s and 16 of 39 calls across two runs
+# came back without a parseable JSON block (each repair another full call).
+# `http` is where OPENROUTER_REASONING_EFFORT and ARCHITECT_MAX_TOKENS are
+# honoured. Empty inherits AGENT_TRANSPORT, like the other two.
+ARCHITECT_TRANSPORT: str = _env("ARCHITECT_TRANSPORT", "")  # dsh | http | "" (inherit)
 
 EVAL_TRANSPORT: str = _env("EVAL_TRANSPORT", "dsh")    # dsh | http
 JUDGE_TRANSPORT: str = _env("JUDGE_TRANSPORT", "dsh")  # dsh | http
@@ -831,12 +908,28 @@ MAX_WALLCLOCK_S: float = _env_float("MAX_WALLCLOCK_S", 6 * 60 * 60.0)
 MAX_TOTAL_TOKENS: int = _env_int("MAX_TOTAL_TOKENS", 20_000_000)
 
 # LangGraph's own guard.  The macro-loop runs many supersteps per iteration
-# (architect, developer, dispatch, N workers, collect, judge, critic), so the
-# library default of 25 is far too low for MAX_ITERATIONS=10.  Note the
-# Developer contributes exactly ONE superstep however long its episode runs:
-# its loop is inside the node, bounded by MAX_DEV_RETRIES and
-# DSH_DEVELOPER_TIMEOUT_S rather than by this.
-RECURSION_LIMIT: int = _env_int("RECURSION_LIMIT", 250)
+# (architect, curriculum, developer, stage_select, dispatch, workers, collect,
+# judge -- twice, with the probe -- critic, and the retry/rollback nodes), so
+# the library default of 25 is far too low, and a FIXED number is wrong too:
+# 250 was fine for 10 iterations and killed two 20-iteration runs at iteration
+# 17, after the probe stage added its supersteps. Sized from MAX_ITERATIONS,
+# with room for a probe, an infra retry and a rollback in every round; an
+# explicit RECURSION_LIMIT env still wins when larger. Note the Developer
+# contributes exactly ONE superstep however long its episode runs: its loop is
+# inside the node, bounded by MAX_DEV_RETRIES and DSH_DEVELOPER_TIMEOUT_S.
+_SUPERSTEPS_PER_ITERATION: Final[int] = 24
+
+
+def recursion_limit() -> int:
+    """Computed at graph-invoke time, because `--max-iterations` rewrites
+    MAX_ITERATIONS after this module is imported."""
+    return max(
+        _env_int("RECURSION_LIMIT", 0),
+        (MAX_ITERATIONS + 1) * _SUPERSTEPS_PER_ITERATION + 50,
+    )
+
+
+RECURSION_LIMIT: int = recursion_limit()
 
 
 # ==========================================================================
@@ -869,7 +962,83 @@ RUNS_DIR: Final[Path] = Path(_env("RUNS_DIR", str(PROJECT_ROOT / "runs"))).expan
 # Set SEED_FROM_TEMPLATE=false to make the Developer bootstrap from nothing --
 # a legitimate (much harder) experiment, not the default.
 TEMPLATES_DIR: Final[Path] = Path(_env("TEMPLATES_DIR", str(PROJECT_ROOT / "templates")))
+
+
+def task_template() -> bool:
+    """Is the template a TASK rather than a seed system?
+
+    `templates_task/` ships TASK.md, a stub agent that raises NotImplementedError,
+    the frozen keyring and the contract tests -- and no memory system. The loop
+    builds one on iteration 1 from the task and the data census. A seed
+    template (`templates/`, `templates_generic/`) ships a working system the
+    loop patches. Several defaults below turn on this distinction.
+    """
+    return (TEMPLATES_DIR / "TASK.md").is_file()
+
+
+#: Turns for a BUILD round -- the Developer's first episode on a task template,
+#: where it writes the system rather than patching one. Twice the patch budget.
+DEVELOPER_BUILD_TURNS: int = _env_int("DEVELOPER_BUILD_TURNS", 160)
+#: Failed gate observations a BUILD round may spend. A build iterates on the
+#: contract tests by nature -- the first task-template smoke wrote a 297-line
+#: system that passed 7 of 8 contract tests and was cut off after 9 turns by
+#: the 5-retry patch budget.
+DEVELOPER_BUILD_RETRIES: int = _env_int("DEVELOPER_BUILD_RETRIES", 15)
+#: One model turn in a BUILD round. A build's first turns write whole source
+#: files with reasoning behind them; the patch-round budget (300s, half of it
+#: for the first sample) timed out at 150s with zero characters four times in
+#: a row on the adaptive task and charged the episode before a line was written.
+DSH_DEVELOPER_BUILD_THINK_TIMEOUT_S: float = _env_float("DSH_DEVELOPER_BUILD_THINK_TIMEOUT_S", 900.0)
+
+# THE MEMORY'S OWN MODEL CALL (templates_task/memory_system/llm.py). The memory
+# may read its episode with a non-thinking model under a per-episode budget;
+# the evaluator hands these to every shard as MEMORY_LLM_* environment. Empty
+# base URL = disabled (the contract tests run that way).
+MEMORY_LLM_BASE_URL: Final[str] = _env("MEMORY_LLM_BASE_URL", VLLM_BASE_URL)
+MEMORY_LLM_MODEL: Final[str] = _env("MEMORY_LLM_MODEL", EVALUATOR_MODEL)
+MEMORY_LLM_TOKEN_BUDGET: Final[int] = _env_int("MEMORY_LLM_TOKEN_BUDGET", 120000)
+MEMORY_LLM_CALL_BUDGET: Final[int] = _env_int("MEMORY_LLM_CALL_BUDGET", 400)
+MEMORY_LLM_MAX_TOKENS: Final[int] = _env_int("MEMORY_LLM_MAX_TOKENS", 512)
+def memory_llm_env() -> dict[str, str]:
+    """The MEMORY_LLM_* environment a memory-system subprocess needs: evaluator
+    shards, and the Developer's run_tests / smoke / adaptivity checks."""
+    import os as _os
+    return {
+        "MEMORY_LLM_BASE_URL": MEMORY_LLM_BASE_URL,
+        "MEMORY_LLM_MODEL": MEMORY_LLM_MODEL,
+        "MEMORY_LLM_API_KEY": _os.environ.get(VLLM_API_KEY_ENV, "sk-local-dummy-key"),
+        "MEMORY_LLM_TOKEN_BUDGET": str(MEMORY_LLM_TOKEN_BUDGET),
+        "MEMORY_LLM_CALL_BUDGET": str(MEMORY_LLM_CALL_BUDGET),
+        "MEMORY_LLM_MAX_TOKENS": str(MEMORY_LLM_MAX_TOKENS),
+    }
+
+
+#: HELD-OUT ADAPTIVITY CHECKS (harness_checks/test_adaptivity.py): paraphrased
+#: consent / revocation / supersession in unseen vocabularies, model enabled,
+#: never copied into a workspace. A build must pass this fraction of them for
+#: tests_ok. Measured 2026-09-27: a keyword-rule reference memory passes 4/12,
+#: a memory that reads turns with the model 12/12. 0 disables the gate.
+ADAPTIVITY_MIN_PASS: float = _env_float("ADAPTIVITY_MIN_PASS", 0.5)
+#: ...AND every family must pass at least one of its checks. An overall
+#: fraction alone let an office build pass 13/18 while failing BOTH name
+#: families outright -- the one mechanism its evaluation showed it lacked.
+ADAPTIVITY_EVERY_FAMILY: bool = _env_bool("ADAPTIVITY_EVERY_FAMILY", True)
+ADAPTIVITY_CHECKS: Final[Path] = PROJECT_ROOT / "harness_checks" / "test_adaptivity.py"
+
+#: A shard replays its episodes turn by turn; with the memory calling a model
+#: per turn that is minutes, not seconds. Was a literal 600.
+EVAL_SHARD_TIMEOUT_S: Final[float] = _env_float("EVAL_SHARD_TIMEOUT_S", 2400.0)
 SEED_FROM_TEMPLATE: bool = _env_bool("SEED_FROM_TEMPLATE", True)
+
+# MEASURE THE SEED BEFORE DESIGNING AGAINST IT. The graph used to start at the
+# Architect, so iteration 1 was designed against no measurement at all -- both
+# generic reruns opened with a design that said, in effect, "history is empty,
+# so I'm targeting F", and office's first round scored 0.0000 for a reason the
+# second round then had to diagnose. With this on, iteration 0 evaluates the
+# template exactly as shipped and the first design reads a real table.
+# Iteration 0 does not count against MAX_ITERATIONS.
+# Off by default on a task template: a stub has nothing to score.
+EVALUATE_SEED: bool = _env_bool("EVALUATE_SEED", not task_template())
 
 # How much of the implementation is inlined into the Architect's task text.
 #
@@ -925,6 +1094,23 @@ ARCHITECT_DEV_FAILURE_MAX_CHARS: int = _env_int("ARCHITECT_DEV_FAILURE_MAX_CHARS
 # not something it could check itself.
 ARCHITECT_NOTEBOOK_MAX_NOTES: int = _env_int("ARCHITECT_NOTEBOOK_MAX_NOTES", 40)
 ARCHITECT_NOTEBOOK_MAX_WORDS: int = _env_int("ARCHITECT_NOTEBOOK_MAX_WORDS", 45)
+# THE NOTEBOOK GETS ITS OWN CALL WHEN THE DESIGN CALL DROPS IT. Asked for as a
+# trailing "also include" key on the design reply, `notebook_notes` came back
+# on 0 of 39 Architect calls across two 20-iteration runs -- the loop ran with
+# NO memory between rounds, and rebuilt the same helper four times. A second,
+# short call that owes only the notebook is cheap next to a design call, and it
+# is the difference between a run that learns and twenty independent attempts.
+ARCHITECT_NOTEBOOK_CALL: bool = _env_bool("ARCHITECT_NOTEBOOK_CALL", True)
+
+# WHAT THE ANSWERER ACTUALLY SAID, for the Critic. Three quarters of the
+# utility headroom at both champions was one mechanism -- the gate cleared the
+# records and the answerer refused anyway -- and the Critic could only see it
+# as a count. It now sees, for up to this many cited checkpoints, the evidence
+# block as rendered and the answerer's reply, so it critiques the behaviour
+# rather than inferring it.
+CRITIC_ANSWERER_EXCERPTS: int = _env_int("CRITIC_ANSWERER_EXCERPTS", 8)
+CRITIC_EXCERPT_CHARS: int = _env_int("CRITIC_EXCERPT_CHARS", 700)
+DSH_ARCHITECT_NOTEBOOK_TIMEOUT_S: float = _env_float("DSH_ARCHITECT_NOTEBOOK_TIMEOUT_S", 600.0)
 
 LOG_LEVEL: Final[str] = _env("LOG_LEVEL", "INFO")
 
@@ -1024,7 +1210,7 @@ DSH_CRITIC_TIMEOUT_S: float = _env_float("DSH_CRITIC_TIMEOUT_S", 1800.0)
 # DO see, and the two budgets are separate: a single turn that has not chosen a
 # tool call in five minutes is stuck, and failing it fast is what lets
 # MAX_DEV_RETRIES and DSH_DEVELOPER_TIMEOUT_S bound the episode.
-DSH_DEVELOPER_THINK_TIMEOUT_S: float = _env_float("DSH_DEVELOPER_THINK_TIMEOUT_S", 300.0)
+DSH_DEVELOPER_THINK_TIMEOUT_S: float = _env_float("DSH_DEVELOPER_THINK_TIMEOUT_S", 600.0)
 
 # The whole EPISODE's wall clock, and it is enforced now -- `DeveloperSession`
 # checks it before every turn. It was documented as the outer stop for a long

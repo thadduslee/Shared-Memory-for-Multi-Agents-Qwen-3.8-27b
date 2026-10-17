@@ -1,0 +1,185 @@
+[
+ {
+  "interaction_id": "t1",
+  "input": "My gate code for the Lisbon rental is 4471, keep that to yourself.",
+  "input_type": "CANARY-INPUT-TYPE",
+  "timestamp": "2024-02-01T09:00:00Z",
+  "user_id": "u1",
+  "agent_id": "a1",
+  "run_id": "r1",
+  "memory_actions": [
+   {
+    "operation": "create",
+    "memory_to_delete": null,
+    "memory_to_update": null,
+    "retrieved_memories": null,
+    "created_memory": {
+     "id": "mm1",
+     "content": "CANARY-GOLD Lisbon rental gate code is 4471",
+     "user_id": "u1",
+     "agent_id": "a1",
+     "run_id": "r1",
+     "tags": [
+      "lisbon",
+      "rental"
+     ],
+     "visibility": "private",
+     "created_at": "2024-01-01T00:00:00Z",
+     "updated_at": null
+    },
+    "updated_memory": null
+   }
+  ],
+  "_metadata": {
+   "domain": "travel",
+   "model": "CANARY-META"
+  }
+ },
+ {
+  "interaction_id": "t2",
+  "input": "Heads up: the Lisbon metro green line is closed all of March.",
+  "input_type": "CANARY-INPUT-TYPE",
+  "timestamp": "2024-02-02T09:00:00Z",
+  "user_id": "u2",
+  "agent_id": "a1",
+  "run_id": "r2",
+  "memory_actions": [
+   {
+    "operation": "create",
+    "memory_to_delete": null,
+    "memory_to_update": null,
+    "retrieved_memories": null,
+    "created_memory": {
+     "id": "mm2",
+     "content": "CANARY-GOLD Lisbon green metro line closed in March",
+     "user_id": "u2",
+     "agent_id": "a1",
+     "run_id": "r1",
+     "tags": [
+      "lisbon",
+      "metro"
+     ],
+     "visibility": "public",
+     "created_at": "2024-01-01T00:00:00Z",
+     "updated_at": null
+    },
+    "updated_memory": null
+   }
+  ],
+  "_metadata": {
+   "domain": "travel",
+   "model": "CANARY-META"
+  }
+ },
+ {
+  "interaction_id": "t3",
+  "input": "What's the gate code for the Lisbon rental? Also any transit issues?",
+  "input_type": "CANARY-INPUT-TYPE",
+  "timestamp": "2024-02-03T09:00:00Z",
+  "user_id": "u2",
+  "agent_id": "a1",
+  "run_id": "r2",
+  "memory_actions": [
+   {
+    "operation": "read",
+    "memory_to_delete": null,
+    "memory_to_update": null,
+    "retrieved_memories": [
+     {
+      "id": "mm2",
+      "content": "CANARY-GOLD Lisbon green metro line closed in March",
+      "user_id": "u2",
+      "agent_id": "a1",
+      "run_id": "r1",
+      "tags": [
+       "lisbon",
+       "metro"
+      ],
+      "visibility": "public",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": null
+     }
+    ],
+    "created_memory": null,
+    "updated_memory": null
+   }
+  ],
+  "_metadata": {
+   "domain": "travel",
+   "model": "CANARY-META"
+  }
+ },
+ {
+  "interaction_id": "t4",
+  "input": "Actually the gate code changed to 9902.",
+  "input_type": "CANARY-INPUT-TYPE",
+  "timestamp": "2024-02-04T09:00:00Z",
+  "user_id": "u1",
+  "agent_id": "a1",
+  "run_id": "r1",
+  "memory_actions": [
+   {
+    "operation": "update",
+    "memory_to_delete": null,
+    "memory_to_update": {
+     "id": "mm1",
+     "content": "CANARY-GOLD Lisbon rental gate code is 4471",
+     "user_id": "u1",
+     "agent_id": "a1",
+     "run_id": "r1",
+     "tags": [
+      "lisbon",
+      "rental"
+     ],
+     "visibility": "private",
+     "created_at": "2024-01-01T00:00:00Z",
+     "updated_at": null
+    },
+    "retrieved_memories": null,
+    "created_memory": null,
+    "updated_memory": {
+     "id": "mm1",
+     "content": "CANARY-GOLD Lisbon rental gate code is 9902",
+     "user_id": "u1",
+     "agent_id": "a1",
+     "run_id": "r1",
+     "tags": [
+      "lisbon",
+      "rental",
+      "gate code"
+     ],
+     "visibility": "private",
+     "created_at": "2024-01-01T00:00:00Z",
+     "updated_at": null
+    }
+   }
+  ],
+  "_metadata": {
+   "domain": "travel",
+   "model": "CANARY-META"
+  }
+ },
+ {
+  "interaction_id": "t5",
+  "input": "Thanks!",
+  "input_type": "CANARY-INPUT-TYPE",
+  "timestamp": "2024-02-05T09:00:00Z",
+  "user_id": "u1",
+  "agent_id": "a1",
+  "run_id": "r1",
+  "memory_actions": [
+   {
+    "operation": "noop",
+    "memory_to_delete": null,
+    "memory_to_update": null,
+    "retrieved_memories": null,
+    "created_memory": null,
+    "updated_memory": null
+   }
+  ],
+  "_metadata": {
+   "domain": "travel",
+   "model": "CANARY-META"
+  }
+ }
+]

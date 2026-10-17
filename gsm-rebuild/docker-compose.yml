@@ -1,0 +1,39 @@
+# Local development database for Governed Shared Memory.
+# PostgreSQL 16 with the pgvector extension. Credentials here are
+# development placeholders; never reuse them outside a local machine.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: gsm_owner
+      POSTGRES_PASSWORD: gsm_dev_only_password
+      POSTGRES_DB: gsm
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gsm_owner -d gsm"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - gsm_pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    profiles: ["api"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GSM_DATABASE_URL: postgresql+psycopg://gsm_owner:gsm_dev_only_password@db:5432/gsm
+      GSM_ENV: development
+      GSM_DEV_AUTH_ENABLED: "true"
+      GSM_DEV_AUTH_SECRET: ${GSM_DEV_AUTH_SECRET:-change-me-dev-only}
+      GSM_ADMIN_API_KEY: ${GSM_ADMIN_API_KEY:-change-me-admin-dev-only}
+    ports:
+      - "8080:8080"
+    command: >
+      sh -c "alembic upgrade head && uvicorn gsm.api.app:create_app --factory --host 0.0.0.0 --port 8080"
+
+volumes:
+  gsm_pgdata:

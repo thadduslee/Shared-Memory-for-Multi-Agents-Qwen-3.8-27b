@@ -1,0 +1,40 @@
+# CI for gsm-rebuild. GitHub only runs workflows from the repository root's
+# .github/workflows; copy this file there (adjusting working-directory) or use it
+# as-is if gsm-rebuild becomes its own repository.
+name: gsm-ci
+
+on:
+  push:
+    paths: ["gsm-rebuild/**"]
+  pull_request:
+    paths: ["gsm-rebuild/**"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gsm-rebuild
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: gsm_owner
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: gsm_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U gsm_owner -d gsm_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      GSM_TEST_DATABASE_URL: postgresql+psycopg://gsm_owner:ci_only_password@localhost:5432/gsm_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests migrations
+      - run: ruff format --check src tests migrations
+      - run: mypy
+      - run: pytest

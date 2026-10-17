@@ -141,7 +141,7 @@ import scoreboard
 from nodes._common import node_span
 from nodes.architect import architect_node
 from nodes.critic import critic_node
-from nodes.developer import developer_node
+from nodes.developer import developer_node, prepare_workspace
 from nodes.judge import judge_node
 from nodes.medical_evaluator import (
     eval_collect_node,
@@ -241,6 +241,91 @@ async def architect_retry_node(state: OrchestratorState) -> dict[str, Any]:
         }
 
 
+async def seed_eval_node(state: OrchestratorState) -> dict[str, Any]:
+    """Iteration 0: put the seed, exactly as shipped, in front of the evaluator.
+
+    Nothing is designed and nothing is built. The template is copied into
+    iter_0/workspace and handed to the same eval -> judge -> critic path every
+    later round takes, so the first Architect call reads a measured table and a
+    real critique instead of guessing. `iteration_count` stays 0, which is what
+    routes this round's artifacts to iter_0/ and keeps it out of the budget.
+    """
+    phase = str(state.get("current_curriculum_phase") or config.CURRICULUM_PHASES[0])
+    async with node_span("seed_eval", 0, phase) as span:
+        workspace, provenance = prepare_workspace(0)
+        span["workspace_from"] = provenance
+        log.info("iteration 0: evaluating the seed as shipped (%s -> %s)", provenance, workspace)
+        return {
+            "memory_codebase": str(workspace.resolve()),
+            "eval_stage": "dev",
+            "iteration_count": 0,
+            "node_timings": [span],
+        }
+
+
+async def stage_select_node(state: OrchestratorState) -> dict[str, Any]:
+    """After a green build: probe first when the probe is on, else straight to dev.
+
+    A node rather than a router side effect, because `eval_stage` has exactly
+    one writer per transition and routers stay pure.
+    """
+    stage = "probe" if config.PROBE_CHECKPOINTS > 0 else "dev"
+    return {"eval_stage": stage, "predictions_path": ""}
+
+
+async def stage_dev_node(state: OrchestratorState) -> dict[str, Any]:
+    """The probe passed: evaluate the same build on the full dev slice."""
+    log.info("probe passed (MGS=%.4f): evaluating the full dev slice",
+             float(state.get("mgs_score", 0.0)))
+    return {"eval_stage": "dev", "predictions_path": ""}
+
+
+async def probe_fail_node(state: OrchestratorState) -> dict[str, Any]:
+    """The probe failed: this round is over, and the Architect is told why.
+
+    No dev-stage score is produced, so the champion is untouched and the next
+    workspace is copied from it. The report reads like a failed build because,
+    for the loop's purposes, it is one: a design that collapses on forty
+    checkpoints it has seen every round is not worth six minutes of GPU to
+    measure precisely.
+    """
+    iteration = int(state.get("iteration_count", 0))
+    report = state.get("judge_report") or {}
+    best, best_iteration = scoreboard.champion_probe(state)
+    tolerance = scoreboard.probe_tolerance(state)
+    threshold = best - tolerance
+    mgs = float(state.get("mgs_score", 0.0))
+    degraded = bool(state.get("render_degraded"))
+    why = (
+        "the answerer could not serve its requests on the probe"
+        if degraded else
+        f"probe MGS {mgs:.4f} is below {threshold:.4f} "
+        f"(the champion's probe score {best:.4f} at iteration {best_iteration}, minus tolerance "
+        f"{tolerance:.2f}, measured from the probe/full-slice gap)"
+    )
+    failure = {
+        "iteration": iteration,
+        "classification": "probe",
+        "signature": "probe-collapse" if not degraded else "probe-unservable",
+        "reason": f"the build passed every gate, then failed the probe: {why}",
+        "classification_reason": (
+            f"on the fixed {config.PROBE_CHECKPOINTS}-checkpoint probe: U={report.get('U', 0.0):.4f} "
+            f"A={report.get('A', 0.0):.4f} F={report.get('F', 0.0):.4f} MGS={mgs:.4f}; "
+            f"utility failure buckets: {(report.get('utility_failure_buckets') or {}).get('counts')}"
+        ),
+        "gate_status": {}, "missing_gates": [], "gates_failed": [], "gates_never_ran": [],
+        "retries_used": 0, "retry_cap": 0, "exhausted": False, "pass_rate": 1.0,
+        "workspace_from": f"iter_{iteration}", "files_written": [],
+    }
+    log.error("probe FAILED iter=%d: %s -- not evaluated in full, not a champion candidate",
+              iteration, why)
+    return {
+        "dev_failure_report": failure,
+        "dev_failure_history": [{"iteration": iteration, "signature": failure["signature"]}],
+        "predictions_path": "",
+    }
+
+
 async def finalize_node(state: OrchestratorState) -> dict[str, Any]:
     """The single exit. Populates `halt_reason` and advances the curriculum."""
     iteration = int(state.get("iteration_count", 0))
@@ -315,8 +400,18 @@ def build_graph(checkpointer: Any | None = None):
     builder.add_node("infra_retry", infra_retry_node)
     builder.add_node("architect_retry", architect_retry_node)
     builder.add_node("finalize", finalize_node)
+    builder.add_node("seed_eval", seed_eval_node)
+    builder.add_node("stage_select", stage_select_node)
+    builder.add_node("stage_dev", stage_dev_node)
+    builder.add_node("probe_fail", probe_fail_node)
 
-    builder.add_edge(START, "architect")
+    # Iteration 0 measures the seed before anything is designed against it.
+    # See config.EVALUATE_SEED for why starting at the Architect was a mistake.
+    if config.EVALUATE_SEED:
+        builder.add_edge(START, "seed_eval")
+        builder.add_edge("seed_eval", "eval_dispatch")
+    else:
+        builder.add_edge(START, "architect")
 
     builder.add_conditional_edges(
         "architect", routers.route_after_architect,
@@ -336,13 +431,19 @@ def build_graph(checkpointer: Any | None = None):
     builder.add_conditional_edges(
         "developer", routers.route_after_developer,
         {
-            "evaluate": "eval_dispatch",
+            "evaluate": "stage_select",
             "retry_developer": "infra_retry",
             "architect": "curriculum",
             "halt": "finalize",
         },
     )
     builder.add_edge("infra_retry", "developer")
+    builder.add_edge("stage_select", "eval_dispatch")
+    builder.add_edge("stage_dev", "eval_dispatch")
+    builder.add_conditional_edges(
+        "probe_fail", routers.route_after_probe_fail,
+        {"architect": "curriculum", "halt": "finalize"},
+    )
 
     # THE FAN-OUT. A conditional edge is the only place `Send` is meaningful.
     builder.add_conditional_edges(
@@ -360,7 +461,8 @@ def build_graph(checkpointer: Any | None = None):
     # The scale-up back-edge: dev slice -> full run, same nodes, same code.
     builder.add_conditional_edges(
         "judge", routers.route_after_judge,
-        {"scale_up": "scale_up", "critic": "critic", "halt": "finalize"},
+        {"scale_up": "scale_up", "critic": "critic", "halt": "finalize",
+         "stage_dev": "stage_dev", "probe_fail": "probe_fail"},
     )
     builder.add_edge("scale_up", "eval_dispatch")
 

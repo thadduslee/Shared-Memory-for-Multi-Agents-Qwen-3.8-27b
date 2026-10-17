@@ -1,0 +1,70 @@
+# 100 iterations, 5 workers, graded on ALL 579 medical checkpoints, LLM judge.
+#
+#   GATEMEM_LLM_API_KEY=sk-local-dummy-key \
+#   GATEMEM_OE_LLM_JUDGE=1 GATEMEM_OE_EVAL_FULL=1 \
+#   python gatemem_openevolve/run_evolution.py --config gatemem_openevolve/config.full.yaml
+#
+# WHAT CHANGED FROM config.local.yaml AND WHY
+# -------------------------------------------
+# * The graded set is the full 579, not the 50-checkpoint dev slice. The
+#   20-iteration run selected every parent on those 50 and overfit them: F was
+#   0.1333 on the slice and 0.1864 on the full set, and the ranking against the
+#   LangGraph artifact inverted between the two.
+# * `cascade_evaluation: false`. The cascade existed to gate 50 -> 579 at
+#   DEV_GATE_MGS. With 579 graded directly there is no second stage to gate, and
+#   leaving the threshold in place would only re-introduce the trap where a
+#   population that never clears 0.80 is selected on stage 1 forever.
+# * The judge is GateMem's LLM-as-a-judge (`llm_judge.py`), which the benchmark
+#   calls primary; the rule pass remains as the fallback and as the leak floor.
+
+max_iterations: 100
+checkpoint_interval: 5
+random_seed: 1337
+
+language: "python"
+file_suffix: ".txt"
+max_code_length: 300000
+diff_based_evolution: false
+
+llm:
+  api_base: "http://localhost:8002/v1"
+  api_key: "${GATEMEM_LLM_API_KEY}"
+  models:
+    - name: "Qwen/Qwen3.8-27B"
+      weight: 1.0
+      temperature: 0.7
+      max_tokens: 32000
+      timeout: 1800
+
+prompt:
+  template_dir: "/home/lweilun/Shared-Memory-for-Multi-Agents-Qwen-3.2-27b/gatemem_openevolve/templates"
+  system_message: "system_message"
+  num_top_programs: 2
+  num_diverse_programs: 1
+  include_artifacts: true
+  max_artifact_bytes: 24576
+  suggest_simplification_after_chars: null
+
+database:
+  # 100 iterations needs somewhere to put them; 40 would evict most of the run.
+  population_size: 120
+  num_islands: 4
+  migration_interval: 15
+  feature_dimensions: ["access_violation_rate", "forgetting_failure_rate"]
+  feature_bins: 6
+
+evaluator:
+  cascade_evaluation: false
+  # 5 Developer loops AND their judge batches share one GPU. The judge is bursty
+  # (579 calls in ~2 min) while the Developer is steady, so these contend; 5 is
+  # the number asked for, and the cost shows up as latency per wave, not as
+  # failures.
+  parallel_evaluations: 5
+  timeout: 7200
+  enable_artifacts: true
+  use_llm_feedback: false
+
+evolution_trace:
+  enabled: true
+  format: "jsonl"
+  include_prompts: true

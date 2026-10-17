@@ -189,6 +189,97 @@ def reset_dataset() -> None:
 # ======================================================================
 
 
+async def probe_evaluator(attempts: int = 3) -> bool:
+    """Does the evaluator model answer a trivial request right now?
+
+    WHY THIS EXISTS. A stage comes back degraded -- the answerer returned
+    nothing for most checkpoints -- for two reasons that call for opposite
+    responses. The endpoint is down: nothing this loop does will fix it, and
+    every further iteration would be measured against fiction, so the run must
+    halt. Or the endpoint is fine and the BUILD made its own requests
+    unservable: runs_office_generic_fixed2 iteration 17 widened the evidence
+    handed to the answerer from 8 records to a median of 74 (max 213), the
+    prompts timed out, and the run halted at iteration 17 of 20 on a design
+    that had simply failed. A one-line request answered normally tells the two
+    apart. Same route, model and client as the real answerer, so a probe that
+    succeeds proves the path the answerer uses is up.
+    """
+    if config.MOCK_MODE:
+        return True
+    if config.EVAL_TRANSPORT != "http":
+        # No cheap probe on the dsh path; keep the conservative behaviour.
+        return False
+    from llm import get_llm_client
+
+    for attempt in range(max(1, attempts)):
+        try:
+            result = await asyncio.wait_for(
+                get_llm_client().chat(
+                    route=EVALUATOR_PROFILE.route, model=config.EVALUATOR_MODEL,
+                    messages=[{"role": "user", "content": "Reply with the single word OK."}],
+                    temperature=0.0, max_tokens=8, timeout_s=60.0, role="evaluator_probe",
+                ),
+                timeout=90.0,
+            )
+            if result.ok and (result.text or "").strip():
+                return True
+        except Exception as exc:  # noqa: BLE001 - a probe must never raise
+            log.warning("evaluator probe %d/%d failed: %s", attempt + 1, attempts, exc)
+        await asyncio.sleep(5 * (attempt + 1))
+    return False
+
+
+def unservable_build_report(
+    iteration: int, n_degraded: int, n_answering: int, *,
+    kinds: dict[str, int] | None = None, prompt_chars: list[int] | None = None,
+    sample: str = "",
+) -> dict[str, Any]:
+    """The report the next Architect reads when a build passed its gates but
+    the answerer could not serve its requests.
+
+    NAMES THE CAUSE FROM THE SERVER'S OWN ERROR, measured on the requests that
+    failed: what kind of failure, how large the prompts were. The first version
+    reported the retrieval gate's record COUNT instead, and on a round whose
+    prompts ran to 1.26 million characters it told the Architect "median 8
+    records" -- the gate's number, not the answerer's.
+    """
+    kinds = dict(kinds or {})
+    sizes = sorted(int(c) for c in (prompt_chars or []) if c)
+    overflow = kinds.get("context_overflow", 0)
+    rate = (n_degraded / n_answering) if n_answering else 0.0
+    if overflow and overflow >= n_degraded // 2:
+        kind = "context_overflow"
+        what = (f"the answerer rejected {overflow} of {n_answering} requests as too long for "
+                f"its context window")
+    elif kinds.get("rejected", 0) >= max(1, n_degraded // 2):
+        kind = "rejected"
+        what = (f"the answerer rejected {kinds['rejected']} of {n_answering} requests "
+                f"(HTTP 4xx)")
+    else:
+        kind = "no_response"
+        what = (f"{n_degraded} of {n_answering} answering checkpoints ({rate:.0%}) got no "
+                f"response, while a one-line probe to the same endpoint was answered normally")
+    size_line = (
+        f"prompt size on the failed requests: median {sizes[len(sizes) // 2]:,} chars, "
+        f"p90 {sizes[int(len(sizes) * 0.9)]:,}, max {sizes[-1]:,} "
+        f"(roughly {sizes[-1] // 4:,} tokens at the top)"
+        if sizes else "prompt size on the failed requests: (not recorded)"
+    )
+    if sample:
+        size_line += f"\nthe server said: {sample[:300]}"
+    return {
+        "iteration": iteration,
+        "classification": "unservable",
+        "signature": f"evaluator-unservable-{kind}",
+        "reason": f"the build passed every gate, but {what}",
+        "classification_reason": size_line,
+        "render_error_kind": kind,
+        "gate_status": {}, "missing_gates": [], "gates_failed": [], "gates_never_ran": [],
+        "retries_used": 0, "retry_cap": 0, "exhausted": False, "pass_rate": 1.0,
+        "workspace_from": f"iter_{iteration}", "files_written": [],
+    }
+
+
 async def eval_dispatch_node(state: OrchestratorState) -> dict[str, Any]:
     """Select the checkpoints for this stage, strip them, and write the shard plan."""
     iteration = int(state.get("iteration_count", 1))
@@ -213,6 +304,16 @@ async def eval_dispatch_node(state: OrchestratorState) -> dict[str, Any]:
             if len(selected) != config.EXPECTED_DEV_CHECKPOINTS:
                 log.warning("dev slice is %d checkpoints, expected %d",
                             len(selected), config.EXPECTED_DEV_CHECKPOINTS)
+        elif stage == "probe":
+            # A fixed, stratified subset OF THE DEV SLICE: the same checkpoints
+            # every round (same seed), so probe scores are comparable across
+            # iterations, and never outside what the full stage will measure.
+            selected = select_dev_slice(
+                select_dev_slice(dataset.checkpoints, n=config.EXPECTED_DEV_CHECKPOINTS,
+                                 seed=config.DEV_SLICE_SEED),
+                n=min(config.PROBE_CHECKPOINTS, config.EXPECTED_DEV_CHECKPOINTS),
+                seed=config.DEV_SLICE_SEED,
+            )
         else:
             selected = sorted(dataset.checkpoints, key=lambda cp: cp["checkpoint_id"])
 
@@ -527,6 +628,7 @@ async def _run_retrieval_shard(shard: dict[str, Any]) -> list[dict[str, Any]]:
         **os.environ,
         "GATEMEM_ORCHESTRATOR_ROOT": str(config.PROJECT_ROOT),
         "PYTHONDONTWRITEBYTECODE": "1",
+        **config.memory_llm_env(),
         "PYTHONPATH": os.pathsep.join(
             p for p in (str(workspace), os.environ.get("PYTHONPATH", "")) if p
         ),
@@ -542,7 +644,9 @@ async def _run_retrieval_shard(shard: dict[str, Any]) -> list[dict[str, Any]]:
         "checkpoint_ids": shard["checkpoint_ids"],
     }).encode()
     try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(payload), timeout=600)
+        stdout, stderr = await asyncio.wait_for(
+            process.communicate(payload), timeout=config.EVAL_SHARD_TIMEOUT_S
+        )
     except asyncio.TimeoutError:
         process.kill()
         await process.wait()
@@ -558,6 +662,27 @@ async def _run_retrieval_shard(shard: dict[str, Any]) -> list[dict[str, Any]]:
         f"retrieval shard {shard['shard_index']} produced no result\n"
         f"{stderr.decode('utf-8', 'replace')[-2000:]}"
     )
+
+
+def split_agent_debug(agent_debug: Any) -> dict[str, Any]:
+    """The agent's debug, as the Judge and Critic read it.
+
+    Seed agents return flat counters (`{"n_allowed": ...}`); the task template's
+    contract is `{"retrieval": {...}, "memory_llm": {...}}`. Nesting the latter
+    whole under `retrieval` -- as this did for every task-template run -- hid
+    every counter one level too deep: the Critic printed `allowed=?` for all
+    cited checkpoints and the Judge's buckets saw `n_allowed=0` everywhere, and
+    the memory model's usage was invisible.
+    """
+    if not isinstance(agent_debug, dict):
+        return {"retrieval": {}}
+    inner = agent_debug.get("retrieval")
+    if isinstance(inner, dict):
+        out: dict[str, Any] = {"retrieval": inner}
+        if isinstance(agent_debug.get("memory_llm"), dict):
+            out["memory_llm"] = agent_debug["memory_llm"]
+        return out
+    return {"retrieval": agent_debug}
 
 
 async def _render_answer(record: dict[str, Any], phase: str) -> tuple[dict[str, Any], dict[str, int]]:
@@ -595,14 +720,19 @@ async def _render_answer(record: dict[str, Any], phase: str) -> tuple[dict[str, 
     # BENCHMARK_PROMPTS=local to get the hand-written pair back for a run whose
     # numbers are not meant to be compared with the paper.
     if config.BENCHMARK_PROMPTS == "gatemem":
-        from prompts_gatemem import render_query_prompt
+        from prompts_gatemem import format_memory_block, render_query_prompt
 
         system_prompt, task = render_query_prompt(record)
+        evidence_lines = format_memory_block(record.get("evidence"))
     else:
         system_prompt = EVALUATOR_PROFILE.system_prompt
         task = _local_query_prompt(record, phase, evidence_lines, asker)
 
-    return await _call_answerer(record, system_prompt, task)
+    output, usage = await _call_answerer(record, system_prompt, task)
+    # What the answerer was shown, as rendered. Paired with `answerer_reply`
+    # this is the whole exchange at the memory/answerer boundary.
+    output["evidence_block"] = evidence_lines[: config.CRITIC_EXCERPT_CHARS]
+    return output, usage
 
 
 def _local_query_prompt(
@@ -620,6 +750,26 @@ requester; answer from it and keep its specifics verbatim: {'(none)' if evidence
 {evidence_lines}
 
 Respond with exactly one ```json fenced block."""
+
+def _is_context_overflow(error: str) -> bool:
+    """Did the server reject the request for being too long to fit its context?"""
+    low = (error or "").lower()
+    return ("maximum context length" in low or "context length" in low
+            or "input_tokens" in low or "too many tokens" in low
+            or "prompt is too long" in low)
+
+
+def _render_error_kind(error: str) -> str:
+    """One word for what stopped an answer, for counters and the Architect."""
+    if not error:
+        return "no_response"
+    if _is_context_overflow(error):
+        return "context_overflow"
+    low = error.lower()
+    if "http 4" in low:
+        return "rejected"
+    return "no_response"
+
 
 async def _call_answerer(
     record: dict[str, Any], system_prompt: str, task: str
@@ -643,8 +793,11 @@ async def _call_answerer(
     # `answer` is the joined raw record bodies, which biases A and F upward
     # precisely because unredacted content is what a leak check looks for.
     text, usage, ok = "", {}, False
+    last_error = ""
     attempts = max(1, config.EVAL_RENDER_ATTEMPTS)
+    made = 0
     for attempt in range(attempts):
+        made = attempt + 1
         async with _semaphore():
             if config.EVAL_TRANSPORT == "http":
                 from llm import get_llm_client
@@ -656,9 +809,11 @@ async def _call_answerer(
                     ) + [{"role": "user", "content": task}],
                     temperature=EVALUATOR_PROFILE.temperature,
                     max_tokens=EVALUATOR_PROFILE.max_tokens,
+                    timeout_s=config.EVALUATOR_TIMEOUT_S,
                     role="evaluator",
                 )
                 text, usage, ok = result.text, result.usage, result.ok
+                last_error = str(result.error or "") if not ok else ""
             else:
                 # The persona travels in the profile on this transport, so the
                 # rendered system half has to be substituted into it rather than
@@ -672,7 +827,13 @@ async def _call_answerer(
                     int(config.DSH_DEFAULT_TIMEOUT_S),
                 )
                 text, usage, ok = dsh.text, dsh.usage, dsh.ok
+                last_error = str(dsh.error or "") if not ok else ""
         if ok:
+            break
+        if _is_context_overflow(last_error):
+            # THE SAME REQUEST FAILS THE SAME WAY. A context-length rejection
+            # is a property of the prompt, not of the moment; runs_office_
+            # generic_fixed2 spent 292 x 3 attempts (~10 min per round) on it.
             break
         if attempt + 1 < attempts:
             ceiling = config.EVAL_RETRY_BASE_S * (2 ** attempt)
@@ -680,9 +841,12 @@ async def _call_answerer(
 
     if not ok:
         log.warning(
-            "render %s: no model response after %d whole-call attempt(s); "
+            "render %s: %s after %d whole-call attempt(s); "
             "falling back to raw evidence (this prediction is NOT model-written)",
-            record.get("checkpoint_id", "?"), attempts,
+            record.get("checkpoint_id", "?"),
+            ("request rejected as too long for the model's context" if _is_context_overflow(last_error)
+             else (f"request rejected ({last_error[:80]})" if last_error else "no model response")),
+            made,
         )
         # The retrieval layer's own decision is a safe fallback for ONE
         # checkpoint: it already applied every gate, and its `answer` is the
@@ -703,6 +867,12 @@ async def _call_answerer(
         return {"action": record.get("action", "refuse"),
                 "answer": str(record.get("answer") or ""),
                 "degraded": True,
+                # WHY, in the fallback itself. The 400 the server sent back was
+                # dropped on the floor for two degraded rounds; "did not
+                # respond" then sent me hunting for an outage that never was.
+                "render_error": last_error[:400],
+                "render_error_kind": _render_error_kind(last_error),
+                "prompt_chars": len(system_prompt or "") + len(task or ""),
                 "used_record_ids": record.get("used_record_ids", [])}, usage
 
     parsed = extract_json_block(text) or {}
@@ -718,6 +888,10 @@ async def _call_answerer(
         "answer": answer,
         "answer_structured": parsed.get("answer_structured") or {},
         "used_record_ids": parsed.get("used_record_ids") or record.get("used_record_ids", []),
+        # THE ANSWERER'S OWN WORDS, kept so the Critic can read why a cleared
+        # record was withheld instead of inferring it from a counter. Bounded;
+        # the full reply is not needed to see a refusal.
+        "answerer_reply": text[: config.CRITIC_EXCERPT_CHARS],
     }, usage
 
 
@@ -772,6 +946,9 @@ async def eval_worker_node(shard: WorkerState) -> dict[str, Any]:
         # numbers about to be computed describe the system you think they do.
         n_answering = 0
         n_degraded = 0
+        kinds: dict[str, int] = {"no_response": 0, "context_overflow": 0, "rejected": 0}
+        degraded_chars: list[int] = []
+        error_sample = ""
         for record in records:
             if record.get("error"):
                 errors.append(record)
@@ -780,7 +957,12 @@ async def eval_worker_node(shard: WorkerState) -> dict[str, Any]:
                 output, usage = await _render_answer(record, phase)
                 usages.append(usage)
                 n_answering += 1
-                n_degraded += int(bool(output.get("degraded")))
+                if output.get("degraded"):
+                    n_degraded += 1
+                    kinds[str(output.get("render_error_kind") or "no_response")] += 1
+                    degraded_chars.append(int(output.get("prompt_chars") or 0))
+                    if not error_sample and output.get("render_error"):
+                        error_sample = str(output["render_error"])
             else:
                 # refuse / no_memory need no generation: the text is fixed by
                 # policy, and sending them to the model would only create an
@@ -797,7 +979,7 @@ async def eval_worker_node(shard: WorkerState) -> dict[str, Any]:
                 answer_structured=output.get("answer_structured"),
                 used_record_ids=output.get("used_record_ids"),
                 debug={"shard": index, "phase": phase,
-                       "retrieval": record.get("debug", {})},
+                       **split_agent_debug(record.get("debug", {}))},
             ))
 
         stage_path.mkdir(parents=True, exist_ok=True)
@@ -818,6 +1000,9 @@ async def eval_worker_node(shard: WorkerState) -> dict[str, Any]:
             "n_errors": len(errors),
             "n_answering": n_answering,
             "n_render_degraded": n_degraded,
+            "render_error_kinds": kinds,
+            "degraded_prompt_chars": degraded_chars,
+            "render_error_sample": error_sample,
             "path": str(shard_file),
             "phase_checkpoint_ids": shard.get("phase_checkpoint_ids", []),
             "duration_s": round(time.monotonic() - started, 3),
@@ -960,6 +1145,38 @@ async def eval_collect_node(state: OrchestratorState) -> dict[str, Any]:
             "n_render_degraded": n_degraded,
             "node_timings": [span],
         }
+        if degraded:
+            kinds: dict[str, int] = {}
+            chars: list[int] = []
+            sample = ""
+            for r in results:
+                if not r.get("ok"):
+                    continue
+                for k, v in (r.get("render_error_kinds") or {}).items():
+                    kinds[k] = kinds.get(k, 0) + int(v)
+                chars.extend(int(c) for c in (r.get("degraded_prompt_chars") or []))
+                sample = sample or str(r.get("render_error_sample") or "")
+            update["render_error_kinds"] = kinds
+            # A request the server REJECTED proves the server is up; only a
+            # silent failure needs a probe to tell an outage from a bad build.
+            rejected = kinds.get("context_overflow", 0) + kinds.get("rejected", 0)
+            reachable = rejected >= max(1, n_degraded // 2) or await probe_evaluator()
+            update["evaluator_reachable"] = reachable
+            span["evaluator_reachable"] = reachable
+            if reachable:
+                report = unservable_build_report(
+                    iteration, n_degraded, n_answering, kinds=kinds, prompt_chars=chars, sample=sample,
+                )
+                update["dev_failure_report"] = report
+                update["dev_failure_history"] = [
+                    {"iteration": iteration, "signature": report["signature"]}
+                ]
+                log.error(
+                    "iter=%d: the evaluator endpoint answers a probe normally, so THIS BUILD "
+                    "made the answerer's requests unservable (%s). Treating it as a failed "
+                    "round: no score, roll back to the champion, report to the Architect.",
+                    iteration, report["classification_reason"],
+                )
         if breaker.is_tripped:
             update["failure_signature"] = breaker.tripped_signature
             update["halt_reason"] = (

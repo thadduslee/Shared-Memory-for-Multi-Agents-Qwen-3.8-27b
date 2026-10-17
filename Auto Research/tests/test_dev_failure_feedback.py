@@ -208,19 +208,21 @@ def _report(**overrides):
 
 def test_the_report_names_the_unmet_gates_and_the_tool_that_sets_each() -> None:
     report = _report()
-    assert report["missing_gates"] == ["tests_ok", "migration_ok"]
+    assert report["missing_gates"] == ["tests_ok", "migration_ok", "smoke_ok"]
     assert report["gate_tools"]["tests_ok"] == "run_tests"
+    assert report["gate_tools"]["smoke_ok"] == "run_sandbox_smoke_test"
     assert report["exhausted"] is True
 
 
-def test_advisory_gates_are_never_reported_as_unmet() -> None:
-    """`smoke_ok` is false here and must not appear.
+def test_the_smoke_gate_is_reported_and_the_linter_is_not() -> None:
+    """`smoke_ok` is false here and MUST appear; `lint_ok` must not.
 
-    A style or smoke finding never blocked the build (see the exit-condition
-    note at the top of nodes/developer.py), so listing it as a reason the build
-    failed would send the Architect after a problem that does not exist.
+    Smoke became a mandatory gate after the office reruns: it is the one gate
+    that answers a real checkpoint end to end, and while it was advisory a
+    build could go green having never produced an answer. A style finding
+    still never blocks the build, so it is still not a reason the build failed.
     """
-    assert "smoke_ok" not in _report()["missing_gates"]
+    assert "smoke_ok" in _report()["missing_gates"]
     assert "lint_ok" not in _report()["missing_gates"]
 
 

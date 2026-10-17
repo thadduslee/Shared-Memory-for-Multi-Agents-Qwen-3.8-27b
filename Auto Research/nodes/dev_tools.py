@@ -16,6 +16,7 @@ from __future__ import annotations
 import ast
 import asyncio
 import difflib
+import hashlib
 import json
 import logging
 import os
@@ -70,12 +71,14 @@ TOOL_SCHEMAS: tuple[dict[str, Any], ...] = (
         "function": {
             "name": "read_file",
             "description": (
-                "Read a file from the workspace, one window of lines at a time. Returns up "
-                "to 220 lines starting at `offset`, and ends with a footer giving the line "
-                "range, the file's total line count, and the exact call that fetches the "
-                "next window. READ THE WHOLE FILE BEFORE EDITING IT: apply_patch matches "
-                "text exactly, so a search block recalled from a partial read will not "
-                "match. Never dump source to disk from a test to work around this."
+                "Read a file from the workspace. By default it returns the WHOLE file "
+                "(up to 1500 lines); `offset` and `limit` select a window. The footer "
+                "gives the line range, the total line count and, when a file was too "
+                "large for one window, the exact call that fetches the rest. A file you "
+                "have already read this episode and not changed since is noted as such "
+                "in the footer -- re-reading it buys nothing. apply_patch matches text "
+                "exactly, so edit from a full read. Never dump source to disk from a "
+                "test to work around this."
             ),
             "parameters": {
                 "type": "object",
@@ -87,7 +90,7 @@ TOOL_SCHEMAS: tuple[dict[str, Any], ...] = (
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "How many lines to return. Default and maximum 220.",
+                        "description": "How many lines to return. Default and maximum 1500.",
                     },
                 },
                 "required": ["path"],
@@ -416,9 +419,17 @@ class DevToolbox:
     #: Lines returned by one `read_file` call when `limit` is not given. Chosen
     #: so the 532-line template `store.py` is four calls, not sixteen chunk
     #: files smuggled out through a deliberately-failing test.
-    READ_FILE_LINES = 220
+    # WHOLE FILES BY DEFAULT. The window used to be 220 lines with a 14k
+    # character cap, which turned reading the 45k-character store.py into four
+    # calls -- and the Developer read it again after every edit. Over
+    # runs_*_generic_rerun2, 79% of all Developer turns were read_file and 80%
+    # of those re-read a path already read in the same episode; the 60-turn
+    # ceiling then ended 14 of 16 failed episodes with retries still unused.
+    # A window that holds any file in the workspace makes one read one turn.
+    # `offset`/`limit` still work for a model that wants a slice.
+    READ_FILE_LINES = 1_500
     #: Hard character cap on one window, so a minified line cannot blow context.
-    READ_FILE_MAX_CHARS = 14_000
+    READ_FILE_MAX_CHARS = 80_000
 
     def __init__(self, workspace: Path, migration_sql: str = "", iteration: int = 1) -> None:
         self.workspace = Path(workspace).resolve()
@@ -426,6 +437,9 @@ class DevToolbox:
         self.migration_sql = migration_sql
         self.iteration = iteration
         self.files_written: set[str] = set()
+        #: path -> sha1 of the content the Developer last saw, so a repeat read
+        #: of an unchanged file can be labelled as one. See `_t_read_file`.
+        self._read_digests: dict[str, str] = {}
         #: Set when the Developer supplies its own migration through `sql_exec`.
         self.migration_overridden = False
         self._baseline = self._load_or_write_baseline()
@@ -516,6 +530,21 @@ class DevToolbox:
     # path safety
     # ------------------------------------------------------------------
 
+    #: Files the Developer may read but never write. Enforcement that the code
+    #: it constrains could edit is not enforcement; see memory_system/keyring.py.
+    PROTECTED_FILES: frozenset[str] = frozenset({"memory_system/keyring.py", "memory_system/llm.py"})
+
+    def _refuse_if_protected(self, rel_path: str, tool: str) -> ToolResult | None:
+        rel = str(rel_path).lstrip("/").replace("\\", "/")
+        if rel in self.PROTECTED_FILES:
+            return ToolResult(
+                False, tool,
+                stderr=(f"{rel} is frozen: it is part of the harness (the keyring's enforcement, "
+                        "the budgeted model call) and is not the Developer's to change. Change "
+                        "what the memory system does with it, not how it works."),
+            )
+        return None
+
     def _resolve(self, rel_path: str) -> Path:
         """Resolve inside the workspace, or raise.
 
@@ -598,7 +627,15 @@ class DevToolbox:
             window = body.splitlines(keepends=True)
         last = offset + len(window) - 1
 
+        digest = hashlib.sha1(text.encode("utf-8")).hexdigest()
+        unchanged = self._read_digests.get(rel) == digest
+        self._read_digests[rel] = digest
+
         footer = f"\n--- {rel}: lines {offset}-{last} of {total} ({len(text)} chars total)"
+        if unchanged:
+            # Not withheld -- the content is above -- but named, so the model
+            # can see it has spent a turn on something it already had.
+            footer += ". UNCHANGED since you last read it this episode"
         if last < total:
             footer += (
                 f'. NOT THE WHOLE FILE. Read the next part with '
@@ -640,6 +677,12 @@ class DevToolbox:
     REWRITE_GUARD_MIN_RATIO = 0.75
 
     async def _t_write_file(self, args: dict[str, Any]) -> ToolResult:
+        refused = self._refuse_if_protected(str(args.get("path", "")), "write_file")
+        if refused:
+            return refused
+        return await self._t_write_file_unguarded(args)
+
+    async def _t_write_file_unguarded(self, args: dict[str, Any]) -> ToolResult:
         """Write a file, refusing a full rewrite that would silently lose content.
 
         WHY THE GUARD EXISTS (observed, runs_verify3). The Developer replaced the
@@ -736,6 +779,12 @@ class DevToolbox:
         )
 
     async def _t_apply_patch(self, args: dict[str, Any]) -> ToolResult:
+        refused = self._refuse_if_protected(str(args.get("path", "")), "apply_patch")
+        if refused:
+            return refused
+        return await self._t_apply_patch_unguarded(args)
+
+    async def _t_apply_patch_unguarded(self, args: dict[str, Any]) -> ToolResult:
         """Apply a unified diff, or a search/replace block.
 
         A hand-rolled hunk applier rather than shelling out to `patch(1)`,
@@ -826,7 +875,7 @@ class DevToolbox:
         full_suite = target.strip().rstrip("/") in {"", ".", "tests"}
         code, out, err = await _run(
             [sys.executable, "-m", "pytest", target, "-q", "--no-header", "-p", "no:cacheprovider"],
-            cwd=self.workspace, timeout=300,
+            cwd=self.workspace, timeout=600, env_extra=self._memory_env(),
         )
         note = "" if full_suite else (
             f"\n[note] `{target}` is part of the suite, not the suite, so this run does "
@@ -839,13 +888,150 @@ class DevToolbox:
                                     "full_suite": full_suite})
         passed, failed = _parse_pytest_counts(out + err)
         total = passed + failed
+
+        # THE CONTRACT IS THE SEED'S TESTS. The whole suite ran above and is
+        # reported in full, but only the test files the seed shipped decide
+        # `tests_ok`. Tests the loop wrote for itself are advisory. Without this
+        # a self-authored assertion becomes a ratchet: a later, legitimate
+        # change falsifies it, the gate goes red, and the episode burns its
+        # retries on a test that was never part of the specification --
+        # runs_office_generic_v3 did exactly that for five straight iterations.
+        # A seed test file the Developer DELETED counts as a failure, or the
+        # cheapest way to pass would be `rm`.
+        contract_ok = code == 0
+        contract_note = ""
+        if full_suite:
+            contract_files, missing = self._contract_test_files()
+            if missing:
+                contract_ok = False
+                contract_note = (
+                    f"\n[gate] contract test file(s) missing from tests/: {sorted(missing)}. "
+                    "The seed's tests are the specification; restore them."
+                )
+            elif contract_files and code != 0:
+                ccode, cout, cerr = await _run(
+                    [sys.executable, "-m", "pytest", *contract_files, "-q", "--no-header",
+                     "-p", "no:cacheprovider"],
+                    cwd=self.workspace, timeout=600, env_extra=self._memory_env(),
+                )
+                cpassed, cfailed = _parse_pytest_counts(cout + cerr)
+                contract_ok = ccode == 0
+                contract_note = (
+                    f"\n[gate] contract tests (the seed's {len(contract_files)} files): "
+                    f"{'PASS' if contract_ok else 'FAIL'} ({cpassed} passed, {cfailed} failed). "
+                    + ("The failures above are in tests this loop wrote for itself; they "
+                       "are advisory and do not block tests_ok, but fix or delete a test "
+                       "that no longer describes the code."
+                       if contract_ok else
+                       "These decide tests_ok.")
+                )
+        adaptivity: dict[str, Any] = {}
+        if full_suite and contract_ok:
+            adaptivity = await self._adaptivity_checks()
+            if adaptivity.get("ran") and not adaptivity.get("ok"):
+                contract_ok = False
+            contract_note += adaptivity.get("note", "")
         return ToolResult(
-            code == 0, "run_tests", stdout=out[-6000:] + note, stderr=err[-2000:],
+            code == 0, "run_tests",
+            stdout=out[-6000:] + note + contract_note, stderr=err[-2000:],
             stack_trace=out if code != 0 else "",
             data={"passed": passed, "failed": failed,
                   "pass_rate": (passed / total) if total else 0.0,
-                  "full_suite": full_suite},
+                  "full_suite": full_suite, "contract_ok": contract_ok,
+                  "adaptivity": {k: v for k, v in adaptivity.items() if k != "note"}},
         )
+
+    def _memory_env(self) -> dict[str, str]:
+        """The memory model's endpoint, for a task template run for real."""
+        if config.MOCK_MODE or not config.task_template():
+            return {}
+        return config.memory_llm_env()
+
+    async def _adaptivity_checks(self) -> dict[str, Any]:
+        """Run the held-out adaptivity checks against this workspace.
+
+        The source lives outside the workspace and is copied to a temp dir for
+        the run; the Developer is told which checks failed and what each family
+        tests, never the phrasings. See harness_checks/test_adaptivity.py.
+        """
+        env = self._memory_env()
+        src = Path(config.ADAPTIVITY_CHECKS)
+        if not env.get("MEMORY_LLM_BASE_URL") or not src.is_file() or config.ADAPTIVITY_MIN_PASS <= 0:
+            return {"ran": False}
+        tmp = Path(tempfile.mkdtemp(prefix="gm_adapt_"))
+        try:
+            (tmp / "test_adaptivity.py").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+            code, out, err = await _run(
+                [sys.executable, "-m", "pytest", str(tmp / "test_adaptivity.py"), "-q", "--tb=no",
+                 "-rA", "--no-header", "-p", "no:cacheprovider", f"--rootdir={tmp}"],
+                cwd=self.workspace, timeout=900, env_extra=env,
+            )
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        passed, failed = _parse_pytest_counts(out + err)
+        total = passed + failed
+        if total == 0:
+            return {"ran": False, "note": "\n[adaptivity] held-out checks did not run (skipped or "
+                                          f"collection error): {(out + err)[-400:]}"}
+        rate = passed / total
+        per_family: dict[str, list[int]] = {}
+        for m in re.finditer(r"^(PASSED|FAILED) \S*::(test_\w+)\[", out, re.MULTILINE):
+            counts = per_family.setdefault(m.group(2), [0, 0])
+            counts[0 if m.group(1) == "PASSED" else 1] += 1
+        zero_families = sorted(f for f, (p, _f) in per_family.items() if p == 0)
+        ok = rate >= float(config.ADAPTIVITY_MIN_PASS) and not (
+            config.ADAPTIVITY_EVERY_FAMILY and zero_families
+        )
+        failing = sorted(f for f, (_p, fl) in per_family.items() if fl) or \
+            sorted({m.group(1) for m in re.finditer(r"::(test_\w+)\[", out)})
+        families = {
+            "test_consent_by_paraphrase": "a turn grants a principal with no declared relationship access "
+                                          "to one thing (and only that thing), phrased without keywords",
+            "test_revocation_by_paraphrase": "a turn ends a declared holder's access, phrased without keywords",
+            "test_supersession_by_paraphrase": "a turn replaces a known value; the new one must be released "
+                                               "and ranked first",
+            "test_reference_by_name_reaches_the_holder": "turns name things by NAME, not by the declared id "
+                                                         "(id `proj_x`, text says `X`); the holder must still get them",
+            "test_reference_by_name_does_not_cross_nested_names": "two names where one contains the other "
+                                                                  "(`X` / `Xmark`) must not be confused",
+            "test_consent_naming_people_by_display_name": "a consent turn names the grantee by their display "
+                                                          "name or first name, not their id",
+        }
+        detail = "".join(f"\n   - {name}: {families.get(name, '')}" for name in failing)
+        family_line = ", ".join(f"{f.removeprefix('test_')} {p}/{p + fl}"
+                                for f, (p, fl) in sorted(per_family.items()))
+        note = (f"\n[adaptivity] held-out checks (unseen vocabularies, paraphrased, memory model ON): "
+                f"{passed}/{total} passed ({family_line}); the gate needs {config.ADAPTIVITY_MIN_PASS:.0%} "
+                + ("AND at least one pass in every family. " if config.ADAPTIVITY_EVERY_FAMILY else ". ")
+                + (f"Families with ZERO passes: {', '.join(zero_families)}. " if zero_families else "")
+                + ("PASS." if ok else "FAIL -- tests_ok stays false.")
+                + (f" Failing families:{detail}" if failing else "")
+                + ("\n   These phrase structural changes the way people do; keyword rules pass the "
+                   "workspace tests and fail these. Reading the turn with `llm.complete` is the "
+                   "intended lever." if not ok else ""))
+        return {"ran": True, "ok": ok, "passed": passed, "total": total,
+                "zero_families": zero_families, "note": note}
+
+    def _contract_test_files(self) -> tuple[list[str], set[str]]:
+        """The seed's test files as they exist in this workspace, and any missing.
+
+        The seed is whatever `config.TEMPLATES_DIR/tests` holds -- no file is
+        named here, so a different seed brings a different contract.
+        """
+        seed_dir = Path(config.TEMPLATES_DIR) / "tests"
+        if not seed_dir.is_dir():
+            return [], set()
+        names = sorted(p.name for p in seed_dir.glob("test_*.py"))
+        present = [f"tests/{n}" for n in names if (self.workspace / "tests" / n).is_file()]
+        # "Missing" means it was here when the episode STARTED and is gone now --
+        # the `rm` case. A workspace that never carried a seed file (a test
+        # fixture, or a seed that ships no tests) simply has no contract for it,
+        # and the pytest result decides as before.
+        missing = {
+            n for n in names
+            if f"tests/{n}" in self._baseline and not (self.workspace / "tests" / n).is_file()
+        }
+        return present, missing
 
     async def _t_run_linter(self, args: dict[str, Any]) -> ToolResult:
         """`ruff` if present, otherwise a real (if smaller) AST-based check.
@@ -880,8 +1066,10 @@ class DevToolbox:
         be able to corrupt a store the evaluator is about to use.
         """
         schema_path = self._resolve("memory_system/schema.sql")
-        if not schema_path.is_file():
-            return ToolResult(False, "sql_exec", stderr="memory_system/schema.sql does not exist yet")
+        # No schema.sql is not a failure: on a task template the system owns
+        # its schema in code, and the gate then checks only that the migration
+        # itself runs -- against an empty scratch database.
+        schema_sql = schema_path.read_text(encoding="utf-8") if schema_path.is_file() else ""
         # KEY PRESENCE, not truthiness. `{"migration_sql": ""}` is the documented
         # way to say "this iteration needs no migration", and treating the empty
         # string as absent would silently fall back to the Architect's script --
@@ -915,7 +1103,8 @@ class DevToolbox:
         failed_statement = ""
         try:
             conn = sqlite3.connect(str(scratch))
-            conn.executescript(schema_path.read_text(encoding="utf-8"))
+            if schema_sql:
+                conn.executescript(schema_sql)
             applied = 0
             if migration.strip():
                 # Statement at a time so the error message names the statement
@@ -933,7 +1122,9 @@ class DevToolbox:
             conn.close()
             return ToolResult(
                 True, "sql_exec",
-                stdout=f"schema created; {applied} migration statement(s) applied\n"
+                stdout=("schema created; " if schema_sql else
+                        "no memory_system/schema.sql (schema lives in code); ")
+                       + f"{applied} migration statement(s) applied\n"
                        f"tables: {tables}\nindexes: {indexes}",
                 data={"tables": tables, "indexes": indexes, "applied": applied},
             )
@@ -974,7 +1165,7 @@ class DevToolbox:
             [sys.executable, str(runner), str(n)], cwd=self.workspace, timeout=180,
             env_extra={"GATEMEM_ORCHESTRATOR_ROOT": str(config.PROJECT_ROOT),
                        "MOCK_MODE": "true" if config.MOCK_MODE else "false",
-                       "GATEMEM_REPO": str(config.GATEMEM_REPO)},
+                       "GATEMEM_REPO": str(config.GATEMEM_REPO), **self._memory_env()},
         )
         payload: dict[str, Any] = {}
         for line in out.splitlines():

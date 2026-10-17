@@ -33,7 +33,7 @@ def _finish_state(**gates):
         "thought": "all gates green",
         "action": {"tool": "finish"},
         "observation": {"tool": "finish", "ok": True, "text": "All gates verified green"},
-        "compile_ok": True, "tests_ok": True, "migration_ok": True, **gates,
+        "compile_ok": True, "tests_ok": True, "migration_ok": True, "smoke_ok": True, **gates,
     }
 
 
@@ -44,7 +44,8 @@ def _finish_state(**gates):
 
 @pytest.mark.parametrize(
     ("flag", "tool"),
-    [("compile_ok", "compile_check"), ("tests_ok", "run_tests"), ("migration_ok", "sql_exec")],
+    [("compile_ok", "compile_check"), ("tests_ok", "run_tests"), ("migration_ok", "sql_exec"),
+     ("smoke_ok", "run_sandbox_smoke_test")],
 )
 async def test_rejection_names_the_missing_tool(flag, tool):
     out = await dev_observe(_finish_state(**{flag: False}))

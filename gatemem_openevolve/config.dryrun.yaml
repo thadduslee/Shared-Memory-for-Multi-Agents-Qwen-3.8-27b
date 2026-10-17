@@ -1,0 +1,63 @@
+# Dry-run overlay: the same evolution against `dryrun_server.py`, no model.
+#
+# Everything here is identical to config.yaml except the endpoint, the iteration
+# budget and the worker count. It is a SEPARATE FILE rather than a set of env
+# overrides because OpenEvolve only substitutes `${VAR}` into `api_key`, so an
+# `api_base` from the environment is not a thing this framework can do.
+#
+#   python gatemem_openevolve/dryrun_server.py --port 8115          # terminal 1
+#   GATEMEM_LLM_API_KEY=dryrun python openevolve/openevolve-run.py \
+#     gatemem_openevolve/initial_program.txt \
+#     gatemem_openevolve/evaluator.py \
+#     --config gatemem_openevolve/config.dryrun.yaml --iterations 2
+
+max_iterations: 2
+checkpoint_interval: 1
+random_seed: 1337
+
+language: "python"
+file_suffix: ".txt"
+max_code_length: 200000
+diff_based_evolution: true
+
+llm:
+  api_base: "http://127.0.0.1:8115/v1"
+  api_key: "${GATEMEM_LLM_API_KEY}"
+  models:
+    - name: "dryrun"
+      weight: 1.0
+      temperature: 0.0
+      max_tokens: 4000
+      timeout: 60
+      retries: 1
+
+prompt:
+  template_dir: "/home/lweilun/Shared-Memory-for-Multi-Agents-Qwen-3.2-27b/gatemem_openevolve/templates"
+  system_message: "system_message"
+  num_top_programs: 2
+  num_diverse_programs: 1
+  include_artifacts: true
+  max_artifact_bytes: 24576
+  suggest_simplification_after_chars: null
+
+database:
+  population_size: 40
+  num_islands: 3
+  migration_interval: 10
+  feature_dimensions: ["access_violation_rate", "forgetting_failure_rate"]
+  feature_bins: 5
+
+evaluator:
+  # Dev slice only. The dry run is about the plumbing, and paying for 579
+  # checkpoints to learn that a diff applied is a poor trade.
+  cascade_evaluation: true
+  cascade_thresholds: [0.80]
+  parallel_evaluations: 2
+  timeout: 1800
+  enable_artifacts: true
+  use_llm_feedback: false
+
+evolution_trace:
+  enabled: true
+  format: "jsonl"
+  include_prompts: true

@@ -36,7 +36,10 @@ import config
 log = logging.getLogger("orchestrator.llm")
 
 # Status codes worth retrying: rate limit, and the transient server-side family.
-RETRYABLE_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
+# 520-524 and 529 are Cloudflare origin errors and overload: OpenRouter relays
+# them when a pinned provider hiccups ("Provider returned error", code 520 from
+# DeepInfra ended the harnessA medical run at iteration 8, 2026-09-28).
+RETRYABLE_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529})
 
 # 402 IS TWO DIFFERENT ERRORS WEARING ONE STATUS CODE, and telling them apart is
 # worth a whole run.
@@ -294,7 +297,7 @@ class AsyncLLMClient:
             # can now be served by a second vLLM under the route name "agent",
             # and a literal-name check silently skipped the thinking-disable
             # there -- the same class of bug as the bare "qwen3.8-27b" slug.
-            template_kwargs = config.vllm_chat_template_kwargs(model)
+            template_kwargs = config.vllm_chat_template_kwargs(model, role)
             if template_kwargs:
                 payload["chat_template_kwargs"] = template_kwargs
 

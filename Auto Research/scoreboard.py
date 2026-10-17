@@ -172,6 +172,53 @@ def best_of(state: Any, stage: str = CHAMPION_STAGE) -> tuple[float, int]:
     return float(row.get("MGS") or 0.0), int(row.get("iteration") or 0)
 
 
+def champion_probe(state: Any) -> tuple[float, int]:
+    """`(probe_mgs, iteration)` of the CHAMPION -- the bar a new probe is held to.
+
+    Not the best probe ever seen. A build can score high on the 40-checkpoint
+    probe and then collapse on the full slice (medical keyed run, iteration 11:
+    probe 0.6154, dev 0.3972, rolled back); its probe score is then a number
+    about a build the loop rejected, and holding every later build to it
+    failed nine rounds in a row by 0.008. The champion is the build the next
+    workspace is copied from, so its probe score is the only fair baseline.
+    0.0 when there is no champion, or the champion was never probed (the seed).
+    """
+    history = _history(state)
+    champion = best_row(history)
+    if champion is None:
+        return 0.0, 0
+    iteration = int(champion.get("iteration") or 0)
+    for row in rows_for_stage(history, "probe", comparable_only=True):
+        if int(row.get("iteration") or 0) == iteration:
+            return float(row.get("MGS") or 0.0), iteration
+    return 0.0, 0
+
+
+def probe_tolerance(state: Any) -> float:
+    """How far below the champion's probe score a new probe may fall and still
+    earn a full evaluation: the configured floor, or twice the median measured
+    |probe - dev| gap on iterations that have both, whichever is larger.
+
+    A fixed 0.10 assumed the 40-checkpoint probe tracks the full slice. On the
+    office adaptive run it read 0.05-0.37 HIGH (iteration 7: probe 0.818, dev
+    0.453), a champion with a lucky probe set a bar nothing could reach, and 14
+    of 20 iterations -- including every office build that used the memory
+    model -- were discarded unmeasured.
+    """
+    import statistics
+
+    history = _history(state)
+    probe = {int(r.get("iteration") or 0): float(r.get("MGS") or 0.0)
+             for r in rows_for_stage(history, "probe", comparable_only=True)}
+    dev = {int(r.get("iteration") or 0): float(r.get("MGS") or 0.0)
+           for r in rows_for_stage(history, comparable_only=True)}
+    gaps = [abs(probe[i] - dev[i]) for i in probe if i in dev]
+    floor = float(config.PROBE_TOLERANCE)
+    if not gaps:
+        return floor
+    return max(floor, 2.0 * statistics.median(gaps))
+
+
 def _history(state: Any) -> list[dict[str, Any]]:
     """`score_history` out of a state dict, or a bare list if given one."""
     if isinstance(state, list):
@@ -230,7 +277,27 @@ def lineage_parent(state: Any, *, fallback: int) -> tuple[int, str]:
         best = best_row(_history(state))
         if best is None:
             return fallback, LINEAGE_DIRECT
-        parent = int(best.get("iteration") or fallback)
+        # `is not None`, NOT `or`: iteration 0 is the measured seed when
+        # EVALUATE_SEED is on, and `0 or fallback` silently replaced the seed
+        # champion with the previous iteration -- the mock run regressed at
+        # iteration 1 and iteration 2 was still seeded from 1.
+        raw = best.get("iteration")
+        parent = int(raw) if raw is not None else fallback
+        # Near-tie: the most recent comparable build within LINEAGE_TIE_EPS of
+        # the best, at or before `fallback`. The champion row itself always
+        # qualifies, so this can only move the parent LATER, never below it.
+        eps = float(config.LINEAGE_TIE_EPS)
+        if eps > 0:
+            best_mgs = float(best.get("MGS") or 0.0)
+            near = [
+                int(r.get("iteration") or 0)
+                for r in rows_for_stage(_history(state), comparable_only=True)
+                if r.get("iteration") is not None
+                and int(r.get("iteration") or 0) <= int(fallback)
+                and float(r.get("MGS") or 0.0) >= best_mgs - eps
+            ]
+            if near:
+                parent = max(parent, max(near))
         return parent, (LINEAGE_CHAMPION if parent != fallback else LINEAGE_DIRECT)
 
     if not config.LINEAGE_SKIP_FAILED_BUILDS:

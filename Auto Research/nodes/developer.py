@@ -72,7 +72,12 @@ from typing import Any
 
 import config
 import scoreboard
-from harness.dsh_client import DSHProfile, DSHResult, extract_json_block
+from harness.dsh_client import (
+    DSHProfile,
+    DSHResult,
+    extract_json_block,
+    extract_json_blocks,
+)
 from harness.profiles import DEVELOPER_PROFILE
 from nodes._common import node_span, write_artifact
 from nodes._transport import agent_call
@@ -117,6 +122,13 @@ GATE_TOOLS: dict[str, str] = {
     "compile_ok": "compile_check",
     "tests_ok": "run_tests",
     "migration_ok": "sql_exec",
+    # MANDATORY, as of the office reruns. It is the one gate that answers a
+    # real checkpoint end to end, and it was advisory: a build could go green
+    # having parsed, passed its unit tests and validated a migration against a
+    # scratch database, without ever producing an answer. `_stop_reason`
+    # already required it for the automatic exit; `finish` and the
+    # end-of-episode classification now do too.
+    "smoke_ok": "run_sandbox_smoke_test",
 }
 
 # Tools whose result cannot change unless something is written in between, so a
@@ -407,8 +419,8 @@ def _failure_report(
         "gate_tools": dict(GATE_TOOLS),
         "pass_rate": float(final.get("pass_rate", 0.0)),
         "retries_used": int(final.get("retry_count", 0)),
-        "retry_cap": int(config.MAX_DEV_RETRIES),
-        "exhausted": int(final.get("retry_count", 0)) >= config.MAX_DEV_RETRIES,
+        "retry_cap": _retry_cap(),
+        "exhausted": int(final.get("retry_count", 0)) >= _retry_cap(),
         "workspace_from": provenance,
         "files_written": files_written,
         "last_error": _error_line(trace),
@@ -554,7 +566,7 @@ def _status_block(state: DeveloperState, box: DevToolbox, turns_used: int = 0) -
         f"iteration={state.get('iteration', 1)}\n"
         f"workspace_from={state.get('workspace_from', 'empty')}\n"
         f"schema_version={_schema_version(box.workspace)}\n"
-        f"retry={state.get('retry_count', 0)}/{config.MAX_DEV_RETRIES}\n"
+        f"retry={state.get('retry_count', 0)}/{_retry_cap()}\n"
         f"{_turn_budget_block(state, turns_used)}\n"
         f"files_present={','.join(present)}\n"
         f"compile_ok={str(bool(state.get('compile_ok'))).lower()}\n"
@@ -626,7 +638,7 @@ def _identical_failed_edits(state: DeveloperState, tool: str, args: dict[str, An
 
 def _ungated(state: DeveloperState) -> list[str]:
     """The exit-condition flags still unset, in gate order."""
-    return [name for name in ("compile_ok", "tests_ok", "migration_ok") if not state.get(name)]
+    return [name for name in GATE_TOOLS if not state.get(name)]
 
 
 def _normalize_action(action: dict[str, Any]) -> dict[str, Any]:
@@ -837,6 +849,28 @@ def parse_xml_action(text: str) -> dict[str, Any]:
     return {}
 
 
+def _parse_actions(text: str) -> list[dict[str, Any]]:
+    """One reply -> EVERY action it asked for, in order.
+
+    The single-action parser below kept only the first fenced block. On the
+    http transport the model writes its calls as fenced JSON in prose, and it
+    batches them -- "read agent.py, read store.py, read schema.sql" in one
+    turn -- so keeping one call threw the rest away and the model spent its
+    next two turns re-asking. Native tool calls were already returned in full
+    by `_actions_from`; this brings the prose path up to the same contract.
+    Measured over runs_*_generic_rerun2: 46% of turns emitted more than one
+    call and 160 calls were discarded.
+    """
+    actions = [
+        _normalize_action(block) for block in extract_json_blocks(text)
+        if isinstance(block, dict) and block.get("tool")
+    ]
+    if actions:
+        return actions
+    single = _parse_action(text)
+    return [single] if "tool" in single else []
+
+
 def _parse_action(text: str) -> dict[str, Any]:
     """One reply -> one action, trying every syntax the model actually uses."""
     action = _normalize_action(extract_json_block(text) or {})
@@ -888,7 +922,7 @@ def _sample_timeout(attempt: int, resamples: int) -> int:
     repair pass. So the worst case of a too-short slice is one more resample,
     never a half-written file.
     """
-    budget = float(config.DSH_DEVELOPER_THINK_TIMEOUT_S)
+    budget = _think_budget_s()
     if resamples <= 0:
         return int(budget)
     share = budget / 2.0 if attempt == 0 else budget / (2.0 * resamples)
@@ -920,8 +954,7 @@ def _actions_from(result: DSHResult) -> list[dict[str, Any]]:
             })
             for call in result.tool_calls
         ]
-    action = _parse_action(result.text)
-    return [action] if "tool" in action else []
+    return _parse_actions(result.text)
 
 
 @dataclass
@@ -972,7 +1005,7 @@ async def _sample_turn(
     # request is retried inside `AsyncLLMClient.chat` up to HTTP_MAX_RETRIES
     # times, so one "sample" can quietly cost several times its slice. This
     # deadline is what actually holds the turn to its budget.
-    deadline = time.monotonic() + float(config.DSH_DEVELOPER_THINK_TIMEOUT_S)
+    deadline = time.monotonic() + _think_budget_s()
     tools = tool_schemas()
     # `required` is available because of the failure this function exists for:
     # the model's prose-only turns are a decode malfunction, and forcing a tool
@@ -1176,7 +1209,7 @@ async def dev_act(
                 f"{name} (set by `{GATE_TOOLS[name]}`)" for name in ungated
             ) + ". Call one of those tools next."
         else:
-            steer = "All three gates are set -- call `finish` next."
+            steer = "Every gate is set -- call `finish` next."
         return {"observation": {
             "tool": tool,
             # The first repeat is free steering; a second in a row is the loop
@@ -1259,7 +1292,13 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
         # key means a caller that predates the distinction: treat it as a suite
         # run rather than silently refusing to gate.
         if data.get("full_suite", True):
-            update["tests_ok"] = ok
+            # THE SEED'S CONTRACT TESTS DECIDE THE GATE. Tests the loop authored
+            # for itself still run and are still reported, but they are advisory:
+            # a self-written assertion that a later round legitimately falsifies
+            # was a ratchet -- runs_office_generic_v3 spent five straight
+            # iterations, twenty-five retries, failing its own
+            # test_audit_purge.py and never reached the evaluator once.
+            update["tests_ok"] = bool(data.get("contract_ok", ok))
         update["pass_rate"] = float(data.get("pass_rate", 0.0))
     elif tool == "sql_exec":
         update["migration_ok"] = ok
@@ -1313,19 +1352,17 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
 
     # A `finish` claimed before the gates are green is refused: the model does
     # not get to declare victory, the tools do.
-    compile_ok = update.get("compile_ok", state.get("compile_ok", False))
-    tests_ok = update.get("tests_ok", state.get("tests_ok", False))
-    migration_ok = update.get("migration_ok", state.get("migration_ok", False))
-    if update.get("done") and not (compile_ok and tests_ok and migration_ok):
+    # Every gate in GATE_TOOLS, not a hand-written three: when smoke became
+    # mandatory, this predicate still listed the original trio and a `finish`
+    # with smoke_ok=False was accepted -- the gate existed everywhere except
+    # the one place the model could bypass it.
+    gate_values = {
+        name: bool(update.get(name, state.get(name, False))) for name in GATE_TOOLS
+    }
+    if update.get("done") and not all(gate_values.values()):
         update["done"] = False
         update["retry_count"] = int(state.get("retry_count", 0)) + 1
-        missing = [
-            name for name, value in (
-                ("compile_ok", compile_ok),
-                ("tests_ok", tests_ok),
-                ("migration_ok", migration_ok),
-            ) if not value
-        ]
+        missing = [name for name, value in gate_values.items() if not value]
         why = "\n".join(
             f"  - {name} is false because `{GATE_TOOLS[name]}` has not completed "
             f"successfully in this episode."
@@ -1335,8 +1372,9 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
             "thought": "(gate) finish rejected",
             "action": {"tool": "gate"},
             "observation": (
-                f"finish rejected: compile_ok={compile_ok} tests_ok={tests_ok} "
-                f"migration_ok={migration_ok}; all three must be true.\n"
+                "finish rejected: "
+                + " ".join(f"{name}={str(value).lower()}" for name, value in gate_values.items())
+                + "; every gate must be true.\n"
                 f"{why}\n"
                 "A gate is set only by running its tool here, in this episode. "
                 "Describing the result in prose, or having run it in a previous "
@@ -1409,7 +1447,7 @@ def _stop_reason(state: DeveloperState) -> str:
     """
     if state.get("done"):
         return "finish"
-    if int(state.get("retry_count", 0)) >= config.MAX_DEV_RETRIES:
+    if int(state.get("retry_count", 0)) >= _retry_cap():
         return "exhausted"
     if (
         state.get("compile_ok")
@@ -1474,7 +1512,30 @@ _KEEP_TURNS = 8
 # module follows. The module-level name is kept as a thin accessor because the
 # failure report quotes the ceiling in its prose.
 def _max_turns() -> int:
-    return int(config.DEVELOPER_MAX_TURNS)
+    return int(config.DEVELOPER_BUILD_TURNS if _BUILD_ROUND else config.DEVELOPER_MAX_TURNS)
+
+
+def _retry_cap() -> int:
+    return int(config.DEVELOPER_BUILD_RETRIES if _BUILD_ROUND else config.MAX_DEV_RETRIES)
+
+
+def _think_budget_s() -> float:
+    return float(config.DSH_DEVELOPER_BUILD_THINK_TIMEOUT_S if _BUILD_ROUND
+                 else config.DSH_DEVELOPER_THINK_TIMEOUT_S)
+
+
+#: Set per episode by `developer_node`: True when the workspace holds no memory
+#: system yet (the task template's stub), so this episode is a build.
+_BUILD_ROUND = False
+
+
+def is_unbuilt(workspace: Path) -> bool:
+    """Does this workspace still hold the task template's stub agent?"""
+    agent = workspace / "memory_system" / "agent.py"
+    try:
+        return "NotImplementedError" in agent.read_text(encoding="utf-8")
+    except OSError:
+        return False
 
 
 class DeveloperSession:
@@ -1753,9 +1814,12 @@ def prepare_workspace(
 
     fallback = iteration - 1
     source_iteration = int(parent if parent is not None else fallback)
+    # >= 0, not >= 1: iteration 0 is the measured seed when EVALUATE_SEED is on,
+    # and a champion that is still the seed should be inherited from iter_0/ and
+    # logged as such, not silently re-copied from the template.
     previous = (
         config.iteration_dir(source_iteration) / "workspace"
-        if source_iteration >= 1 else None
+        if source_iteration >= 0 else None
     )
     if previous and previous.is_dir():
         _copy_tree(previous, workspace)
@@ -1790,6 +1854,43 @@ def prepare_workspace(
     return workspace, "empty"
 
 
+def _persist_migration(workspace: Path, iteration: int, migration_sql: str) -> None:
+    """Write the Architect's migration where the STORE will actually apply it.
+
+    THE GATE WAS LYING. `sql_exec` validates `migration_sql` against a temporary
+    scratch database and deletes it in a `finally`, so `migration_ok=True` has
+    only ever meant "this SQL parses against schema.sql". The evaluation path
+    builds a fresh store per episode and ran `initialize()`, which knew nothing
+    about it -- so an authored migration could go green and change nothing that
+    was measured.
+
+    Measured cost of that gap: runs_office_generic_rerun authored role grants
+    for all eight requester groups, passed the gate every time, and reported
+    `n_allowed=0` on all 547 checkpoints for ten consecutive iterations. The
+    medical run reached U=0.61 only because it independently invented this
+    mechanism -- a seed file re-read on open -- which is the argument for the
+    template owning it instead of each run rediscovering it.
+
+    Zero-padded because `MemoryStore.apply_pending_migrations` applies the
+    directory in FILENAME order, and `iter_10` must not sort before `iter_2`.
+    Written before the Developer episode starts so its own tests and smoke run
+    against the same policy the benchmark will see.
+    """
+    if not migration_sql.strip():
+        return
+    target = workspace / "migrations" / f"{iteration:03d}_iter{iteration}.sql"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # The workspace was seeded from the champion, so this iteration's file may
+    # already exist from a rolled-back attempt. Overwriting is correct: the
+    # state's migration_sql is this iteration's, by definition.
+    target.write_text(migration_sql, encoding="utf-8")
+    log.info(
+        "workspace iter=%d migration persisted to %s (%d bytes) -- it will be "
+        "applied by MemoryStore.initialize(), not just validated by sql_exec",
+        iteration, target.relative_to(workspace), len(migration_sql),
+    )
+
+
 def _copy_tree(source: Path, destination: Path) -> None:
     """Copy source files only -- no caches, no scaffolds, no session logs.
 
@@ -1821,6 +1922,12 @@ async def developer_node(state: OrchestratorState) -> dict[str, Any]:
     parent, lineage_reason = scoreboard.lineage_parent(state, fallback=iteration - 1)
     workspace, provenance = prepare_workspace(iteration, parent=parent, reason=lineage_reason)
     rolled_back = parent != iteration - 1 and provenance == f"iter_{parent}"
+    global _BUILD_ROUND
+    _BUILD_ROUND = is_unbuilt(workspace)
+    if _BUILD_ROUND:
+        log.info("developer iter=%d: BUILD round -- no memory system in the workspace yet; "
+                 "turn ceiling %d", iteration, _max_turns())
+    _persist_migration(workspace, iteration, str(state.get("migration_sql") or ""))
     _TOOLBOXES.pop(str(workspace.resolve()), None)  # fresh toolbox per iteration
 
     async with node_span("developer", iteration, phase) as span:
@@ -1848,8 +1955,11 @@ async def developer_node(state: OrchestratorState) -> dict[str, Any]:
         final = await session.run()
         span["turns"] = session.turns
 
-        exhausted = int(final.get("retry_count", 0)) >= config.MAX_DEV_RETRIES and not final.get("done")
-        gates_green = bool(final.get("compile_ok") and final.get("tests_ok") and final.get("migration_ok"))
+        exhausted = int(final.get("retry_count", 0)) >= _retry_cap() and not final.get("done")
+        gates_green = bool(
+            final.get("compile_ok") and final.get("tests_ok")
+            and final.get("migration_ok") and final.get("smoke_ok")
+        )
         # Why the loop actually stopped, when it was not the retry budget: the
         # wall clock and the turn ceiling both end an episode with retries to
         # spare, and "exhausted 5 retries" would be a false report of both.
@@ -1924,7 +2034,7 @@ async def developer_node(state: OrchestratorState) -> dict[str, Any]:
                 )
                 ended = f"developer hit {limit} after {int(final.get('retry_count', 0))} retry/ies"
             else:
-                ended = f"developer exhausted {config.MAX_DEV_RETRIES} retries"
+                ended = f"developer exhausted {_retry_cap()} retries"
             reason = (
                 f"{ended} "
                 f"(compile_ok={final.get('compile_ok')} tests_ok={final.get('tests_ok')} "

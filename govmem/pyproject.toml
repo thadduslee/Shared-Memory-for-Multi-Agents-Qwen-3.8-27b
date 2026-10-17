@@ -1,0 +1,24 @@
+[project]
+name = "govmem"
+version = "0.1.0"
+description = "Governed shared memory with in-conversation self-organisation"
+requires-python = ">=3.11"
+dependencies = ["httpx", "numpy"]
+
+[project.optional-dependencies]
+embeddings = ["sentence-transformers"]
+dev = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+govmem = ["interpret/prompts/*.md", "organize/prompts/*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

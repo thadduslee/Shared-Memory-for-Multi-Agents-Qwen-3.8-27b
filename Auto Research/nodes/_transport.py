@@ -111,17 +111,21 @@ async def agent_call(
         {"role": "user", "content": task},
     ]
 
-    call = get_llm_client().chat(
-        route=route_for(profile),
-        model=profile.model,
-        messages=wire,
-        temperature=profile.temperature,
-        max_tokens=profile.max_tokens,
-        timeout_s=float(timeout_s),
-        role=profile.name,
-        tools=tools,
-        tool_choice=tool_choice if tools else None,
-    )
+    def _call(max_tokens: int | None):
+        return get_llm_client().chat(
+            route=route_for(profile),
+            model=profile.model,
+            messages=wire,
+            temperature=profile.temperature,
+            max_tokens=max_tokens,
+            timeout_s=float(timeout_s),
+            role=profile.name,
+            tools=tools,
+            tool_choice=tool_choice if tools else None,
+        )
+
+    budget = profile.max_tokens
+    call = _call(budget)
     # `asyncio.wait_for`, because `timeout_s` alone is NOT a wall-clock bound
     # here and the caller needs one. Two things defeat it:
     #
@@ -138,6 +142,28 @@ async def agent_call(
     # is what every caller already assumes it means.
     try:
         result = await asyncio.wait_for(call, timeout=float(timeout_s))
+        # A reply that spent its ENTIRE budget and said nothing is not a
+        # transport failure and must not be retried verbatim: the same prompt
+        # under the same ceiling overflows the same way. runs_medical_generic_fixed
+        # did exactly that three times -- 62,604 tokens to the digit -- and the
+        # run ended at iteration 5. Retry ONCE with the ceiling doubled, so the
+        # retry is a different request. See config.LLM_LENGTH_RETRY_CEILING.
+        starved = (
+            getattr(result, "finish_reason", "") == "length"
+            and not (result.text or "").strip() and not result.tool_calls
+        )
+        if starved and budget and config.LLM_LENGTH_RETRY_CEILING > budget:
+            bigger = min(budget * 2, config.LLM_LENGTH_RETRY_CEILING)
+            log.warning(
+                "%s: reply spent its whole %d-token budget and returned no content; "
+                "retrying once with max_tokens=%d", profile.name, budget, bigger,
+            )
+            first_usage = dict(result.usage or {})
+            result = await asyncio.wait_for(_call(bigger), timeout=float(timeout_s))
+            result.usage = {
+                k: int(first_usage.get(k, 0) or 0) + int((result.usage or {}).get(k, 0) or 0)
+                for k in ("input_tokens", "output_tokens", "total_tokens")
+            }
     except asyncio.TimeoutError:
         log.warning("%s: http transport exceeded %ss; abandoning the call",
                     profile.name, timeout_s)

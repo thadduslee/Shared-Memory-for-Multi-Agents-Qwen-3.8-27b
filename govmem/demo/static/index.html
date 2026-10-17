@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>govmem demo</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand"><strong>govmem</strong><span>governed shared memory, live</span></div>
+  <div class="controls">
+    <select id="scenario" aria-label="Example conversation"></select>
+    <button id="load" title="Start a fresh memory with this example's people">New memory</button>
+    <button id="play" class="primary">Play</button>
+    <button id="step">Step</button>
+    <button id="pause" disabled>Pause</button>
+    <span id="status" class="status">loading…</span>
+  </div>
+</header>
+<p id="scenario-desc" class="desc"></p>
+
+<main>
+  <section id="parties" class="parties"></section>
+
+  <section class="memory">
+    <nav class="tabs">
+      <button data-tab="records" class="active">Stored records</button>
+      <button data-tab="access">Who can see what</button>
+      <button data-tab="activity">What happened</button>
+      <button data-tab="organisation">Self-organisation</button>
+      <button data-tab="graph">Memory graph</button>
+    </nav>
+    <div id="tab-graph" class="tab viz-root">
+      <div class="graph-bar">
+        <label for="g-step">Turn</label>
+        <input type="range" id="g-step" min="0" max="0" value="0">
+        <span id="g-step-label" class="g-step-label">start</span>
+        <button id="g-live" class="primary" title="Follow the latest turn">Live</button>
+        <label class="chk"><input type="checkbox" id="g-people" checked> people and things</label>
+        <label class="chk"><input type="checkbox" id="g-retracted"> retracted links</label>
+      </div>
+      <div class="graph-wrap">
+        <svg id="g-svg" role="img" aria-label="Graph of stored records, the organiser's links between them, supersessions, and the people they are about"></svg>
+        <div id="g-tip" class="g-tip" hidden></div>
+      </div>
+      <div id="g-legend" class="g-legend"></div>
+      <div class="graph-cols">
+        <div><h3>What reorganised at this turn</h3><div id="g-changes"></div></div>
+        <div><h3 id="g-detail-title">Record details</h3><div id="g-detail"><p class="empty">Click a record in the graph.</p></div></div>
+      </div>
+      <h3>How the structure grew</h3>
+      <div id="g-growth" class="g-growth"></div>
+    </div>
+    <div id="tab-records" class="tab active"></div>
+    <div id="tab-access" class="tab"></div>
+    <div id="tab-activity" class="tab"></div>
+    <div id="tab-organisation" class="tab"></div>
+    <p class="footnote">The memory panel is the store's own view (every record, decrypted as its owner) so you can
+      see what is kept. Each agent only ever receives what the gate releases to its person, shown under each reply.</p>
+  </section>
+</main>
+<script src="/static/graph.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

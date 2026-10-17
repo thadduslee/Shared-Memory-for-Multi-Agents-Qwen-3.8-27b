@@ -36,6 +36,7 @@ safe where passing the capability is not.
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -233,6 +234,22 @@ _CLASSIFICATION_GUIDANCE: dict[str, str] = {
 # it. A gate that never ran is not a gate that failed, and the Architect must be
 # told which of the two it is looking at before it is asked to respond.
 _CLASSIFICATION_FRAMING: dict[str, str] = {
+    "probe": (
+        "Read this as a critique of the design. The build compiled, passed its tests "
+        "and its smoke check, then was measured on the fixed probe slice -- the same "
+        "checkpoints every round -- and collapsed against the best probe seen so far. "
+        "It was NOT evaluated in full, has no score, and the workspace was rolled back "
+        "to the champion. A collapse on checkpoints the champion answers is a change "
+        "that broke something the champion had right."
+    ),
+    "unservable": (
+        "Read this as a critique of the design. The build compiled, passed its tests "
+        "and its smoke check, and was evaluated -- but the answerer could not serve the "
+        "requests it produced, so the round has NO score and the workspace was rolled "
+        "back to the champion. The endpoint itself is healthy: a probe was answered "
+        "normally. Whatever this design changed about what the answerer is handed "
+        "(its size above all) is the likely cause; do not repeat it unbounded."
+    ),
     "design": (
         "Read this as a critique of the design: a mandatory gate RAN and FAILED. "
         "The build produced no evaluation, no MGS and no Critic feedback, so this "
@@ -448,6 +465,22 @@ def _developer_failure_block(state: OrchestratorState) -> str:
         return ""
 
     classification = str(report.get("classification") or "design")
+    if classification == "probe":
+        return (
+            "\n## YOUR PREVIOUS DESIGN BUILT, BUT FAILED THE PROBE\n"
+            f"{_CLASSIFICATION_FRAMING['probe']}\n"
+            f"what happened: {report.get('reason', 'unknown')}\n"
+            f"measured: {report.get('classification_reason') or '(nothing recorded)'}\n"
+            + _repeat_warning(state, report)
+        )
+    if classification == "unservable":
+        return (
+            "\n## YOUR PREVIOUS DESIGN BUILT, BUT COULD NOT BE EVALUATED\n"
+            f"{_CLASSIFICATION_FRAMING['unservable']}\n"
+            f"what happened: {report.get('reason', 'unknown')}\n"
+            f"measured: {report.get('classification_reason') or '(nothing recorded)'}\n"
+            + _repeat_warning(state, report)
+        )
     header = (
         f"\n## THE DEVELOPER COULD NOT BUILD YOUR PREVIOUS DESIGN ({classification})\n"
         f"{_CLASSIFICATION_FRAMING.get(classification, _CLASSIFICATION_FRAMING['design'])}\n"
@@ -523,6 +556,143 @@ def _developer_failure_block(state: OrchestratorState) -> str:
 # and the state list is what survives a wiped or repointed RUNS_DIR.
 
 
+_METRIC_ALIASES: dict[str, str] = {
+    "u": "U", "utility": "U", "utility_accuracy": "U",
+    "a": "A", "privacy": "A", "privacy_leakage": "A", "privacy_leakage_rate": "A", "access": "A",
+    "f": "F", "forgetting": "F", "deletion": "F", "deletion_leakage": "F",
+    "deletion_leakage_rate": "F", "safety": "F",
+    "mgs": "MGS", "composite": "MGS",
+}
+
+
+def _metric_key(value: Any) -> str:
+    """`targets_metric` reduced to one of U / A / F / MGS / unknown.
+
+    WHY THIS EXISTS. The field was free prose -- "F (active forgetting: deleted
+    content cannot be...)", "scoped_access_control", "content_missing / include_ok"
+    -- and `_repeat_warning` compared it as a string, so two designs targeting
+    the same term never matched and the warning fired 0 times in 39 rounds.
+    The prompt now asks for `{"metric": ..., "reason": ...}`; this accepts that,
+    the bare letter, and the old prose, and gives them one comparable key.
+    """
+    if isinstance(value, dict):
+        value = value.get("metric") or value.get("name") or value.get("term") or ""
+    text = str(value or "").strip()
+    if not text:
+        return "unknown"
+    head = re.split(r"[\s:(\-\u2014,.;/]+", text, maxsplit=1)[0].lower()
+    if head in _METRIC_ALIASES:
+        return _METRIC_ALIASES[head]
+    # Whole words only: `scoped_access_control` is not a privacy target, and a
+    # `_` is a word character, so \b keeps it out.
+    found = re.search(r"\b(mgs|utility|privacy|forgetting|deletion|access)\b", text[:80].lower())
+    return _METRIC_ALIASES[found.group(1)] if found else "unknown"
+
+
+def _target_history(iteration: int) -> list[tuple[int, str]]:
+    """`(iteration, metric key)` for every earlier design that left a design.json."""
+    out: list[tuple[int, str]] = []
+    for i in range(1, iteration):
+        path = config.iteration_dir(i) / "design.json"
+        if not path.is_file():
+            continue
+        try:
+            block = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        key = block.get("targets_metric_key") or _metric_key(block.get("targets_metric"))
+        out.append((i, str(key)))
+    return out
+
+
+def _repeat_target_warning(state: OrchestratorState, iteration: int, window: int = 3) -> str:
+    """Say so when the last `window` designs all chased one term and none of them paid.
+
+    The task prompt has always TOLD the Architect not to do this; this is the
+    first time the loop can tell whether it did. "Paid" means the champion MGS
+    moved up during those rounds; an unscored round counts as not paying.
+    """
+    history = _target_history(iteration)
+    if len(history) < window:
+        return ""
+    recent = history[-window:]
+    keys = {key for _, key in recent}
+    if len(keys) != 1 or "unknown" in keys:
+        return ""
+    key = next(iter(keys))
+    first = recent[0][0]
+    scored = {int(r.get("iteration") or 0): float(r.get("MGS") or 0.0)
+              for r in (state.get("score_history") or []) if isinstance(r, dict)}
+    before = [m for i, m in scored.items() if i < first]
+    # The bar the window had to clear: the champion as it stood before the
+    # window, or -- when nothing had been scored yet -- the window's own opening
+    # round. Without the second case a run's first three designs could never be
+    # called out, since 0.20 always beats "nothing".
+    best_before = max(before) if before else scored.get(first, 0.0)
+    best_after = max([m for i, m in scored.items() if i > first] or [0.0])
+    if best_after > best_before + config.ROLLBACK_TOLERANCE:
+        return ""
+    rounds = ", ".join(str(i) for i, _ in recent)
+    return (
+        f"\n### THE LAST {window} DESIGNS ALL TARGETED {key} AND NONE OF THEM PAID\n"
+        f"Iterations {rounds} each named {key} as the target. The champion MGS did not "
+        f"improve over that span (best before: {best_before:.4f}, best since: "
+        f"{best_after:.4f}). A fourth design on the same term with the same kind of "
+        f"change is the fourth measurement of a strategy already measured as not "
+        f"working. Either change the MECHANISM behind {key}, or target a different term "
+        f"this round and say why.\n"
+    )
+
+
+async def _notebook_call(
+    iteration: int, notes_before: list[str], critique: str, block: dict[str, Any],
+    workdir: Path,
+) -> list[str]:
+    """A second, short call that owes ONLY the notebook.
+
+    The design call asked for `notebook_notes` as a trailing key and never got
+    it: 0 of 39 rounds across two runs. This call is small, has one deliverable,
+    and its prompt puts the required shape first rather than last.
+    """
+    notebook_block = render_notebook_prompt(
+        notes_before, config.ARCHITECT_NOTEBOOK_MAX_NOTES, config.ARCHITECT_NOTEBOOK_MAX_WORDS,
+    )
+    targets = block.get("targets_metric")
+    work_order = block.get("work_order") or []
+    steps = "\n".join(f"- {str(s)[:200]}" for s in list(work_order)[:8]) or "(none)"
+    task = f"""You are curating the research notebook after designing iteration {iteration}.
+
+Reply with EXACTLY ONE ```json fenced block of this shape and nothing else:
+```json
+{{"notebook_notes": ["<note>", "<note>", "..."]}}
+```
+Each note is one durable, point-form finding: what was measured, what was tried,
+what it did to the score, and what is now known not to work. At most
+{config.ARCHITECT_NOTEBOOK_MAX_NOTES} notes of at most {config.ARCHITECT_NOTEBOOK_MAX_WORDS}
+words each. Return the FULL notebook as it should stand after this iteration:
+keep what is still true, rewrite what this round refined, drop what this round
+disproved. Whatever you leave out is forgotten.
+{notebook_block}
+## THIS ITERATION'S CRITIQUE
+{str(critique or '(none)')[:6000]}
+
+## THE DESIGN JUST PRODUCED
+targets_metric: {str(targets)[:300]}
+work order:
+{steps}
+"""
+    result, nb = await agent_call_json(
+        ARCHITECT_PROFILE, task, workdir,
+        timeout_s=int(config.DSH_ARCHITECT_NOTEBOOK_TIMEOUT_S),
+    )
+    notes = nb.get("notebook_notes") if isinstance(nb, dict) else None
+    if not isinstance(notes, list):
+        log.warning("architect iter=%d: notebook call returned no notebook_notes either (%s)",
+                    iteration, result.error or result.finish_reason)
+        return []
+    return [str(n) for n in notes if str(n).strip()]
+
+
 def _critique_source_iteration(state: OrchestratorState, iteration: int) -> int:
     """Which iteration the critique currently in state was written by.
 
@@ -536,6 +706,98 @@ def _critique_source_iteration(state: OrchestratorState, iteration: int) -> int:
     # immediately preceding iteration's, so that is the assumption to fall back
     # on; where it is wrong, the dedupe below still prevents a duplicate row.
     return recorded or max(0, iteration - 1)
+
+
+def task_block(workspace: Path) -> str:
+    """The task, as the template states it -- on a task template. Nothing about
+    the dataset: the memory system must read each episode itself, and a brief
+    that summarised the data's roles and expected actions produced role tables
+    fitted to the benchmark (`DENIED_ROLES`, `RESTRICTED_ROLES`) instead of a
+    memory that adapts. On a seed template, the seed-era framing (kept)."""
+    task_md = config.TEMPLATES_DIR / "TASK.md"
+    if not task_md.is_file():
+        return ""
+    return (
+        "## THE TASK (from TASK.md; the Developer has the same file)\n"
+        + task_md.read_text(encoding="utf-8").strip() + "\n"
+    )
+
+
+def build_framing(workspace: Path) -> str:
+    """How the work order is framed: a BUILD when the workspace is still the
+    task template's stub, a DELTA against an existing implementation otherwise."""
+    from nodes.developer import is_unbuilt
+
+    if is_unbuilt(workspace):
+        return (
+            "THIS ITERATION IS THE FIRST BUILD. The workspace holds TASK.md, the frozen\n"
+            "`memory_system/keyring.py`, a stub `memory_system/agent.py` that raises\n"
+            "NotImplementedError, and `tests/` -- the contract every build must pass.\n"
+            "There is no implementation to patch: the work order must specify a complete,\n"
+            "runnable system -- schema, ingest, policy, retrieval, action -- that the\n"
+            "Developer can write in one episode. Prefer the simplest design that satisfies\n"
+            "the contract and the task; every later iteration is a delta against it.\n"
+        )
+    return (
+        "THE WORK ORDER IS A DELTA AGAINST THE IMPLEMENTATION ABOVE, NOT A REBUILD OF IT.\n"
+        "The Developer inherits that exact workspace, already compiling and already\n"
+        "passing its tests, and its episode is REJECTED if it finishes without changing a\n"
+        "source file -- so a step that restates a function the code already has buys\n"
+        "nothing and costs the iteration. Every step must name a change:\n"
+        "what file, what function, and what it does differently afterwards. If a\n"
+        "mechanism is already present and correct, do not restate it as work; spend the\n"
+        "iteration on the term the measurements above say is losing.\n"
+    )
+
+
+SEED_FRAMING_TEMPLATE = """## WHAT YOU ARE DESIGNING
+A shared memory system for the {domain_label} domain, serving several principals
+-- {domain_principals} -- with different authorization over one memory pool. It
+MUST cross-reference retrieved records against an access-control model before
+they reach the answerer, and it MUST implement active forgetting (explicit
+deletion or cryptographic shredding) such that deleted content cannot be
+recovered, restated, or confirmed to have existed.
+
+The roles and relationship types are properties of THIS domain's data, not of
+your design: read them out of the implementation and the evidence rather than
+assuming the ones a previous domain used.
+
+## WHERE YOUR SYSTEM ENDS
+For every checkpoint the benchmark takes exactly two things from this system:
+the ACTION (answer / answer_redacted / refuse / no_memory) and the EVIDENCE --
+the list of released records, each with its speaker's principal id and text.
+The benchmark's own answerer then writes the answer text from that evidence
+under its own fixed prompt and access policy; the `answer` string this system
+produces is discarded. So the levers that move U are which records are
+released, how many, in what order, and how they are attributed -- an answerer
+shown a requester's own note without the requester's id as its speaker cannot
+claim it and refuses. Designs that rewrite answer generation, refusal wording
+or the `answer` field change nothing the benchmark measures.
+
+## STORAGE CONSTRAINT (non-negotiable)
+The backing store is SQL only -- SQLite, one database file per run. Do NOT
+propose a vector database, a graph database or a document store as the primary
+store. You MAY change the schema: new/renamed/dropped columns, composite and
+partial indexes, denormalization, generated columns, and changes to how
+deletion is represented. Emit every schema change as an explicit ALTER TABLE /
+CREATE INDEX statement with a one-line rationale naming the query path it
+serves.
+
+`memory_system/keyring.py` is FROZEN: every record body is sealed under a key
+that exists only wrapped per principal, `retrieve()` can return a body only to
+a requester holding a wrap, and the rule that decides who is wrapped
+(`keyring.grant_by_policy`: author and subject always; relationship-bound
+principals confined to their objects; unbound roles by tier) is part of it.
+A relationship that carries a scope grants nothing by tier: it unlocks only
+the record kinds a `scope_grants` row names for it, 'full' or 'summary'
+(existence and kind released, body withheld, action answer_redacted). What you
+change is the rule's input -- the rows of `role_grants` (role, tier, required
+relationship) and `scope_grants` (relationship type, scope, kind, mode), how
+relationships are imported, which object a record is about (`_object_of`),
+`regrant_all` after a policy change -- and everything about retrieval and
+presentation. Not how keys work.
+
+"""
 
 
 def _domain_brief() -> tuple[str, str]:
@@ -753,6 +1015,11 @@ async def architect_node(state: OrchestratorState) -> dict[str, Any]:
         # does not leave the Architect designing for the last one. The roles are
         # the ones this domain's episodes actually contain.
         domain_label, domain_principals = _domain_brief()
+        task_text = task_block(workspace)
+        framing = build_framing(workspace)
+        seed_framing = SEED_FRAMING_TEMPLATE.format(
+            domain_label=domain_label, domain_principals=domain_principals
+        )
         # Omitted entirely when the curriculum is off: naming a phase the run is
         # not actually gated on tells the model to design for a slice instead of
         # for the benchmark. See config.CURRICULUM_ENABLED.
@@ -760,6 +1027,9 @@ async def architect_node(state: OrchestratorState) -> dict[str, Any]:
 
         # The `dominant_term` marker is what the mock (and a real Critic-aware
         # Architect) keys its targeted migration off; keep the token stable.
+        target_block = _repeat_target_warning(state, iteration)
+        if target_block:
+            log.warning("architect iter=%d: %s", iteration, target_block.strip().splitlines()[0])
         feedback_block = ""
         if critique:
             feedback_block = (
@@ -815,27 +1085,7 @@ async def architect_node(state: OrchestratorState) -> dict[str, Any]:
         # be pointed at a different benchmark by changing the task alone.
         task = f"""You are designing iteration {iteration} of the memory system.
 
-## WHAT YOU ARE DESIGNING
-A shared memory system for the {domain_label} domain, serving several principals
--- {domain_principals} -- with different authorization over one memory pool. It
-MUST cross-reference retrieved records against an access-control model before
-they reach the answerer, and it MUST implement active forgetting (explicit
-deletion or cryptographic shredding) such that deleted content cannot be
-recovered, restated, or confirmed to have existed.
-
-The roles and relationship types are properties of THIS domain's data, not of
-your design: read them out of the implementation and the evidence rather than
-assuming the ones a previous domain used.
-
-## STORAGE CONSTRAINT (non-negotiable)
-The backing store is SQL only -- SQLite, one database file per run. Do NOT
-propose a vector database, a graph database or a document store as the primary
-store. You MAY change the schema: new/renamed/dropped columns, composite and
-partial indexes, denormalization, generated columns, and changes to how
-deletion is represented. Emit every schema change as an explicit ALTER TABLE /
-CREATE INDEX statement with a one-line rationale naming the query path it
-serves.
-
+{task_text or seed_framing}
 {phase_block}## MEASURED PERFORMANCE -- EVERY ITERATION, NOT JUST THE LAST ONE
 MGS = U * (1 - A) * (1 - F).  U is utility_accuracy (higher is better); A is
 privacy_leakage_rate and F is deletion_leakage_rate (LOWER is better).
@@ -848,7 +1098,7 @@ READ THE TABLE BEFORE YOU DESIGN. A design that targets the same term the last
 three iterations targeted, when all three lost MGS, is the fourth iteration of
 a strategy that has already been measured as wrong. The delta column is the
 only evidence you have about whether your previous designs worked.
-{dev_failure}{feedback_block}{notebook_block}
+{target_block}{dev_failure}{feedback_block}{notebook_block}
 ## PRIOR ART (from web search -- cite what you use)
 {prior_art}
 
@@ -863,20 +1113,15 @@ only evidence you have about whether your previous designs worked.
 ## YOUR TASK
 Produce the design document and the Developer's work order.
 
-THE WORK ORDER IS A DELTA AGAINST THE IMPLEMENTATION ABOVE, NOT A REBUILD OF IT.
-The Developer inherits that exact workspace, already compiling and already
-passing its tests, and its episode is REJECTED if it finishes without changing a
-source file -- so a step that restates a function the code already has buys
-nothing and costs the iteration. Every step must name a change:
-what file, what function, and what it does differently afterwards. If a
-mechanism is already present and correct, do not restate it as work; spend the
-iteration on the term the measurements above say is losing.
-
+{framing}
 Remember the storage constraint (SQL/SQLite only) and both MUST requirements in
 your instructions.
 End with a single ```json fenced block containing schema_ddl, migration_sql,
 retrieval_loop, forgetting_mechanism, work_order, targets_metric and
-expected_tradeoff.{mitigation_key}{summary_key}
+expected_tradeoff. `targets_metric` MUST be an object of the form
+{{"metric": "<one of U, A, F, MGS>", "reason": "<one sentence>"}} -- the metric
+is compared across iterations by a program, so it has to be one of those four
+tokens exactly.{mitigation_key}{summary_key}
 """
 
         # Explicit budget: this is one open-ended design turn over a large
@@ -893,9 +1138,13 @@ expected_tradeoff.{mitigation_key}{summary_key}
             # for the Developer to build. Halt rather than let the Developer
             # invent its own spec.
             log.error("architect failed: %s", result.error)
+            # NO `iteration_count` here. Advancing it on failure meant a retried
+            # Architect designed the NEXT iteration and the failed number was
+            # simply skipped -- runs_medical_generic_fixed consumed iterations 3,
+            # 4 and 5 on three failed calls and built nothing for any of them.
+            # The retry now designs the same iteration it was asked for.
             return {
                 "halt_reason": f"architect invocation failed: {result.error}",
-                "iteration_count": iteration,
                 "node_timings": [span],
             }
 
@@ -955,6 +1204,7 @@ expected_tradeoff.{mitigation_key}{summary_key}
             iter_dir / "design.json",
             {
                 "targets_metric": block.get("targets_metric"),
+                "targets_metric_key": _metric_key(block.get("targets_metric")),
                 "expected_tradeoff": block.get("expected_tradeoff"),
                 "retrieval_loop": block.get("retrieval_loop"),
                 "forgetting_mechanism": block.get("forgetting_mechanism"),
@@ -988,6 +1238,15 @@ expected_tradeoff.{mitigation_key}{summary_key}
         # curation is still auditable, and `write_notebook` refuses an empty
         # list, so one bad reply cannot erase the run's memory.
         returned_notes = block.get("notebook_notes")
+        if (
+            config.ARCHITECT_NOTEBOOK_CALL
+            and not (isinstance(returned_notes, list) and any(str(n).strip() for n in returned_notes))
+        ):
+            log.info("architect iter=%d: design reply carried no notebook_notes; "
+                     "making the notebook call", iteration)
+            returned_notes = await _notebook_call(
+                iteration, notebook_notes, critique, block, workspace.parent,
+            )
         notes_out = cap_notes(
             [str(n) for n in returned_notes if str(n).strip()]
             if isinstance(returned_notes, list) else [],

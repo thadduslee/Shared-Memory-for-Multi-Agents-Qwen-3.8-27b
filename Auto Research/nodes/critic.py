@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -119,6 +120,16 @@ _MECHANISM_MEANING: dict[str, str] = {
     "no_candidates_scanned": (
         "the candidate scan returned nothing at all -- no allows and no denials."
     ),
+    "empty_answer_despite_evidence": (
+        "the action was answer/answer_redacted and the answer text was empty: the "
+        "answerer was handed evidence and produced nothing (a render failure or an "
+        "overflow, not a retrieval one)."
+    ),
+    "fact_not_released": (
+        "a fact the answer needed sits in a stored turn the memory did NOT release, "
+        "and in none it did: ranking, scoping or policy walked past the record that "
+        "held it. Whatever the answerer then said, this failure is on the release path."
+    ),
     "evidence_withheld": (
         "records were allowed by retrieval and the action was nonetheless refuse "
         "or no_memory."
@@ -151,6 +162,11 @@ def _classify(fact: dict[str, Any]) -> str:
 
     if answered and not fact.get("answer_text"):
         return "empty_answer_despite_evidence"
+    if allowed > 0 and fact.get("evidence_covers_facts") is False:
+        # The memory released records and the required facts were not among
+        # them. Not the answerer's failure, whatever it then said: ranking or
+        # policy walked past the record that held the fact.
+        return "fact_not_released"
     if answered:
         # Content present, label rejected. Distinguishing these two is the
         # difference between "the answerer omitted the appointment times" and
@@ -265,7 +281,132 @@ def _merge_verdicts(
         if isinstance(fact, dict) and isinstance(verdict, dict):
             fact["action_correct"] = bool(verdict.get("action_correct"))
             fact["missed_patterns"] = list(verdict.get("missed_patterns") or [])
+            fact["evidence_covers_facts"] = verdict.get("evidence_covers_facts")
+            fact["missing_from_evidence"] = list(verdict.get("missing_from_evidence") or [])
     return facts
+
+
+def _released(predictions_path: str) -> dict[str, tuple[str, tuple[str, ...]]]:
+    """checkpoint -> (action, released record ids), the two measured outputs."""
+    out: dict[str, tuple[str, tuple[str, ...]]] = {}
+    path = Path(predictions_path or "")
+    if not path.is_file():
+        return out
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            cid = row.get("checkpoint_id")
+            if not cid:
+                continue
+            o = _unwrap(row)
+            out[str(cid)] = (
+                str(o.get("action") or ""),
+                tuple(sorted(str(r) for r in (o.get("used_record_ids") or []))),
+            )
+    except (OSError, ValueError):
+        return {}
+    return out
+
+
+def measurement_delta(current_path: str, parent_path: str, parent_iteration: int) -> str:
+    """What changed, between this build and its parent, in the two outputs the
+    benchmark measures. Empty when there is nothing to compare.
+
+    Office keyed run, iterations 2-7: six designs rewrote answer generation in
+    agent.py, the evaluator re-rendered every answer with the benchmark's own
+    answerer, and every counter came back identical to iteration 1. The Critic
+    said "not the cause" six times; what it could not say, because nobody had
+    computed it, was that the build had changed NOTHING on the measured path.
+    """
+    now, before = _released(current_path), _released(parent_path)
+    shared = sorted(set(now) & set(before))
+    if not shared:
+        return ""
+    action_changed = sum(now[c][0] != before[c][0] for c in shared)
+    evidence_changed = sum(now[c][1] != before[c][1] for c in shared)
+    if not action_changed and not evidence_changed:
+        return (
+            f"THIS BUILD CHANGED NOTHING THE BENCHMARK MEASURES. On all {len(shared)} "
+            f"checkpoints the action and the released records are identical to iteration "
+            f"{parent_iteration}'s. The benchmark takes only those two outputs from this "
+            "system and writes the answer text itself, so whatever the Developer edited is "
+            "not on the path from query to (action, evidence). Any score difference is "
+            "answerer noise, and a proposal must change that path or it will repeat this."
+        )
+    return (
+        f"Against iteration {parent_iteration}: action changed on {action_changed}/{len(shared)} "
+        f"checkpoints, released records changed on {evidence_changed}/{len(shared)}."
+    )
+
+
+def _attach_asker_turns(
+    cited: list[dict[str, Any]], facts: dict[str, dict[str, Any]], report: dict[str, Any],
+    per_leak: int = 3,
+) -> None:
+    """For each cited privacy leak, the last few turns up to `as_of` whose text
+    names the asker's principal id. Domain-neutral: ids come from the
+    checkpoint, text from the episode. Never raises."""
+    try:
+        from nodes.medical_evaluator import get_dataset
+
+        dataset = get_dataset()
+        checkpoints = {cp["checkpoint_id"]: cp for cp in dataset.checkpoints}
+        verdicts = report.get("verdicts") or {}
+        for offender in cited:
+            cid = offender.get("checkpoint_id")
+            if not (verdicts.get(cid) or {}).get("privacy_leak") or cid not in facts:
+                continue
+            cp = checkpoints.get(cid) or {}
+            asker = str((cp.get("asker") or {}).get("principal_id") or "")
+            episode = dataset.episodes_by_id.get(cp.get("episode_id")) or {}
+            if not asker:
+                continue
+            # How turns refer to a person: the id, the display name without its
+            # parenthetical, or its first capitalised word. Episodes mostly use
+            # names, never ids -- resolving one to the other is part of the
+            # reading the memory has to do.
+            declared = next((p for p in ((episode.get("entities") or {}).get("principals") or [])
+                             if p.get("principal_id") == asker), {})
+            name = re.sub(r"\(.*?\)", "", str(declared.get("display_name") or "")).strip()
+            first = next(iter(re.findall(r"\b[A-Z][a-z]{2,}\b", name)), "")
+            patterns = [re.escape(asker)] + ([re.escape(name)] if name else []) \
+                + ([rf"\b{re.escape(first)}\b"] if first else [])
+            mention = re.compile("|".join(patterns))
+            hits = []
+            for turn in episode.get("turns") or []:
+                speaker = str((turn.get("speaker") or {}).get("principal_id") or "")
+                if mention.search(str(turn.get("text") or "")) and speaker != asker:
+                    hits.append(f"[{turn.get('turn_id')}] {speaker}: "
+                                f"{str(turn.get('text') or '')[:220]}")
+                if turn.get("turn_id") == cp.get("as_of_turn_id"):
+                    break
+            facts[cid]["asker_turns"] = hits[-per_leak:]
+    except Exception:  # noqa: BLE001 -- context, not a dependency
+        return
+
+
+def _leak_channel_line(report: dict[str, Any]) -> str:
+    channels = report.get("leak_channels") or {}
+    if not channels:
+        return "no privacy leaks."
+    released = sum(n for k, n in channels.items() if k.startswith("released:"))
+    total = sum(channels.values())
+    body = ", ".join(f"{k}={n}" for k, n in sorted(channels.items(), key=lambda kv: -kv[1]))
+    return (f"{body}. {released}/{total} leaks had records RELEASED to the asker: the memory "
+            "decided they could hold that evidence. Records released under answer_redacted are "
+            "still released in full -- the answerer, not the memory, decides what to say from them.")
+
+
+def _memory_llm_line(report: dict[str, Any]) -> str:
+    t = report.get("memory_llm_totals") or {}
+    if not t or not t.get("checkpoints_using"):
+        return ("not used: no checkpoint's memory made a model call. Turns that change who "
+                "may see what, or what is current, were read by rules alone.")
+    return (f"used on {t['checkpoints_using']} checkpoint(s); calls (summed over checkpoint "
+            f"replays) {t['calls_sum']}, tokens {t['tokens_sum']}, refused over budget "
+            f"{t['refused_over_budget_sum']}, most calls in one replay {t['max_calls_one_checkpoint']}.")
 
 
 def _prediction_facts(predictions_path: str) -> dict[str, dict[str, Any]]:
@@ -294,6 +435,11 @@ def _prediction_facts(predictions_path: str) -> dict[str, dict[str, Any]]:
                                     or out.get("answer_structured")),
                 "n_used": len(out.get("used_record_ids") or []),
                 "retrieval": debug.get("retrieval") or {},
+                "memory_llm": debug.get("memory_llm") or {},
+                # The exchange at the boundary, when the evaluator recorded it.
+                "answerer_reply": str(out.get("answerer_reply") or ""),
+                "evidence_block": str(out.get("evidence_block") or ""),
+                "answer_excerpt": str(out.get("answer") or "")[:300],
             }
     except (OSError, ValueError) as exc:
         log.warning("critic: could not read predictions for observed behavior: %s", exc)
@@ -322,6 +468,7 @@ def _observed_block(cited: list[dict[str, Any]], facts: dict[str, dict[str, Any]
     if not facts:
         return "(predictions unavailable -- classify from the Judge reason alone)"
     lines = []
+    excerpts = 0
     for offender in cited:
         cid = offender["checkpoint_id"]
         fact = facts.get(cid)
@@ -332,17 +479,54 @@ def _observed_block(cited: list[dict[str, Any]], facts: dict[str, dict[str, Any]
             lines.append(f"- {cid}: CRASHED before producing a row -- {fact.get('error')}")
             continue
         counters = fact.get("retrieval") or {}
+        # Whatever counters THIS memory reports, by its own names: a task-built
+        # memory does not have the seed's denied_rbac/denied_scope, and printing
+        # those as "?" hid everything it did report.
+        shown = " ".join(
+            f"{k}={v}" for k, v in sorted(counters.items())
+            if isinstance(v, (int, float, str)) and len(str(v)) < 40
+        ) or "(no counters)"
+        llm_calls = (fact.get("memory_llm") or {}).get("calls")
         lines.append(
             f"- {cid}: action={fact.get('action')} "
             f"answer={'non-empty' if fact.get('answer_text') else 'EMPTY'} "
-            f"evidence_used={fact.get('n_used')} | retrieval: "
-            f"allowed={counters.get('n_allowed', '?')} "
-            f"denied_tombstone={counters.get('n_denied_tombstone', '?')} "
-            f"denied_rbac={counters.get('n_denied_rbac', '?')} "
-            f"denied_scope={counters.get('n_denied_scope', '?')} "
-            f"[mechanism: {_classify(fact)}]"
+            f"evidence_used={fact.get('n_used')} | retrieval: {shown} "
+            + (f"memory_llm_calls={llm_calls} " if llm_calls is not None else "")
+            + (
+                "facts_in_released_evidence=ALL "
+                if fact.get("evidence_covers_facts") is True else
+                f"facts_in_released_evidence=MISSING {fact.get('missing_from_evidence')} "
+                if fact.get("evidence_covers_facts") is False else ""
+            )
+            + f"[mechanism: {_classify(fact)}]"
         )
+        # A LEAK, IN CONTEXT: the turns before the question that name the
+        # asker. Access changes about a principal are made in turns that name
+        # them; these are what the memory had to read to get this right.
+        for turn in fact.get("asker_turns") or []:
+            lines.append(f"    earlier turn naming the asker: {turn}")
+        # THE EXCHANGE ITSELF, for the checkpoints where the gate cleared
+        # records and the answer still failed. A counter says "withheld"; the
+        # reply says WHY -- a refusal on policy grounds, a hedge, an answer
+        # that ignored the record it needed. Bounded in count and size.
+        if (
+            excerpts < config.CRITIC_ANSWERER_EXCERPTS
+            and int(counters.get("n_allowed") or 0) > 0
+            and (fact.get("answerer_reply") or fact.get("evidence_block"))
+        ):
+            excerpts += 1
+            n = config.CRITIC_EXCERPT_CHARS
+            lines.append(
+                "    evidence the answerer was shown:\n      "
+                + _indent(fact.get("evidence_block", "")[:n])
+                + "\n    the answerer replied:\n      "
+                + _indent(fact.get("answerer_reply", "")[:n] or "(no reply recorded)")
+            )
     return "\n".join(lines)
+
+
+def _indent(text: str) -> str:
+    return "\n      ".join(line for line in text.replace("\r", "").splitlines() if line.strip())
 
 
 def _mechanism_census(
@@ -493,6 +677,62 @@ def _failure_bucket_table(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _denial_saturation_table(report: dict[str, Any]) -> str:
+    """The judge's per-requester-group failure rates, rendered for the prompt.
+
+    The BUCKET table above groups failures by mechanism; this one groups the
+    same failures by who was asking. A group that fails at 1.0 while the corpus
+    fails at 0.84 is a structural bug rather than a tuning problem, and the
+    mechanism cut cannot express that -- 86 checkpoints lost to one dead
+    predicate and 86 lost to a policy that is slightly too tight land in the
+    same bucket. See nodes/judge.denial_saturation.
+    """
+    sat = report.get("denial_saturation") or {}
+    rows = sat.get("by_group") or []
+    if not rows:
+        return "(not available for this stage)"
+
+    corpus = float(sat.get("corpus_failure_rate") or 0.0)
+    header = (
+        f"Utility failure rate across all requester groups: {corpus:.2f}. "
+        "By group, worst first:"
+    )
+    lines = [header]
+    for row in rows[:12]:
+        gates = ", ".join(
+            f"{gate.replace('n_denied_', '')}={count}"
+            for gate, count in (row.get("gates") or {}).items()
+        )
+        lines.append(
+            f"- {row['group']}: {row['n_failed']}/{row['n_utility']} failed "
+            f"({row['failure_rate']:.2f}), {row['n_nothing_allowed']} of them with "
+            f"NOTHING allowed by the gate"
+            + (f" [{gates}]" if gates else "")
+            + ("  <-- SATURATED" if row.get("saturated") else "")
+        )
+    if sat.get("gate_closed_for_every_group"):
+        lines.append("")
+        lines.append(
+            "EVERY requester group is saturated. No group of any kind can be "
+            "served, which points at the policy table as a whole rather than at "
+            "any one role: the gate is denying the entire store to everyone. "
+            "Whatever else this round shows, nothing downstream of the gate can "
+            "be measured until some requester gets records."
+        )
+    if sat.get("saturated_groups"):
+        lines.append("")
+        lines.append(
+            "A SATURATED group fails essentially every utility question, mostly "
+            "with an empty allow-set, at a rate well above the corpus. That is "
+            "not a group the policy treats too strictly; it is a group the "
+            "policy cannot serve at all. What each gate implies when it "
+            "dominates a saturated group:"
+        )
+        for gate, meaning in (sat.get("gate_meaning") or {}).items():
+            lines.append(f"- {gate.replace('n_denied_', '')}: {meaning}")
+    return "\n".join(lines)
+
+
 def _stratified_evidence(
     offenders: list[dict[str, Any]],
     report: dict[str, Any],
@@ -606,7 +846,14 @@ async def critic_node(state: OrchestratorState) -> dict[str, Any]:
         facts = _merge_verdicts(
             _prediction_facts(str(state.get("predictions_path") or "")), report
         )
+        _attach_asker_turns(cited, facts, report)
         observed = _observed_block(cited, facts)
+        parent_iteration = scoreboard.lineage_parent(state, fallback=iteration - 1)[0]
+        delta = measurement_delta(
+            str(state.get("predictions_path") or ""),
+            str(config.iteration_dir(parent_iteration) / "dev" / "predictions.jsonl"),
+            parent_iteration,
+        ) if parent_iteration >= 0 else ""
         census, mechanisms = _mechanism_census(cited, facts)
         n_mechanisms = len(mechanisms) or 1
         source_view = _source_view(str(state.get("memory_codebase") or ""))
@@ -631,6 +878,9 @@ REGRESSION section above, it is the finding, and it outranks this.
             f"- {name}: {stats['fail']}/{stats['n']} = {stats['fail'] / stats['n']:.2f}"
             for name, stats in worst_attacks
         ) + f"""
+
+## UTILITY FAILURES GROUPED BY WHO WAS ASKING
+{_denial_saturation_table(report)}
 
 ## UTILITY FAILURES GROUPED BY WHAT THE PIPELINE DID
 {_failure_bucket_table(report)}
@@ -667,10 +917,18 @@ Retrieval counters and the answer string for every cited checkpoint. These are
 recorded facts about this run. If a checkpoint shows `allowed=8 answer=EMPTY`,
 retrieval worked and the answerer failed -- do not blame retrieval for it.
 
+{delta}
+
 {observed}
 
 ## MECHANISM CENSUS (each cited checkpoint bucketed exactly once)
 {census}
+
+## THE MEMORY'S OWN MODEL CALL (llm.complete, budgeted per episode)
+{_memory_llm_line(report)}
+
+## HOW PRIVACY LEAKS GOT OUT (channel:action -> count)
+{_leak_channel_line(report)}
 
 ## SCORING HEALTH
 malformed prediction lines: {report.get('n_malformed_lines', 0)}

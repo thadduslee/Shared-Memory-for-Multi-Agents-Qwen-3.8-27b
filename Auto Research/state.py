@@ -184,6 +184,7 @@ class OrchestratorState(TypedDict, total=False):
     render_degraded: bool
     render_degraded_rate: float
     n_render_degraded: int
+    evaluator_reachable: bool       # set when a stage is degraded: did a probe of the evaluator succeed?
 
     # ---------------- Judge writes ----------------
     judge_report: dict[str, Any]    # full per-metric / per-category breakdown
@@ -369,6 +370,7 @@ def initial_state(*, workspace: str, started_at: float) -> OrchestratorState:
         render_degraded=False,
         render_degraded_rate=0.0,
         n_render_degraded=0,
+        evaluator_reachable=False,
         judge_report={},
         mgs_score=0.0,
         utility_score=0.0,

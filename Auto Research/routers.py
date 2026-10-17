@@ -29,6 +29,24 @@ log = logging.getLogger("orchestrator.router")
 # ======================================================================
 
 
+def route_after_probe_fail(state: dict[str, Any]) -> str:
+    """A failed probe ends the round -- and the round still counts.
+
+    The budget check lives in the router after the Critic, which a probe
+    failure skips; with a bare edge to the Architect a run whose every build
+    failed the probe ran to iteration 21 of 20 and would have stopped only at
+    the wall clock.
+    """
+    if budget_exhausted(state):
+        return "halt"
+    if int(state.get("iteration_count", 0)) >= config.MAX_ITERATIONS:
+        best_mgs, best_iteration = scoreboard.best_of(state)
+        log.info("iteration budget reached (%d) on a failed probe; best MGS=%.4f (iteration %d)",
+                 config.MAX_ITERATIONS, best_mgs, best_iteration)
+        return "halt"
+    return "architect"
+
+
 def budget_exhausted(state: dict[str, Any]) -> str | None:
     """Return a halt reason if the run has spent its wall clock or tokens.
 
@@ -165,6 +183,22 @@ def route_after_collect(state: dict[str, Any]) -> str:
     #     works perfectly on the fiction it is handed -- so the check belongs
     #     here, before the Judge turns it into a score.
     if state.get("render_degraded") and config.HALT_ON_DEGRADED_EVAL:
+        # ...UNLESS the endpoint is demonstrably up. `eval_collect` probed the
+        # evaluator with a one-line request; if that was answered, the server
+        # is fine and the BUILD made its own requests unservable. That is a
+        # failed round, not an outage: no score, the champion stays, the next
+        # Architect is told why. runs_office_generic_fixed2 halted at iteration
+        # 17 of 20 on exactly this -- a design that handed the answerer ~10x the
+        # evidence -- and lost its last three iterations.
+        if state.get("evaluator_reachable"):
+            log.error(
+                "degraded stage, but the evaluator answers a probe: failed round, "
+                "not a halt (%d of the answering checkpoints unserved)",
+                int(state.get("n_render_degraded", 0)),
+            )
+            if int(state.get("iteration_count", 0)) >= config.MAX_ITERATIONS:
+                return "halt"
+            return "architect"
         log.error(
             "EVALUATOR DEGRADED: %d of the answering checkpoints (%.0f%%) fell back "
             "to raw evidence because the answerer did not respond. Halting rather "
@@ -202,6 +236,18 @@ def route_after_judge(state: dict[str, Any]) -> str:
 
     stage = str(state.get("eval_stage") or "dev")
     report = state.get("judge_report") or {}
+    if stage == "probe":
+        # THE PROBE GATE. Pass -> the full dev slice on the same build. Fail ->
+        # the round is over; `probe_fail` writes the report. A degraded probe
+        # (the answerer could not serve the requests) fails outright: the full
+        # slice would only fail the same way at 14x the cost.
+        if state.get("render_degraded"):
+            return "probe_fail"
+        best, _ = scoreboard.champion_probe(state)
+        mgs = float(state.get("mgs_score", 0.0))
+        if best > 0.0 and mgs < best - scoreboard.probe_tolerance(state):
+            return "probe_fail"
+        return "stage_dev"
     phase_score = float(report.get("phase_score", 1.0))
 
     if config.CURRICULUM_ENABLED and phase_score < config.CURRICULUM_PASS_THRESHOLD:
@@ -284,6 +330,8 @@ _TRANSIENT_ARCHITECT_MARKERS = (
     "timed out", "timeout", "connecterror", "connection", "empty response",
     "in_flight", "in-flight", "http 402", "http 408", "http 429",
     "http 500", "http 502", "http 503", "http 504",
+    "http 520", "http 521", "http 522", "http 523", "http 524", "http 529",
+    "provider returned error",
 )
 
 
@@ -385,6 +433,13 @@ def halt_reason_for(state: dict[str, Any]) -> str:
     budget = budget_exhausted(state)
     if budget:
         return budget
+    if state.get("render_degraded") and state.get("evaluator_reachable"):
+        report = state.get("dev_failure_report") or {}
+        return (
+            f"iteration budget exhausted after {int(state.get('iteration_count', 0))}; "
+            f"the final round built but could not be evaluated "
+            f"({report.get('render_error_kind') or 'unservable requests'}) and was not scored"
+        )
     if state.get("render_degraded") and config.HALT_ON_DEGRADED_EVAL:
         return (
             f"evaluator degraded: {int(state.get('n_render_degraded', 0))} answering "

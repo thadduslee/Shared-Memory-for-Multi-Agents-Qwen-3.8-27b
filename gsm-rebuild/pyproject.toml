@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gsm"
+version = "0.1.0"
+description = "Governed Shared Memory: a temporal, provenance-aware, policy-enforced shared-memory service for multiple AI agents (research MVP)."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+  "pydantic>=2.7",
+  "sqlalchemy>=2.0.30",
+  "psycopg[binary]>=3.2",
+  "alembic>=1.13",
+  "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+embeddings = ["sentence-transformers>=3"]
+# CIMemories: prompts.yaml, and upstream eval/metrics.py (run unmodified for the official numbers)
+cimemories = ["pyyaml>=6", "pandas>=2", "numpy>=1.26", "tqdm>=4"]
+
+[project.scripts]
+gsm = "gsm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+  "db: requires a PostgreSQL+pgvector database (GSM_TEST_DATABASE_URL)",
+  "gatemem: exercises the GateMem adapter against local fixtures",
+  "cimemories: exercises the CIMemories adapter against local fixtures",
+  "mumbench: exercises the MUMBench adapter against local fixtures",
+]
+filterwarnings = [
+  "error::pytest.PytestUnraisableExceptionWarning",
+  "ignore:Using `httpx` with `starlette.testclient` is deprecated",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = [
+  "S101",   # asserts are fine in tests
+  "S608",   # SQL is built from fixed fragments with bound parameters; see docs/SECURITY.md
+  "RUF012", # pydantic class-level defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+"migrations/**" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["gsm"]
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true

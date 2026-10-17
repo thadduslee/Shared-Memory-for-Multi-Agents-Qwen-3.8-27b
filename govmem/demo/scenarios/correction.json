@@ -1,0 +1,21 @@
+{
+  "title": "A value changes",
+  "description": "Sam schedules a review, then moves it. The new statement supersedes the old one, which is kept as history but never released as current. The organiser links and annotates the related records.",
+  "principals": [
+    {"id": "p_maya", "role": "designer", "display_name": "Maya Chen"},
+    {"id": "p_sam", "role": "engineer", "display_name": "Sam Ortiz"}
+  ],
+  "entities": ["project_orchid"],
+  "relationships": [
+    {"type": "team_member", "endpoints": {"member_id": "p_maya", "project_id": "project_orchid"}},
+    {"type": "team_member", "endpoints": {"member_id": "p_sam", "project_id": "project_orchid"}}
+  ],
+  "steps": [
+    {"speaker": "p_sam", "action": "share", "text": "The Orchid design review is on March 3 at 10:00 am in Room 4B."},
+    {"speaker": "p_maya", "action": "ask", "text": "When and where is the Orchid design review?"},
+    {"speaker": "p_sam", "action": "share", "text": "Update: the Orchid design review moved to March 5 at 2:00 pm, still in Room 4B."},
+    {"speaker": "p_maya", "action": "share", "text": "Thanks. I'll bring the budget slides for the Orchid design review."},
+    {"speaker": "p_maya", "action": "ask", "text": "When and where is the Orchid design review, and what am I bringing?"},
+    {"speaker": "p_sam", "action": "ask", "text": "What is Maya bringing to the design review?"}
+  ]
+}

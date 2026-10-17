@@ -587,6 +587,35 @@ def looks_like_tool_call_markup(text: str, *, threshold: float = 0.5) -> bool:
     return len(remaining) < threshold * len(body)
 
 
+def extract_json_blocks(text: str) -> list[dict[str, Any]]:
+    """EVERY parseable fenced JSON object in a reply, in document order.
+
+    `extract_json_block` returns the first one, which is right for a node that
+    owes a single deliverable. The Developer is not that node: it routinely
+    writes three `read_file` calls in one turn, and a parser that keeps the
+    first silently discards the other two -- the model then re-asks for them on
+    the next turn, and the next. Measured over runs_*_generic_rerun2: 46% of
+    Developer turns emitted more than one call and 160 of them were dropped.
+
+    Only FENCED blocks are taken, so a `{...}` inside prose is not mistaken for
+    a second action. Duplicates (same tool, same args) collapse to one.
+    """
+    if not text:
+        return []
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for candidate in _fenced_candidates(text):
+        parsed = _loads_object(candidate)
+        if parsed is None:
+            continue
+        key = json.dumps(parsed, sort_keys=True, default=str)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(parsed)
+    return out
+
+
 def extract_json_block(text: str) -> dict[str, Any] | None:
     """Find the deliverable JSON object in a model's Markdown reply.
 
