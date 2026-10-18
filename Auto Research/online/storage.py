@@ -47,6 +47,8 @@ class Journal:
                                             PRIMARY KEY(boundary, attempt, id));
         CREATE TABLE IF NOT EXISTS operations (key TEXT PRIMARY KEY, retries INTEGER NOT NULL DEFAULT 0,
                                                tokens INTEGER NOT NULL DEFAULT 0, seconds REAL NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS replay_votes (
+            cache_key TEXT PRIMARY KEY, value TEXT NOT NULL, created_at REAL NOT NULL);
         ''')
 
     def get(self, key, default=None):
@@ -69,6 +71,16 @@ class Journal:
                      'frozen_system_version': r['version'], 'attempt_kind': 'official_first_attempt',
                      'prediction': json.loads(r['prediction']), 'score': json.loads(r['score']) if r['score'] else None}
                 for r in self.db.execute('SELECT * FROM official ORDER BY boundary, id')]
+
+    def replay_vote(self, cache_key):
+        row = self.db.execute(
+            'SELECT value FROM replay_votes WHERE cache_key=?', (cache_key,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def save_replay_vote(self, cache_key, value, created_at):
+        self.db.execute(
+            'INSERT OR REPLACE INTO replay_votes VALUES (?,?,?)',
+            (cache_key, encode(value), float(created_at)))
 
     def close(self):
         self.db.close()

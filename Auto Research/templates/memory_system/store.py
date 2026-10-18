@@ -17,6 +17,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from .policy import AuthorizationRequest, PolicyEvaluator, Principal, Resource
+
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 SCHEMA_VERSION = 3
 
@@ -84,11 +86,14 @@ class MemoryStore:
     """A generic store. Empty initialization creates schema, not policy rows."""
 
     def __init__(self, db_path: str | Path = ":memory:", *,
-                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> None:
+                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+                 policy: dict[str, Any] | None = None) -> None:
         self.db_path = str(db_path)
         self.conn = sqlite3.connect(self.db_path)
         self.conn.row_factory = sqlite3.Row
         self.interpreter = interpreter
+        self.policy = dict(policy or {})
+        self.policy_evaluator = PolicyEvaluator(self.policy)
         self._seq = 0
         self._index_key_cache: bytes | None = None
         self.initialize()
@@ -444,8 +449,8 @@ class MemoryStore:
                 ok, reason = False, "outside_permission_scope"
             else:
                 ok, reason = self._authorized(
-                    requester_id, resource_owner_id, concepts,
-                    row["text_value"], permissions, query_terms)
+                    requester_id, requester_role, resource_owner_id, episode_id,
+                    row, concepts, row["text_value"], permissions, query_terms)
             if not ok:
                 # A denied row that matched only the already-permitted part of
                 # the question is unrelated private context, not a partial
@@ -466,8 +471,11 @@ class MemoryStore:
                           reason)
                 record_trace(row, concepts, "denied", "authorization_gate", reason)
                 continue
-            released_text = (row["text_value"] if requester_id == resource_owner_id else
-                             self._scoped_projection(row["text_value"], permissions))
+            released_text = (
+                row["text_value"]
+                if requester_id == resource_owner_id or reason.startswith("policy:")
+                else self._scoped_projection(row["text_value"], permissions)
+            )
             if not released_text:
                 record_trace(row, concepts, "suppressed", "projection_gate",
                              "empty_authorized_projection")
@@ -523,20 +531,51 @@ class MemoryStore:
         self.conn.commit()
         return decision
 
-    def _authorized(self, requester_id: str, owner_id: str, concepts: set[str], text: str,
+    def _authorized(self, requester_id: str, requester_role: str, owner_id: str,
+                    episode_id: str, record: sqlite3.Row, concepts: set[str], text: str,
                     permissions: list[sqlite3.Row],
                     requested_concepts: set[str]) -> tuple[bool, str]:
-        # Generic ownership is independent of role labels and creates no seed rows.
-        if requester_id and requester_id == owner_id:
-            return True, "owner"
         denies = [p for p in permissions if p["effect"] == "deny"]
         allows = [p for p in permissions if p["effect"] == "allow"]
         for row in denies:
             if self._scope_match(row, concepts, text, requested_concepts)[0]:
                 return False, "explicit_restriction"
+        policy_decision = None
+        if self.policy:
+            principal_row = self.conn.execute(
+                "SELECT attributes_json FROM principals WHERE principal_id=?", (requester_id,)
+            ).fetchone()
+            relationships = tuple(dict(row) for row in self.conn.execute(
+                "SELECT predicate,subject_id,object_id,status,attributes_json "
+                "FROM relationships WHERE episode_id=?", (episode_id,)))
+            resource_type = "general_record"
+            for classifier in self.policy.get("resource_classification", []):
+                expected = set(classifier.get("concepts") or [])
+                if not expected or expected & concepts:
+                    resource_type = str(classifier.get("type") or resource_type)
+                    break
+            principal = Principal(
+                requester_id, frozenset({requester_role} if requester_role else set()),
+                attributes=_loads(principal_row[0], {}) if principal_row else {})
+            resource = Resource(
+                str(record["memory_id"]), resource_type, owner_id,
+                {"episode_id": episode_id}, str(record["status"]),
+                {"concepts": sorted(concepts), "predicate": record["predicate"]})
+            policy_decision = self.policy_evaluator.evaluate(AuthorizationRequest(
+                principal, "retrieve", resource, {"episode_id": episode_id}, relationships))
+            if policy_decision.reason in {"explicit_denial", "explicit_revocation",
+                                          "policy_denial", "isolation_boundary",
+                                          "inactive_resource"}:
+                return False, policy_decision.reason
+        # Ownership is a configured generic relationship, but every explicit
+        # restriction/revocation above still wins.
+        if requester_id and requester_id == owner_id:
+            return True, "owner"
         for row in allows:
             if self._scope_match(row, concepts, text, requested_concepts)[0]:
                 return True, "explicit_permission"
+        if policy_decision and policy_decision.allowed:
+            return True, f"policy:{policy_decision.rule_id or policy_decision.reason}"
         return False, "no_explicit_permission" if not allows else "outside_permission_scope"
 
     @staticmethod
@@ -1008,7 +1047,7 @@ def _clock_and_weekdays(text: str) -> set[str]:
 
 
 def _temporal_features(text: str, reference: str = "") -> list[str]:
-    """Expose date/time tokens without copying their surrounding patient text."""
+    """Expose date/time tokens without copying their surrounding record text."""
     values = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", text or ""))
     values.update(match.group(0).lower() for match in re.finditer(
         r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b",

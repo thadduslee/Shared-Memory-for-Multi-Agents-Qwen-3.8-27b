@@ -77,6 +77,7 @@ from harness.profiles import DEVELOPER_PROFILE
 from nodes._common import node_span, write_artifact
 from nodes._transport import agent_call
 from nodes.dev_tools import (
+    DELIVERABLE_SUFFIXES,
     TOOL_NAMES,
     DevToolbox,
     ToolResult,
@@ -550,7 +551,7 @@ def _status_block(state: DeveloperState, box: DevToolbox, turns_used: int = 0) -
         str(p.relative_to(box.workspace))
         for p in box.workspace.rglob("*")
         if p.is_file()
-        and p.suffix in {".py", ".sql", ".toml", ".cfg", ".ini", ".json", ".yaml", ".yml"}
+        and p.suffix in DELIVERABLE_SUFFIXES
         and "__pycache__" not in p.parts
         and p.name not in {"_smoke_runner.py", "_eval_runner.py"}
         and ".cordis" not in p.parts
@@ -1387,7 +1388,7 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
             "action": {"tool": "gate"},
             "observation": (
                 "finish rejected: the gates are green but this episode has not changed "
-                "any .py or .sql file. The workspace was seeded from the previous "
+                "any source or configuration file. The workspace was seeded from the previous "
                 "iteration, so green gates here only confirm that the PREVIOUS "
                 "iteration built -- they are not evidence about the work order you "
                 "were given.\n"
@@ -1409,7 +1410,7 @@ async def dev_observe(state: DeveloperState) -> dict[str, Any]:
             "args": {},
             "kind": "loop",
             "signature": None,
-            "error": "finish rejected: no source file changed in this episode",
+            "error": "finish rejected: no deliverable file changed in this episode",
             "observation": update["scratchpad"][-1]["observation"],
         }]
     return update
@@ -1427,12 +1428,19 @@ def _stop_reason(state: DeveloperState) -> str:
     if (not state.get("online_unbounded") and
             int(state.get("retry_count", 0)) >= config.MAX_DEV_RETRIES):
         return "exhausted"
-    if (
+    mandatory_gates_green = bool(
         state.get("compile_ok")
         and state.get("tests_ok")
         and state.get("migration_ok")
-        and state.get("smoke_ok")
-    ):
+    )
+    # Online repair deliberately forbids the public smoke tool because the
+    # runner performs stronger private exact-delta and causal replay checks.
+    # Requiring smoke_ok here made implicit completion impossible online. Once
+    # the mandatory gates pass and a real artifact changed, return control to
+    # that private validator even if the model forgot an explicit `finish`.
+    completion_evidence_green = bool(
+        state.get("smoke_ok") or state.get("online_unbounded") or state.get("online_mode"))
+    if mandatory_gates_green and completion_evidence_green:
         # All gates green even without an explicit `finish`: stop rather than
         # spend turns waiting for the model to notice.
         #
@@ -1506,7 +1514,9 @@ class DeveloperSession:
         self.state: DeveloperState = dict(state)
         self.box = _toolbox(self.state)
         self.turns = 0
-        self.deadline = time.monotonic() + float(config.DSH_DEVELOPER_TIMEOUT_S)
+        timeout_s = float(self.state.get("online_timeout_s") or
+                          config.DSH_DEVELOPER_TIMEOUT_S)
+        self.deadline = time.monotonic() + timeout_s
         self.messages: list[dict[str, Any]] = [
             {"role": "system", "content": DEVELOPER_PROFILE.system_prompt},
             {"role": "user", "content": self._work_order()},
@@ -1528,7 +1538,7 @@ class DeveloperSession:
             self.turns += 1
             turn = await dev_think(self.state, self.messages)
             self._apply(turn.update)
-            if self.state.get("online_unbounded") and not turn.result.ok:
+            if (self.state.get("online_unbounded") or self.state.get("online_mode")) and not turn.result.ok:
                 # The online orchestrator owns bounded transport retries. Stop
                 # this call without converting an endpoint outage into design
                 # feedback; a retry re-enters this same session and workspace.
@@ -1588,7 +1598,7 @@ class DeveloperSession:
             log.warning("developer: episode wall clock (%.0fs) expired",
                         float(config.DSH_DEVELOPER_TIMEOUT_S))
             return "timeout"
-        ceiling = _max_turns()
+        ceiling = int(self.state.get("online_max_turns") or _max_turns())
         if not self.state.get("online_unbounded") and self.turns >= ceiling:
             log.warning("developer: turn ceiling (%d) reached", ceiling)
             return "turn_cap"

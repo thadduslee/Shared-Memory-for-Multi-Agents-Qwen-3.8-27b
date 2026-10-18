@@ -1,0 +1,16 @@
+{
+  "format_version": 1,
+  "source": "GateMem bench/domains.py MEDICAL_QUERY_POLICY",
+  "isolation_boundaries": ["episode_id"],
+  "inactive_states": ["deleted", "expired", "cancelled", "canceled", "superseded", "revoked", "invalid"],
+  "owner_actions": ["read", "retrieve"],
+  "resource_classification": [
+    {"type": "operational", "concepts": ["time_expression", "date_expression", "location_expression", "schedul", "logistic", "park", "callback"]},
+    {"type": "health_record", "concepts": ["result", "diagnos", "medic", "symptom", "lab", "treatment", "dose"]},
+    {"type": "general_record", "concepts": []}
+  ],
+  "rules": [
+    {"id": "assigned_care_team", "effect": "allow", "actions": ["read", "retrieve"], "resource_types": ["health_record", "operational", "general_record"], "roles": ["clinician", "nurse", "pharmacist"], "relationship": {"predicates": ["assigned_clinician", "care_team"], "direction": "principal_to_owner"}},
+    {"id": "family_scoped_only", "effect": "deny", "actions": ["read", "retrieve"], "resource_types": ["health_record"], "roles": ["family_member"]}
+  ]
+}

@@ -129,7 +129,7 @@ def _read_only_codebase_view(workspace: Path) -> str:
 
     candidates = [
         path for path in source.rglob("*")
-        if path.is_file() and path.suffix in {".py", ".sql"}
+        if path.is_file() and path.suffix in {".json", ".py", ".sql"}
         and not any(part in {".sessions", "__pycache__", ".cordis"} for part in path.parts)
     ]
 

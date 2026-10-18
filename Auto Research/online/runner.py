@@ -1,12 +1,14 @@
-"""Durable, blocking online adaptation with immutable official predictions.
+"""Durable online adaptation with immutable official predictions.
 
 Ingestion commits an episode image and cursor together. Promotion commits
 migrated images, the version pointer, and any staged ingestion together. A
-repair incident owns its boundary until every required target is resolved.
+boundary has separate representation and answer-repair milestones, sharing one
+durable failed-candidate counter.
 """
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import fcntl
 import hashlib
 import json
@@ -20,8 +22,22 @@ from pathlib import Path
 
 import config
 from gatemem_adapter import assert_no_hidden_fields, strip_hidden_fields
-from online.backend import Backend, DeveloperApproachUnworkable, InfrastructureFailure
-from online.diagnostics import build_incident_dossier, replay_behavior
+from online.backend import (
+    Backend,
+    DeveloperApproachUnworkable,
+    InfrastructureFailure,
+    PromptContextFailure,
+)
+from online.diagnostics import (
+    build_incident_dossier,
+    compact_incident_dossier,
+    replay_behavior,
+)
+from online.failure_feedback import (
+    compact_failure_feedback,
+    sanitize_build_feedback,
+    sanitized_failure_feedback,
+)
 from online.metrics import candidate_metrics, cumulative, promotion_regressions
 from online.schedule import (
     POLICY,
@@ -46,18 +62,24 @@ from online.validation import (
 
 log = logging.getLogger("orchestrator.online")
 
+_REPAIR_CLASSIFICATIONS = frozenset({
+    "INGESTION", "AUTHORIZATION", "RETRIEVAL", "FACT_SELECTION", "RENDERING",
+    "INFRASTRUCTURE", "ESCALATE",
+})
+_MAX_PLANNER_ATTEMPTS = 4
+
 
 @dataclass(frozen=True)
 class OnlineOptions:
-    """Online policy controls; none of these limits repair work or spend."""
+    """Online validation, retry, and finite per-boundary candidate policy."""
 
     disable_redesign: bool = False
     replay_window: int = config.ONLINE_REPLAY_WINDOW
     utility_tolerance: float = config.ONLINE_UTILITY_TOLERANCE
     stream_order: str = POLICY
     max_infra_retries: int = config.MAX_INFRA_RETRIES
-    max_stalled_attempts: int = config.ONLINE_MAX_STALLED_ATTEMPTS
-    max_duplicate_proposals: int = config.ONLINE_MAX_DUPLICATE_PROPOSALS
+    max_failed_candidates: int = config.ONLINE_MAX_FAILED_CANDIDATES
+    max_invalid_proposals: int = config.ONLINE_MAX_INVALID_PROPOSALS
     max_correction_rounds: int = config.ONLINE_MAX_CORRECTION_ROUNDS
     # Opt-in: rebuild replay and promotion images from the episode's turns under
     # each side's code, so ingestion-time repairs become measurable.
@@ -65,31 +87,38 @@ class OnlineOptions:
     # Opt-in: predict and judge each replay side this many times; pass/fail is
     # the majority, so one noisy judge call cannot make or break a candidate.
     replay_votes: int = 1
+    renderer_mode: str = config.ONLINE_RENDERER_MODE
+    single_request_timeout_s: float = config.ONLINE_SINGLE_REQUEST_TIMEOUT_S
+    developer_episode_timeout_s: float = config.ONLINE_DEVELOPER_EPISODE_TIMEOUT_S
+    candidate_timeout_s: float = config.ONLINE_CANDIDATE_TIMEOUT_S
+    incident_timeout_s: float = config.ONLINE_INCIDENT_TIMEOUT_S
+    replay_vote_timeout_s: float = config.ONLINE_REPLAY_VOTE_TIMEOUT_S
+    replay_concurrency: int = config.ONLINE_REPLAY_CONCURRENCY
 
     def __post_init__(self):
         if self.replay_window < 1 or self.max_infra_retries < 0:
             raise ValueError("invalid online replay/transport policy")
-        if min(self.max_stalled_attempts, self.max_duplicate_proposals,
+        if min(self.max_failed_candidates, self.max_invalid_proposals,
                self.max_correction_rounds) < 1:
-            raise ValueError("online stall limits must be at least one")
+            raise ValueError("online attempt limits must be at least one")
         if self.replay_votes < 1 or self.replay_votes % 2 == 0:
             raise ValueError("replay_votes must be a positive odd number")
         if not 0 <= self.utility_tolerance <= 1:
             raise ValueError("online utility tolerance must be between zero and one")
+        if self.renderer_mode not in {"locked", "evolvable"}:
+            raise ValueError("renderer_mode must be locked or evolvable")
+        if min(self.single_request_timeout_s, self.developer_episode_timeout_s,
+               self.candidate_timeout_s, self.incident_timeout_s,
+               self.replay_vote_timeout_s) <= 0 or self.replay_concurrency < 1:
+            raise ValueError("online liveness limits must be positive")
 
 
 class BudgetExhausted(RuntimeError):
-    """Legacy import compatibility; online repair no longer raises this."""
+    """A finite candidate or incident wall-clock deadline was exhausted."""
 
 
 class RepairBlocked(RuntimeError):
     pass
-
-
-# Rejections that repeat earlier work count toward the duplicate limit too.
-_DUPLICATE_REASONS = {
-    "equivalent_previous_attempt", "duplicate_source_change", "duplicate_replay_behavior",
-}
 
 
 _LEGACY_LIMIT_KEYS = {
@@ -107,6 +136,8 @@ _LEGACY_LIMIT_KEYS = {
     "promotion_max_a",
     "promotion_max_f",
     "min_category_coverage",
+    "max_stalled_attempts",
+    "max_duplicate_proposals",
 }
 
 
@@ -137,6 +168,9 @@ class OnlineRunner:
         self.journal = Journal(self.path)
         self.backend = backend or Backend(config.MOCK_MODE)
         self.options = options or OnlineOptions()
+        self.backend.renderer_mode = self.options.renderer_mode
+        self.backend.online_developer_timeout_s = self.options.developer_episode_timeout_s
+        self._replay_semaphore = asyncio.Semaphore(self.options.replay_concurrency)
         self.retry_blocked = retry_blocked
         self.abandon_blocked = abandon_blocked
         self.schedule = build_schedule(dataset, self.options.stream_order)
@@ -158,12 +192,15 @@ class OnlineRunner:
                     raise ValueError("resume backend or artifact directory mismatch")
                 legacy = {key: value for key, value in existing.get("options", {}).items()
                           if key in _LEGACY_LIMIT_KEYS}
-                if legacy or existing.get("options") != asdict(self.options):
+                if (legacy or existing.get("options") != asdict(self.options) or
+                        int(existing.get("format_version", 1)) < 4):
                     existing = {
                         **existing,
-                        "format_version": max(2, int(existing.get("format_version", 1))),
+                        "format_version": max(4, int(existing.get("format_version", 1))),
                         "options": asdict(self.options),
-                        "legacy_online_limits_ignored": legacy,
+                        "legacy_online_limits_ignored": {
+                            **existing.get("legacy_online_limits_ignored", {}), **legacy,
+                        },
                     }
                     with self.journal.db:
                         self.journal.put("manifest", existing)
@@ -175,10 +212,15 @@ class OnlineRunner:
             self.close()
             raise
         self.current_operation = ""
+        self._operation_key = contextvars.ContextVar("online_operation_key", default="")
+        self._candidate_deadline = None
+        self._incident_deadline = None
         self.backend.charge = self._charge
         if resume:
+            self._migrate_legacy_online_state()
             unfinished = self.journal.db.execute(
-                "SELECT COUNT(*) FROM attempts WHERE status='building'").fetchone()[0]
+                "SELECT COUNT(*) FROM attempts WHERE status IN ('planning','building')"
+            ).fetchone()[0]
             if unfinished:
                 self._interrupt_unfinished_candidates()
                 active = self.journal.get("active_repair_incident")
@@ -189,10 +231,54 @@ class OnlineRunner:
                     )
         self.export()
 
+    def _migrate_legacy_online_state(self):
+        """Add state introduced by the automatic-attempt policy in place."""
+        versions = self.journal.get("versions", {})
+        changed_versions = False
+        for index, (version, manifest) in enumerate(sorted(versions.items()), 1):
+            defaults = {
+                "memory_version": f"memory_v{index:04d}",
+                "renderer_version": config.FIXED_RENDERER_VERSION,
+                "contract_version": config.FIXED_CONTRACT_VERSION,
+                "renderer_mode": "locked",
+            }
+            for key, value in defaults.items():
+                if key not in manifest:
+                    manifest[key] = value
+                    changed_versions = True
+        if changed_versions:
+            with self.journal.db:
+                self.journal.put("versions", versions)
+        schedule_cursors = self.journal.get("episode_schedule_cursors", None)
+        ingestion_map = self.journal.get("episode_ingested_turn_ids", None)
+        if schedule_cursors is not None and ingestion_map is not None:
+            return
+        next_boundary = int(self.journal.get("event_boundary_index", 1))
+        schedule_cursors = {}
+        for event in self.schedule:
+            if event["event_boundary_index"] >= next_boundary:
+                break
+            schedule_cursors[event["episode_id"]] = event["turn_position"]
+        ingestion_map = {}
+        for row in self.journal.db.execute("SELECT id,cursor FROM episodes"):
+            episode = self.dataset.episodes_by_id[row["id"]]
+            ingestion_map[row["id"]] = [
+                turn["turn_id"] for turn in episode["turns"][:row["cursor"] + 1]
+            ]
+        with self.journal.db:
+            self.journal.put("episode_schedule_cursors", schedule_cursors)
+            self.journal.put("episode_ingested_turn_ids", ingestion_map)
+
     @staticmethod
     def _resume_options_compatible(stored, requested):
         current = {key: value for key, value in stored.items()
                    if key not in _LEGACY_LIMIT_KEYS}
+        # These options change replay meaning. Absence in an older manifest is
+        # the historical disabled/one-vote behavior, never permission to adopt
+        # a new value silently during resume.
+        current.setdefault("replay_reingest", False)
+        current.setdefault("replay_votes", 1)
+        current.setdefault("renderer_mode", "locked")
         return all(key not in current or current[key] == value
                    for key, value in requested.items())
 
@@ -212,15 +298,19 @@ class OnlineRunner:
         copy_workspace(config.TEMPLATES_DIR, work)
         manifest = {
             "schema_version": 1,
+            "memory_version": "memory_v0001",
+            "renderer_version": config.FIXED_RENDERER_VERSION,
+            "contract_version": config.FIXED_CONTRACT_VERSION,
+            "renderer_mode": self.options.renderer_mode,
             "code": code_manifest(work),
             "parent": None,
             "migration_sql": "",
-            "status": "committed",
+            "status": "candidate",
             "promoted_after_boundary": 0,
             "supported_turn_fields": ["turn_id", "timestamp", "speaker", "turn_kind", "text"],
         }
         run_manifest = {
-            "format_version": 2,
+            "format_version": 4,
             "run_id": self.run_dir.name,
             "run_dir": str(self.run_dir),
             "dataset_digest": fingerprint,
@@ -243,10 +333,13 @@ class OnlineRunner:
             self.journal.put("incident_sequence", 0)
             self.journal.put("active_repair_incident", None)
             self.journal.put("repair_incidents", [])
+            self.journal.put("escalation_queue", [])
             self.journal.put("versions", {version: manifest})
             self.journal.put("status", "ready")
             self.journal.put("cumulative_counts", cumulative([]))
             self.journal.put("pending_repairs", [])
+            self.journal.put("episode_schedule_cursors", {})
+            self.journal.put("episode_ingested_turn_ids", {})
         write_json(work.parent / "manifest.json", manifest)
         write_json(work.parent / "parent.json", {"parent": None})
         write_json(work.parent / "promotion_report.json", {"baseline": True})
@@ -256,12 +349,13 @@ class OnlineRunner:
     # Observable operations. Tokens and time are never stop conditions.
     def _charge(self, usage):
         tokens = int((usage or {}).get("total_tokens") or 0)
+        operation_key = self._operation_key.get() or self.current_operation
         with self.journal.db:
             self.journal.db.execute(
-                "INSERT OR IGNORE INTO operations(key) VALUES (?)", (self.current_operation,))
+                "INSERT OR IGNORE INTO operations(key) VALUES (?)", (operation_key,))
             self.journal.db.execute(
                 "UPDATE operations SET tokens=tokens+? WHERE key=?",
-                (tokens, self.current_operation),
+                (tokens, operation_key),
             )
 
     def _usage_for_prefix(self, prefix):
@@ -277,11 +371,64 @@ class OnlineRunner:
     async def operation(self, key, call):
         self.current_operation = key
         while True:
+            now = time.monotonic()
+            if self._incident_deadline is not None and now >= self._incident_deadline:
+                raise BudgetExhausted("online incident wall-clock limit exhausted")
+            if self._candidate_deadline is not None and now >= self._candidate_deadline:
+                raise BudgetExhausted("online candidate wall-clock limit exhausted")
+            context_token = self._operation_key.set(key)
             started = time.monotonic()
             with self.journal.db:
                 self.journal.db.execute("INSERT OR IGNORE INTO operations(key) VALUES (?)", (key,))
             try:
-                return await call()
+                operation_timeout = (self.options.developer_episode_timeout_s
+                                     if "/developer" in key else
+                                     self.options.replay_vote_timeout_s
+                                     if "_replay/" in key else
+                                     self.options.single_request_timeout_s)
+                budget_deadlines = [
+                    (name, deadline) for name, deadline in (
+                        ("incident", self._incident_deadline),
+                        ("candidate", self._candidate_deadline),
+                    ) if deadline is not None
+                ]
+                limiting_budget = min(budget_deadlines, key=lambda item: item[1]) \
+                    if budget_deadlines else None
+                budget_remaining = (
+                    limiting_budget[1] - now if limiting_budget is not None else None)
+                budget_is_limit = (
+                    budget_remaining is not None and budget_remaining <= operation_timeout)
+                timeout = max(0.001, min(
+                    operation_timeout,
+                    budget_remaining if budget_remaining is not None else operation_timeout,
+                ))
+                task = asyncio.create_task(call())
+                deadline = time.monotonic() + timeout
+                runner_timed_out = False
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        runner_timed_out = True
+                        task.cancel()
+                        await asyncio.gather(task, return_exceptions=True)
+                        raise asyncio.TimeoutError
+                    done, _ = await asyncio.wait({task}, timeout=min(60.0, remaining))
+                    if done:
+                        return task.result()
+                    log.info("online heartbeat operation=%s elapsed_s=%.1f",
+                             key, time.monotonic() - started)
+            except asyncio.TimeoutError as exc:
+                if runner_timed_out and budget_is_limit:
+                    raise BudgetExhausted(
+                        f"online {limiting_budget[0]} wall-clock limit exhausted during {key}"
+                    ) from exc
+                raise InfrastructureFailure(
+                    f"{key}: bounded operation timed out after {operation_timeout:.1f}s") from exc
+            except PromptContextFailure:
+                # A deterministic request-size error will be identical on every
+                # retry. Preserve the boundary for an operator/code fix without
+                # spending the transport retry allowance.
+                raise
             except (InfrastructureFailure, ConnectionError, TimeoutError) as exc:
                 with self.journal.db:
                     self.journal.db.execute(
@@ -290,7 +437,8 @@ class OnlineRunner:
                     "SELECT retries FROM operations WHERE key=?", (key,)).fetchone()[0]
                 if retries > self.options.max_infra_retries:
                     raise InfrastructureFailure(
-                        f"{key}: transport retry limit reached; boundary remains blocked") from exc
+                        f"{key}: transport retry limit reached; boundary remains blocked; "
+                        f"last transport error: {exc}") from exc
                 log.warning("Retrying same online operation %s after transport failure (%d)",
                             key, retries)
                 await asyncio.sleep(min(0.1 * 2 ** (retries - 1), 2))
@@ -300,15 +448,15 @@ class OnlineRunner:
                         "UPDATE operations SET seconds=seconds+? WHERE key=?",
                         (time.monotonic() - started, key),
                     )
+                self._operation_key.reset(context_token)
 
     # Visible causal context and durable incidents.
     def _visible_outcome(self, row):
-        checkpoint = visible_checkpoint(self.checkpoints[row["checkpoint_id"]])
         output = row["prediction"].get("output", {})
         return {
             "checkpoint_id": row["checkpoint_id"],
             "event_boundary_index": row["event_boundary_index"],
-            "query": checkpoint,
+            "requested_action_type": "retrieve",
             "passed": row["score"]["passed"],
             "observed_action": output.get("action"),
         }
@@ -361,7 +509,8 @@ class OnlineRunner:
             self.journal.put("active_repair_incident", None if incident.get("resolved") else incident)
             self.journal.put("unresolved_repair_incident", None if incident.get("resolved") else incident)
             self.journal.put("repair_incidents", history)
-            if not incident.get("resolved") and incident.get("phase") != "infrastructure_blocked":
+            if (not incident.get("resolved") and
+                    incident.get("phase") not in {"infrastructure_blocked", "prompt_blocked"}):
                 self.journal.put("status", "repairing")
         folder = self.run_dir / "events" / f"boundary_{incident['boundary_index']:04d}"
         write_json(folder / "repair_incident.json", incident)
@@ -382,16 +531,25 @@ class OnlineRunner:
 
     def _interrupt_unfinished_candidates(self):
         rows = list(self.journal.db.execute(
-            "SELECT boundary,idx,value FROM attempts WHERE status='building' ORDER BY boundary,idx"))
+            "SELECT boundary,idx,value FROM attempts "
+            "WHERE status IN ('planning','building') ORDER BY boundary,idx"))
         for row in rows:
             report = json.loads(row["value"])
+            candidate_created = bool(report.get("candidate_system_version"))
             report.update({
                 "failed_gate": "interrupted",
-                "rejection_reason": "interrupted_candidate",
-                "reasons": ["interrupted candidate was never promoted"],
-                "phase": "rejected_with_feedback",
+                "rejection_reason": (
+                    "interrupted_candidate" if candidate_created else "interrupted_planning"),
+                "reasons": [
+                    "interrupted candidate was never promoted" if candidate_created else
+                    "interrupted Architect call created no candidate"
+                ],
+                "phase": "interrupted" if candidate_created else "planner_interrupted",
+                "counts_as_failed_candidate": False,
+                "counts_as_candidate_rejection": False,
             })
-            self._finish_attempt(row["boundary"], row["idx"], "interrupted", report)
+            status = "interrupted" if candidate_created else "planner_interrupted"
+            self._finish_attempt(row["boundary"], row["idx"], status, report)
         if rows:
             with self.journal.db:
                 self.journal.put("candidate_system_version", None)
@@ -415,7 +573,9 @@ class OnlineRunner:
                 "decision_rule": "compatibility_or_ingestion_validation",
                 "outcome": "rejected",
                 "structural_summary": summary,
-                "error": ingestion_error,
+                "error_present": bool(ingestion_error),
+                "error_signature": hashlib.sha256(
+                    str(ingestion_error or "").encode()).hexdigest()[:16],
             }],
             "trace_entry_ids": [trace_id],
         }
@@ -450,6 +610,36 @@ class OnlineRunner:
                     "diagnosis_review_history": active.get("diagnosis_review_history") or [],
                 }
                 self._save_incident(active)
+            # Old journals predate the automatic attempt policy. Missing
+            # counters mean no failed candidate has yet been durably charged.
+            if ("failed_candidate_attempts" not in active or
+                    "invalid_proposal_count" not in active or
+                    "planner_attempt_count" not in active or
+                    "representation_committed" not in active):
+                event_state = self.journal.event(index)[1]
+                active = {
+                    **active,
+                    "failed_candidate_attempts": int(
+                        active.get("failed_candidate_attempts") or
+                        active.get("stalled_rejections") or 0),
+                    "invalid_proposal_count": int(
+                        active.get("invalid_proposal_count") or 0),
+                    "planner_attempt_count": int(
+                        active.get("planner_attempt_count") or 0),
+                    "planner_abstention_history": list(
+                        active.get("planner_abstention_history") or []),
+                    "representation_committed": bool(
+                        active.get("representation_committed") or
+                        (active.get("trigger_type") == "scored_checkpoint_failure" and
+                         event_state.get("frozen_version"))),
+                    "representation_committed_version": active.get(
+                        "representation_committed_version") or (
+                            event_state.get("representation_committed_version") or
+                            event_state.get("frozen_version")
+                            if active.get("trigger_type") == "scored_checkpoint_failure"
+                            else None),
+                }
+                self._save_incident(active)
             return active
 
         self._interrupt_unfinished_candidates()
@@ -478,6 +668,15 @@ class OnlineRunner:
         incident_id = f"incident_{sequence:04d}"
         dossier = self._make_incident_dossier(
             incident_id, index, trigger_type, targets, summary, ingestion_error)
+        event_state = self.journal.event(index)[1]
+        representation_committed = trigger_type == "scored_checkpoint_failure"
+        failed_candidate_attempts = (
+            int(event_state.get("failed_candidate_attempts") or 0)
+            if representation_committed else 0)
+        representation_version = (
+            event_state.get("representation_committed_version") or
+            event_state.get("frozen_version")
+            if representation_committed else None)
         incident = {
             "incident_id": incident_id,
             "boundary_index": index,
@@ -485,13 +684,15 @@ class OnlineRunner:
             "repair_objective": (
                 "represent and atomically ingest the exact staged input"
                 if trigger_type == "pre_ingestion" else
-                "make at least one unresolved failing checkpoint pass without regression"
+                "improve one or more unresolved checkpoints without regression"
             ),
             "safe_parent_version": parent,
             "target_checkpoint_ids": targets,
             "unresolved_target_checkpoint_ids": targets,
             "staged_input": staged_input,
-            "staged_input_digest": digest(staged_input) if staged_input is not None else None,
+            "staged_input_digest": (
+                digest(staged_input) if staged_input is not None else
+                event_state.get("staged_input_digest") or event_state.get("delta_digest")),
             "ingestion_error": ingestion_error,
             "structural_summary": summary,
             "candidate_attempt_history": prior_attempts,
@@ -499,6 +700,13 @@ class OnlineRunner:
             "diagnosis_review_history": [],
             "architect_incident_dossier": dossier,
             "promotion_history": [],
+            "failed_candidate_attempts": failed_candidate_attempts,
+            "invalid_proposal_count": 0,
+            "invalid_proposal_history": [],
+            "planner_attempt_count": 0,
+            "planner_abstention_history": [],
+            "representation_committed": representation_committed,
+            "representation_committed_version": representation_version,
             "phase": "architect",
             "resolved": False,
             "created_at": time.time(),
@@ -516,7 +724,19 @@ class OnlineRunner:
         feedback_history = incident.get("structured_feedback_history") or []
         previous = feedback_history[-1:]
         earlier = feedback_history[:-1]
+        dossier = compact_incident_dossier(incident.get("architect_incident_dossier"))
+        likely = {str(item.get("likely_problem") or "") for item in dossier.get("targets", [])}
+        allowed_component = (
+            "renderer" if incident["trigger_type"] != "pre_ingestion" and
+            likely == {"RENDERING"} else "memory")
         context = {
+            "renderer_mode": self.options.renderer_mode,
+            "allowed_repair_component": allowed_component,
+            "ownership_contract": {
+                "memory": "authorization, retrieval, selected/required claims, fallback",
+                "renderer": "proposed wording only",
+                "fixed_contract": "trusted release approval; never candidate-editable",
+            },
             "incident_report": {
                 "incident_id": incident["incident_id"],
                 "boundary_index": incident["boundary_index"],
@@ -524,17 +744,19 @@ class OnlineRunner:
                 "repair_objective": incident["repair_objective"],
                 "safe_parent_version": incident["safe_parent_version"],
                 "structural_summary": incident.get("structural_summary"),
-                "ingestion_error": incident.get("ingestion_error"),
-                "exact_staged_input": incident.get("staged_input"),
+                "ingestion_error_present": bool(incident.get("ingestion_error")),
+                "ingestion_error_signature": hashlib.sha256(
+                    str(incident.get("ingestion_error") or "").encode()).hexdigest()[:16],
                 "exact_staged_input_digest": incident.get("staged_input_digest"),
                 "unresolved_targets": [self._visible_outcome(row) for row in official
                                        if row["checkpoint_id"] in targets],
                 "previous_approaches": incident.get("candidate_attempt_history", []),
+                "replay_reingest": self.options.replay_reingest,
             },
-            "architect_incident_dossier": incident.get("architect_incident_dossier"),
-            "latest_complete_structured_feedback": previous[0] if previous else None,
+            "architect_incident_dossier": dossier,
+            "latest_complete_structured_feedback": compact_failure_feedback(
+                previous[0] if previous else None),
             "earlier_attempt_summaries": [self._compact_feedback(item) for item in earlier],
-            "previous_rejected_candidate": previous[0] if previous else None,
         }
         assert_no_hidden_fields(context, where="online Architect incident context")
         return context
@@ -542,9 +764,10 @@ class OnlineRunner:
     @staticmethod
     def _compact_feedback(feedback):
         return {key: feedback.get(key) for key in (
-            "triggering_boundary", "safe_parent_version", "diagnosis_attempted",
-            "focused_goal_attempted", "work_order_attempted", "rejection_reason",
-            "failure_classification", "diagnosis_signature", "design_signature",
+            "incident_id", "safe_parent_version", "failure_category", "pipeline_phase",
+            "rejection_code", "rejection_reason", "improved_targets", "remaining_targets",
+            "regressed_targets",
+            "diagnosis_signature", "design_signature",
             "source_diff_signature", "behavioral_signature",
         )}
 
@@ -553,13 +776,15 @@ class OnlineRunner:
         processed = 0
         try:
             status = self.journal.get("status")
-            if status == "infrastructure_blocked":
+            if status in {"infrastructure_blocked", "prompt_blocked"}:
                 if not self.retry_blocked:
-                    raise InfrastructureFailure(self.journal.get("halt_reason"))
+                    failure = (PromptContextFailure if status == "prompt_blocked"
+                               else InfrastructureFailure)
+                    raise failure(self.journal.get("halt_reason"))
                 incident = self.journal.get("active_repair_incident")
                 if incident:
                     incident = self._transition(
-                        incident, "architect", infrastructure_error=None,
+                        incident, "architect", infrastructure_error=None, prompt_error=None,
                         resume_note="operator requested retry of the same blocked boundary")
                 with self.journal.db:
                     self.journal.put("status", "repairing" if incident else "ready")
@@ -573,7 +798,12 @@ class OnlineRunner:
                     self._abandon_incident(incident)
                 elif incident:
                     self._transition(
-                        incident, "architect", stalled_rejections=0, duplicate_rejections=0,
+                        incident, "architect",
+                        failed_candidate_attempts=int(
+                            incident.get("failed_candidate_attempts") or
+                            incident.get("stalled_rejections") or 0),
+                        invalid_proposal_count=0,
+                        stalled_rejections=0, duplicate_rejections=0,
                         resume_note="operator requested retry of the same stalled boundary")
                 with self.journal.db:
                     self.journal.put("status", "ready")
@@ -589,8 +819,9 @@ class OnlineRunner:
                 await self.boundary(event)
                 processed += 1
                 self.export()
-                log.info("Online boundary %d/%d committed (%s)",
-                         index, len(self.schedule), self.committed)
+                terminal_phase = self.journal.event(index)[0]
+                log.info("Online boundary %d/%d outcome=%s committed_version=%s",
+                         index, len(self.schedule), terminal_phase, self.committed)
             with self.journal.db:
                 self.journal.put(
                     "status",
@@ -598,11 +829,17 @@ class OnlineRunner:
                     else "paused",
                 )
         except InfrastructureFailure as exc:
+            prompt_failure = isinstance(exc, PromptContextFailure)
+            blocked_phase = "prompt_blocked" if prompt_failure else "infrastructure_blocked"
             incident = self.journal.get("active_repair_incident")
             if incident:
-                self._transition(incident, "infrastructure_blocked", infrastructure_error=str(exc))
+                self._transition(
+                    incident, blocked_phase,
+                    infrastructure_error=None if prompt_failure else str(exc),
+                    prompt_error=str(exc) if prompt_failure else None,
+                )
             with self.journal.db:
-                self.journal.put("status", "infrastructure_blocked")
+                self.journal.put("status", blocked_phase)
                 self.journal.put("halt_reason", str(exc))
             raise
         finally:
@@ -622,13 +859,20 @@ class OnlineRunner:
             row = self.journal.db.execute(
                 "SELECT * FROM episodes WHERE id=?", (episode_id,)).fetchone()
             cursor = row["cursor"] if row else -1
-            if event["turn_position"] <= cursor:
-                raise RuntimeError("episode cursor would move backwards")
-            delta = strip_hidden_fields(episode["turns"][cursor + 1:event["turn_position"] + 1])
+            schedule_cursors = self.journal.get("episode_schedule_cursors", {})
+            schedule_cursor = int(schedule_cursors.get(episode_id, -1))
+            if event["turn_position"] <= schedule_cursor:
+                raise RuntimeError("episode schedule cursor would move backwards")
+            delta = strip_hidden_fields(
+                episode["turns"][schedule_cursor + 1:event["turn_position"] + 1])
             summary = structural_summary(delta)
             check = compatibility(summary, self.version_manifest())
             write_json(folder / "input_delta.json", {
-                "episode_id": episode_id, "previous_cursor": cursor, "turns": delta,
+                "episode_id": episode_id,
+                "previous_cursor": cursor,  # legacy alias for ingestion cursor
+                "previous_ingestion_cursor": cursor,
+                "previous_schedule_cursor": schedule_cursor,
+                "turns": delta,
             })
             write_json(folder / "compatibility.json", check)
             state = {
@@ -636,6 +880,7 @@ class OnlineRunner:
                 "summary": summary,
                 "staged_delta": delta,
                 "delta_digest": digest(delta),
+                "previous_schedule_cursor": schedule_cursor,
                 "ingested_turn_ids": [turn["turn_id"] for turn in delta],
             }
             with self.journal.db:
@@ -646,11 +891,14 @@ class OnlineRunner:
             row = self.journal.db.execute(
                 "SELECT * FROM episodes WHERE id=?", (episode_id,)).fetchone()
             cursor = row["cursor"] if row else -1
+            schedule_cursors = self.journal.get("episode_schedule_cursors", {})
+            schedule_cursor = int(schedule_cursors.get(episode_id, -1))
             fresh_delta = strip_hidden_fields(
-                episode["turns"][cursor + 1:event["turn_position"] + 1])
+                episode["turns"][schedule_cursor + 1:event["turn_position"] + 1])
             delta = state.get("staged_delta", fresh_delta)
             if (digest(delta) != digest(fresh_delta) or
-                    state.get("delta_digest") not in {None, digest(delta)}):
+                    state.get("delta_digest") not in {None, digest(delta)} or
+                    state.get("previous_schedule_cursor", schedule_cursor) != schedule_cursor):
                 raise ValidationFailure("staged delta does not match durable dataset/cursor")
             check = state["compatibility"]
             version = self.committed
@@ -693,17 +941,37 @@ class OnlineRunner:
                     raise RepairBlocked(reason)
                 await self.repair_incident(incident, event=event, header=header)
                 phase, state, snapshot = self.journal.event(index)
+                if phase in {"unrepresented_after_5_attempts", "escalated"}:
+                    return
                 if phase != "ingested":
                     raise RepairBlocked("staged ingestion incident did not commit")
             else:
-                state = {**state, "frozen_version": version}
+                state = {
+                    **state,
+                    "frozen_version": version,
+                    "representation_committed": True,
+                    "representation_committed_version": version,
+                    "failed_candidate_attempts": int(
+                        state.get("failed_candidate_attempts") or 0),
+                    "invalid_proposal_count": int(
+                        state.get("invalid_proposal_count") or 0),
+                    "staged_input_digest": state.get("delta_digest"),
+                    "ingestion_occurred": True,
+                }
                 with self.journal.db:
                     self.journal.db.execute(
                         "INSERT OR REPLACE INTO episodes VALUES (?, ?, ?)",
                         (episode_id, event["turn_position"], snapshot),
                     )
+                    ingested = self.journal.get("episode_ingested_turn_ids", {})
+                    ingested[episode_id] = list(dict.fromkeys(
+                        list(ingested.get(episode_id, [])) + state["ingested_turn_ids"]))
+                    self.journal.put("episode_ingested_turn_ids", ingested)
                     self.journal.save_event(index, "ingested", state, snapshot)
                 phase = "ingested"
+
+        if phase in {"unrepresented_after_5_attempts", "escalated"}:
+            return
 
         write_json(folder / "frozen_version.json", {
             "committed_system_version": state["frozen_version"],
@@ -764,7 +1032,7 @@ class OnlineRunner:
                        if row["event_boundary_index"] == index and row.get("score")]
             pending = self._record_pending_failures(current)
             unresolved = [item["checkpoint_id"] for item in pending
-                          if not item.get("resolved") and not item.get("abandoned")]
+                          if not item.get("resolved") and not item.get("terminal_outcome")]
             if unresolved:
                 incident = self._ensure_incident(
                     index,
@@ -779,15 +1047,62 @@ class OnlineRunner:
                         self.journal.put("halt_reason", reason)
                     raise RepairBlocked(reason)
                 await self.repair_incident(incident, event=event, header=header)
+                terminal_phase, _, _ = self.journal.event(index)
+                if terminal_phase in {
+                    "unrepaired_after_5_attempts",
+                    "partially_repaired_with_remaining_failures",
+                    "escalated",
+                }:
+                    return
                 unresolved = [item for item in self.journal.get("pending_repairs", [])
-                              if not item.get("resolved") and not item.get("abandoned")]
+                              if not item.get("resolved") and not item.get("terminal_outcome")]
                 if unresolved:
                     raise RepairBlocked("active scored incident returned with unresolved targets")
                 state["repair_disposition"] = "resolved"
+            outcome = ("repaired_and_passed" if state.get("repair_disposition") or
+                       state.get("repair_occurred") else "passed")
+            boundary_failed = max([
+                int(item.get("failed_candidate_attempts") or 0)
+                for item in self.journal.get("repair_incidents", [])
+                if item.get("boundary_index") == index
+            ] or [0])
+            boundary_invalid = max([
+                int(item.get("invalid_proposal_count") or 0)
+                for item in self.journal.get("repair_incidents", [])
+                if item.get("boundary_index") == index
+            ] or [0])
             with self.journal.db:
-                self.journal.save_event(index, "done", state, snapshot)
+                schedule_cursors = self.journal.get("episode_schedule_cursors", {})
+                schedule_cursors[episode_id] = event["turn_position"]
+                self.journal.put("episode_schedule_cursors", schedule_cursors)
+                self.journal.save_event(index, outcome, {
+                    **state, "boundary_outcome": outcome,
+                    "failed_candidate_attempts": boundary_failed,
+                    "invalid_proposal_count": boundary_invalid,
+                    "committed_system_version": self.committed,
+                    "schedule_advanced": True, "ingestion_occurred": True,
+                    "representation_committed": True,
+                    "representation_committed_version": state.get(
+                        "representation_committed_version", state.get("frozen_version")),
+                    "staged_input_digest": state.get(
+                        "staged_input_digest", state.get("delta_digest")),
+                }, snapshot)
                 self.journal.put("event_boundary_index", index + 1)
                 self.journal.put("repair_attempt_index", 0)
+            write_json(folder / "boundary_outcome.json", {
+                "boundary_index": index,
+                "boundary_outcome": outcome,
+                "failed_candidate_attempts": boundary_failed,
+                "invalid_proposal_count": boundary_invalid,
+                "schedule_advanced": True,
+                "ingestion_occurred": True,
+                "committed_system_version": self.committed,
+                "representation_committed": True,
+                "representation_committed_version": state.get(
+                    "representation_committed_version", state.get("frozen_version")),
+                "staged_input_digest": state.get(
+                    "staged_input_digest", state.get("delta_digest")),
+            })
 
     # Focused repair loop.
     def _next_attempt_index(self, boundary):
@@ -799,25 +1114,129 @@ class OnlineRunner:
     def _normalize(text):
         return " ".join(str(text or "").lower().split())
 
+    @classmethod
+    def _normalized_repair_intent(cls, design):
+        """Canonical causal intent; prose style and prompt position are ignored."""
+        scope = design.get("repair_scope") if isinstance(design.get("repair_scope"), dict) else {}
+        prediction = (design.get("predicted_replay_change")
+                      if isinstance(design.get("predicted_replay_change"), dict) else {})
+        work = " ".join(str(item) for item in design.get("work_order") or [])
+        mechanism_text = cls._normalize(
+            design.get("failure_mechanism") or design.get("specific_hypothesis") or work)
+        synonyms = {
+            "choose": "select", "selected": "select", "selection": "select",
+            "filtering": "filter", "filtered": "filter", "screen": "filter",
+            "ranking": "rank", "scoring": "rank", "prioritize": "rank",
+            "validation": "validate", "validator": "validate", "verify": "validate",
+            "parsing": "parse", "parser": "parse", "decode": "parse",
+            "wording": "prompt", "instruction": "prompt", "instructions": "prompt",
+            "memoize": "cache", "reuse": "cache", "cached": "cache",
+        }
+        tokens = [synonyms.get(token.strip(".,:;()[]{}"), token.strip(".,:;()[]{}"))
+                  for token in mechanism_text.split()]
+        mechanism_markers = sorted(set(tokens) & {
+            "select", "filter", "rank", "validate", "parse", "prompt", "cache",
+            "schema", "contract", "fallback", "authorize", "permission", "lifecycle",
+            "provenance", "atomic", "role", "timeout", "concurrent", "migration",
+        })
+        change_type = str(design.get("change_type") or "").strip().lower()
+        if not change_type:
+            change_type = (
+                "prompt_edit" if "prompt" in mechanism_markers else
+                "schema_change" if "schema" in mechanism_markers else
+                "migration" if design.get("migration_sql") else
+                "code_change")
+        event = str(design.get("cited_causal_event") or
+                    design.get("addressed_decision_rule") or "").strip().lower()
+        observable = str(prediction.get("observable") or "").strip().lower()
+        return {
+            "repair_component": str(design.get("repair_component") or "").lower(),
+            "failure_stage": str(design.get("failure_classification") or "").upper(),
+            "failure_mechanism": mechanism_markers,
+            "target_file": str(scope.get("file") or "").lower(),
+            "target_function_or_artifact": str(scope.get("function") or "").lower(),
+            "change_type": change_type,
+            "migration_mechanism": (
+                hashlib.sha256(cls._normalize(design.get("migration_sql")).encode()).hexdigest()
+                if str(design.get("migration_sql") or "").strip() else None),
+            "cited_causal_event_or_contract_reason": event,
+            "expected_observable": observable,
+        }
+
     @staticmethod
-    def _validate_focused_design(design):
+    def _validate_focused_design(design, *, require_targets=False):
         if not isinstance(design, dict):
             raise ValidationFailure("Architect proposal is not an object", stage="architect")
+        classification = str(design.get("failure_classification") or "")
+        if classification not in _REPAIR_CLASSIFICATIONS - {"ESCALATE"}:
+            raise ValidationFailure(
+                "Architect failure_classification must be exactly one of INGESTION, "
+                "AUTHORIZATION, RETRIEVAL, FACT_SELECTION, or RENDERING for an actionable repair",
+                stage="architect",
+            )
+        if classification == "INFRASTRUCTURE":
+            raise ValidationFailure(
+                "INFRASTRUCTURE failures must be escalated without a product candidate",
+                stage="architect")
+        component = str(design.get("repair_component") or "")
+        if component not in {"memory", "renderer"}:
+            raise ValidationFailure(
+                "Architect repair_component must be exactly memory or renderer",
+                stage="architect")
+        expected_component = "renderer" if classification == "RENDERING" else "memory"
+        if component != expected_component:
+            raise ValidationFailure(
+                f"{classification} is owned by {expected_component}, not {component}",
+                stage="diagnosis_review")
         if design.get("decision") not in {"DATA_MIGRATION", "CODE_OR_SCHEMA_CHANGE"}:
             raise ValidationFailure(
                 "Architect must propose one actionable repair for an unresolved incident",
                 stage="architect",
             )
         diagnosis = str(design.get("diagnosis") or "").strip()
+        hypothesis = str(design.get("specific_hypothesis") or "").strip()
         goal = str(design.get("focused_goal") or "").strip()
         work_order = design.get("work_order")
-        if not diagnosis or not goal or not isinstance(work_order, list) or len(work_order) != 1:
+        scope = design.get("repair_scope")
+        safety = design.get("safety_preservation_checks")
+        if (not diagnosis or not hypothesis or not goal or
+                not isinstance(work_order, list) or len(work_order) != 1):
             raise ValidationFailure(
-                "Architect proposal must contain one diagnosis, one focused_goal, and a one-item work_order",
+                "Architect proposal must contain one diagnosis, one specific_hypothesis, "
+                "one focused_goal, and exactly one work_order item",
                 stage="architect",
             )
-        if not str(work_order[0]).strip():
+        if any(not str(item).strip() for item in work_order):
             raise ValidationFailure("Architect work order is empty", stage="architect")
+        if (not isinstance(scope, dict) or any(
+                not str(scope.get(key) or "").strip()
+                for key in ("subsystem", "file", "function"))):
+            raise ValidationFailure(
+                "Architect repair_scope must name subsystem, file, and function",
+                stage="architect",
+            )
+        target_file = str(scope.get("file") or "")
+        allowed_prefix = "renderer/" if component == "renderer" else "memory_system/"
+        if not target_file.startswith(allowed_prefix):
+            raise ValidationFailure(
+                f"{component} repair must target an editable {allowed_prefix} artifact",
+                stage="diagnosis_review")
+        if target_file.endswith("renderer_contract.py") or target_file == "renderer_contract.py":
+            raise ValidationFailure("fixed renderer contract is not candidate-editable",
+                                    stage="diagnosis_review")
+        if not isinstance(safety, list) or not safety or any(
+                not str(item).strip() for item in safety):
+            raise ValidationFailure(
+                "Architect proposal must include safety_preservation_checks",
+                stage="architect",
+            )
+        targets = design.get("intended_target_ids")
+        if require_targets and (not isinstance(targets, list) or not targets or any(
+                not str(item).strip() for item in targets)):
+            raise ValidationFailure(
+                "Architect proposal must explicitly name target checkpoint IDs",
+                stage="architect",
+            )
 
     @staticmethod
     def _dossier_trace_rules(dossier):
@@ -839,11 +1258,55 @@ class OnlineRunner:
         walk(dossier or {})
         return found
 
+    @staticmethod
+    def _dossier_trace_events(dossier):
+        found = {}
+        def walk(value):
+            if isinstance(value, dict):
+                if value.get("trace_id"):
+                    found[str(value["trace_id"])] = {
+                        "rule": str(value.get("decision_rule") or value.get("rule") or ""),
+                        "stage": str(value.get("decision_stage") or value.get("stage") or ""),
+                    }
+                for child in value.values():
+                    walk(child)
+            elif isinstance(value, list):
+                for child in value:
+                    walk(child)
+        walk(dossier or {})
+        return found
+
     def _diagnosis_review(self, incident, design, report, previous):
         """Read-only, deterministic proposal gate over the durable safe dossier."""
         checks = {}
         feedback = []
-        trace_rules = self._dossier_trace_rules(incident.get("architect_incident_dossier"))
+        component = str(design.get("repair_component") or "")
+        classification = str(design.get("failure_classification") or "")
+        expected_component = "renderer" if classification == "RENDERING" else "memory"
+        checks["component_owns_failed_behavior"] = component == expected_component
+        if not checks["component_owns_failed_behavior"]:
+            feedback.append(
+                f"{classification} cannot be repaired by {component}; owner is {expected_component}")
+        scope_file = str((design.get("repair_scope") or {}).get("file") or "")
+        expected_prefix = "renderer/" if component == "renderer" else "memory_system/"
+        checks["target_is_editable_for_component"] = scope_file.startswith(expected_prefix)
+        if not checks["target_is_editable_for_component"]:
+            feedback.append(f"repair target must be inside {expected_prefix}")
+        checks["can_affect_final_observable"] = not (
+            classification == "RENDERING" and component == "memory")
+        if not checks["can_affect_final_observable"]:
+            feedback.append("a rendering failure cannot be repaired by changing memory fallback wording")
+        intended = {str(item) for item in (design.get("intended_target_ids") or
+                                           incident.get("unresolved_target_checkpoint_ids") or [])}
+        unresolved = set(incident.get("unresolved_target_checkpoint_ids") or [])
+        checks["intended_targets_are_current"] = (
+            incident.get("trigger_type") == "pre_ingestion" or
+            (bool(intended) and intended <= unresolved))
+        if not checks["intended_targets_are_current"]:
+            feedback.append(
+                "intended_target_ids must be a non-empty subset of current unresolved targets")
+        trace_events = self._dossier_trace_events(incident.get("architect_incident_dossier"))
+        trace_rules = {key: value["rule"] for key, value in trace_events.items()}
         citations = design.get("trace_citations")
         citations = citations if isinstance(citations, list) else []
         missing = sorted({str(item) for item in citations if str(item) not in trace_rules})
@@ -853,34 +1316,37 @@ class OnlineRunner:
         elif missing:
             feedback.append("unknown trace citations: " + ", ".join(missing))
 
+        allowed_trace_stages = {
+            "INGESTION": {"ingestion", "state_reconstruction", "status_gate", "record_time_gate"},
+            "AUTHORIZATION": {"authorization_gate", "projection_gate", "deletion_gate"},
+            "RETRIEVAL": {"result_selection", "retrieval", "output_composition"},
+            "FACT_SELECTION": {"result_selection", "answer_plan", "output_composition", "release"},
+            "RENDERING": {"renderer_contract", "rendering", "output_composition", "release"},
+        }
+        cited_stages = {trace_events[str(item)]["stage"] for item in citations
+                        if str(item) in trace_events}
+        checks["cited_event_belongs_to_repair_stage"] = bool(
+            cited_stages & allowed_trace_stages.get(classification, set()) or
+            (incident.get("trigger_type") == "pre_ingestion" and
+             classification == "INGESTION" and citations))
+        if not checks["cited_event_belongs_to_repair_stage"]:
+            feedback.append("cited event does not belong to the proposed failure stage")
+
         addressed = str(design.get("addressed_decision_rule") or "").strip()
         cited_rules = {trace_rules.get(str(item), "") for item in citations}
-        generic_rule_terms = {
-            "record", "official", "output", "decision", "rule", "gate", "selected",
-            "composition", "validation", "compatibility", "ingestion", "authorized",
-            "evidence", "release", "coverage", "source", "group", "limit",
-        }
-        rule_terms = {
-            token for token in addressed.lower().replace("-", "_").split("_")
-            if len(token) > 4 and token not in generic_rule_terms
-        }
-        proposal_text = self._normalize(" ".join([
-            str(design.get("diagnosis") or ""), str(design.get("focused_goal") or ""),
-            " ".join(str(item) for item in (design.get("work_order") or [])),
-        ]))
-        rule_is_addressed = not rule_terms or any(term in proposal_text for term in rule_terms)
         checks["addresses_cited_decision_rule"] = bool(
-            addressed and addressed in cited_rules and rule_is_addressed)
+            addressed and addressed in cited_rules)
         if not checks["addresses_cited_decision_rule"]:
             feedback.append(
-                "addressed_decision_rule must exactly name a cited rule and the diagnosis/work order "
-                "must address its distinctive mechanism")
+                "addressed_decision_rule must exactly name a rule on a cited causal event")
 
         prediction = design.get("predicted_replay_change")
         observable = prediction.get("observable") if isinstance(prediction, dict) else None
         expected = prediction.get("expected_change") if isinstance(prediction, dict) else None
         allowed_observables = {
             "action", "rendered_answer", "authorized_evidence", "decision_trace", "pass_fail",
+            "selected_claims", "required_claims", "contract_result", "fallback_usage",
+            "answer_source",
         }
         checks["predicted_change_is_observable"] = (
             observable in allowed_observables and bool(str(expected or "").strip()))
@@ -888,11 +1354,23 @@ class OnlineRunner:
             feedback.append(
                 "predicted_replay_change needs an observable field and a concrete expected_change")
 
+        observable_owners = {
+            "action": {"memory"}, "authorized_evidence": {"memory"},
+            "decision_trace": {"memory"}, "selected_claims": {"memory"},
+            "required_claims": {"memory"}, "rendered_answer": {"memory", "renderer"},
+            "pass_fail": {"memory", "renderer"}, "contract_result": {"renderer"},
+            "fallback_usage": {"renderer"}, "answer_source": {"renderer"},
+        }
+        checks["target_can_affect_predicted_observable"] = (
+            component in observable_owners.get(observable, set()) and
+            bool(str((design.get("repair_scope") or {}).get("function") or "").strip()))
+        if not checks["target_can_affect_predicted_observable"]:
+            feedback.append("the selected component/file/function cannot affect that replay observable")
+
         duplicate = next((item for item in reversed(previous)
                           if item.get("db_attempt_index") != report["attempt_index"]
-                          and item.get("diagnosis_signature") == report.get("diagnosis_signature")
-                          and item.get("design_signature") == report.get("design_signature")
-                          and item.get("migration_signature") == report.get("migration_signature")), None)
+                          and item.get("repair_intent_signature") ==
+                          report.get("repair_intent_signature")), None)
         checks["materially_different_from_rejected_attempts"] = duplicate is None
         if duplicate:
             feedback.append(
@@ -957,12 +1435,18 @@ class OnlineRunner:
 
     async def repair_incident(self, incident, *, event, header):
         index = incident["boundary_index"]
+        self._incident_deadline = time.monotonic() + self.options.incident_timeout_s
         prefix = f"boundary_{index:04d}"
-        while (incident.get("unresolved_target_checkpoint_ids") or
-               incident["trigger_type"] == "pre_ingestion"):
-            self._raise_if_stalled(incident)
+        if int(incident.get("failed_candidate_attempts") or 0) >= (
+                self.options.max_failed_candidates):
+            self._terminalize_failed_boundary(incident)
+            return False
+        while (not incident.get("resolved") and
+               (incident.get("unresolved_target_checkpoint_ids") or
+                incident["trigger_type"] == "pre_ingestion")):
             attempt_idx = self._next_attempt_index(index)
-            candidate_number = len(incident.get("candidate_attempt_history") or []) + 1
+            candidate_number = int(incident.get("failed_candidate_attempts") or 0) + 1
+            planner_attempt_index = int(incident.get("planner_attempt_count") or 0) + 1
             attempt_dir = self.run_dir / "events" / prefix / "attempts" / f"attempt_{attempt_idx:02d}"
             attempt_dir.mkdir(parents=True, exist_ok=True)
             parent = incident["safe_parent_version"]
@@ -972,7 +1456,8 @@ class OnlineRunner:
                 "trigger_type": incident["trigger_type"],
                 "repair_objective": incident["repair_objective"],
                 "attempt_index": attempt_idx,
-                "candidate_number": candidate_number,
+                "candidate_number": None,
+                "planner_attempt_index": planner_attempt_index,
                 "safe_parent_version": parent,
                 "parent": parent,
                 "candidate_system_version": None,
@@ -983,21 +1468,23 @@ class OnlineRunner:
                 "gate_status": {name: "not_run" for name in (
                     "diagnosis_review", "developer", "compile", "invariants", "unit_tests", "migration",
                     "data_preservation", "database_integrity", "episode_isolation",
-                    "patient_isolation", "no_checkpoint_specialization", "exact_staged_input",
-                    "targeted_replay", "privacy", "deletion", "utility", "broad_validation",
+                    "isolation", "no_checkpoint_specialization", "exact_staged_input",
+                    "required_answers", "targeted_replay", "privacy", "deletion", "utility",
+                    "grounding", "component_scope", "renderer_schema", "broad_validation",
                 )},
                 "targeted_replay": {"status": "not_run"},
                 "broad_validation": {"status": "not_run"},
                 "started_at": time.time(),
             }
+            self._candidate_deadline = time.monotonic() + self.options.candidate_timeout_s
             with self.journal.db:
                 self.journal.db.execute(
                     "INSERT INTO attempts VALUES (?, ?, ?, ?)",
-                    (index, attempt_idx, "building", encode(report)),
+                    (index, attempt_idx, "planning", encode(report)),
                 )
                 self.journal.put("repair_attempt_index", attempt_idx)
             incident = self._transition(
-                incident, "architect", current_candidate_number=candidate_number,
+                incident, "architect", current_candidate_number=None,
                 current_attempt_index=attempt_idx,
             )
             op = prefix + f"/attempt_{attempt_idx:02d}"
@@ -1007,6 +1494,7 @@ class OnlineRunner:
                     partial(self.backend.architect, self._architect_context(incident),
                             self.workspace(parent)),
                 )
+                raw_design = Backend._normalize_architect_design(raw_design)
                 hidden_design_error = None
                 try:
                     assert_no_hidden_fields(raw_design, where="Architect proposal")
@@ -1014,24 +1502,66 @@ class OnlineRunner:
                     hidden_design_error = str(exc)
                 design = strip_hidden_fields(raw_design)
                 report["design"] = design
+                if isinstance(design, dict) and (
+                        design.get("decision") == "ESCALATE" or
+                        design.get("failure_classification") == "ESCALATE"):
+                    write_json(attempt_dir / "design.json", design)
+                    report["diagnosis"] = design.get("diagnosis")
+                    incident = self._record_planner_abstention(
+                        incident, report, attempt_idx, "architect_escalated",
+                        str(design.get("escalation_reason") or design.get("diagnosis") or
+                            "visible evidence is insufficient for a safe proposal"),
+                        force_escalate=True,
+                    )
+                    return False
+                if isinstance(design, dict) and design.get("failure_classification") == "INFRASTRUCTURE":
+                    write_json(attempt_dir / "design.json", design)
+                    report["diagnosis"] = design.get("diagnosis")
+                    self._record_planner_abstention(
+                        incident, report, attempt_idx, "infrastructure_diagnosis",
+                        "infrastructure failures are not product repair candidates",
+                        force_escalate=True)
+                    return False
+                if (isinstance(design, dict) and
+                        design.get("failure_classification") == "RENDERING" and
+                        self.options.renderer_mode == "locked"):
+                    write_json(attempt_dir / "design.json", design)
+                    report["diagnosis"] = design.get("diagnosis")
+                    self._record_planner_abstention(
+                        incident, report, attempt_idx, "locked_renderer_escalation",
+                        "true rendering failure is not repairable in benchmark-locked mode",
+                        force_escalate=True)
+                    return False
                 if isinstance(design, dict) and design.get("decision") == "NO_VIABLE_REPAIR":
                     write_json(attempt_dir / "design.json", design)
                     report["diagnosis"] = design.get("diagnosis")
-                    incident = self._reject(
+                    incident = self._record_planner_abstention(
                         incident, report, attempt_idx, "architect_no_viable_repair",
                         str(design.get("diagnosis") or "Architect found no viable focused repair"))
-                    self._block_stalled(
-                        incident, "Architect reported no viable focused repair: " +
-                        str(design.get("diagnosis") or "no diagnosis given"))
+                    if incident.get("resolved"):
+                        return False
+                    continue
                 report["diagnosis"] = design.get("diagnosis") if isinstance(design, dict) else None
+                report["failure_classification"] = (
+                    design.get("failure_classification") if isinstance(design, dict) else None)
                 report["focused_goal"] = (
                     design.get("focused_goal") if isinstance(design, dict) else None)
+                report["repair_component"] = (
+                    design.get("repair_component") if isinstance(design, dict) else None)
                 report["design_summary"] = (
                     design.get("work_order") if isinstance(design, dict) else None)
+                report["intended_target_ids"] = (
+                    list(design.get("intended_target_ids") or
+                         incident.get("unresolved_target_checkpoint_ids") or [])
+                    if isinstance(design, dict) else [])
                 try:
                     if hidden_design_error:
                         raise ValidationFailure(hidden_design_error, stage="diagnosis_review")
-                    self._validate_focused_design(design)
+                    self._validate_focused_design(
+                        design,
+                        require_targets=(
+                            incident["trigger_type"] == "scored_checkpoint_failure"),
+                    )
                 except ValidationFailure as exc:
                     review = {
                         "status": "rejected",
@@ -1049,8 +1579,10 @@ class OnlineRunner:
                     incident = self._transition(incident, "diagnosis_review")
                     incident = self._record_diagnosis_review(incident, review, attempt_idx)
                     self._checkpoint_attempt(index, attempt_idx, report)
-                    incident = self._reject(
+                    incident = self._record_planner_abstention(
                         incident, report, attempt_idx, "diagnosis_review_rejected", str(exc))
+                    if incident.get("resolved"):
+                        return False
                     continue
                 report["diagnosis_signature"] = digest(self._normalize(design["diagnosis"]))
                 report["design_signature"] = digest({
@@ -1060,9 +1592,12 @@ class OnlineRunner:
                 sql = str(design.get("migration_sql") or "")
                 report["migration_signature"] = hashlib.sha256(
                     self._normalize(sql).encode()).hexdigest()
+                report["normalized_repair_intent"] = self._normalized_repair_intent(design)
+                report["repair_intent_signature"] = digest(
+                    report["normalized_repair_intent"])
                 write_json(attempt_dir / "design.json", design)
                 previous = self._prior_reports(
-                    incident, status={"rejected", "interrupted", "infrastructure_failed"})
+                    incident, status={"rejected", "invalid_proposal", "planner_abstention"})
                 incident = self._transition(incident, "diagnosis_review")
                 review = self._diagnosis_review(incident, design, report, previous)
                 report["diagnosis_review"] = review
@@ -1076,14 +1611,17 @@ class OnlineRunner:
                         "developer_skipped": True,
                         "duplicate_of_attempt": review.get("duplicate_of_attempt"),
                     })
-                    incident = self._reject(
+                    incident = self._record_planner_abstention(
                         incident, report, attempt_idx, review["rejection_reason"],
                         "; ".join(review["feedback"]),
                     )
+                    if incident.get("resolved"):
+                        return False
                     continue
 
                 sequence = int(self.journal.get("version_sequence", 1)) + 1
                 candidate = f"version_{sequence:04d}"
+                report["candidate_number"] = candidate_number
                 report["candidate_system_version"] = candidate
                 with self.journal.db:
                     self.journal.put("version_sequence", sequence)
@@ -1091,7 +1629,8 @@ class OnlineRunner:
                 work = attempt_dir / "workspace"
                 copy_workspace(self.workspace(parent), work)
                 incident = self._transition(
-                    incident, "developing", candidate_system_version=candidate)
+                    incident, "developing", candidate_system_version=candidate,
+                    current_candidate_number=candidate_number)
                 report["phase"] = "developing"
                 self._checkpoint_attempt(index, attempt_idx, report)
 
@@ -1108,6 +1647,19 @@ class OnlineRunner:
                     "before": parent_manifest.get(path),
                     "after": candidate_manifest.get(path),
                 } for path in report["files_changed"]]
+                component = str(design.get("repair_component") or "")
+                allowed_prefix = "renderer/" if component == "renderer" else "memory_system/"
+                scope_violations = [path for path in report["files_changed"]
+                                    if not path.startswith(allowed_prefix)]
+                if (component == "renderer" and sql.strip()) or scope_violations:
+                    detail = (
+                        "candidate changed both components or wrote outside its routed component: " +
+                        ", ".join(scope_violations or ["memory migration from renderer candidate"]))
+                    report["gate_status"]["component_scope"] = "failed"
+                    incident = self._reject(
+                        incident, report, attempt_idx, "mixed_component_change", detail)
+                    continue
+                report["gate_status"]["component_scope"] = "passed"
                 report["source_diff_signature"] = digest(report["source_diff_summary"])
                 duplicate_diff = next((item for item in reversed(previous)
                     if item.get("source_diff_signature") == report["source_diff_signature"]
@@ -1148,6 +1700,28 @@ class OnlineRunner:
                         incident, report, attempt_idx, "safety_regression", str(exc))
                     continue
 
+                parent_components = self.version_manifest(parent)
+                suffix = int(candidate.rsplit("_", 1)[-1])
+                provisional_components = {
+                    "memory_version": (f"memory_v{suffix:04d}" if component == "memory"
+                                       else parent_components.get("memory_version")),
+                    "renderer_version": (f"renderer_v{suffix:04d}" if component == "renderer"
+                                         else parent_components.get("renderer_version")),
+                    "contract_version": config.FIXED_CONTRACT_VERSION,
+                    "renderer_mode": self.options.renderer_mode,
+                }
+                write_json(work.parent / "manifest.json", {
+                    **parent_components, **provisional_components,
+                    "parent": parent, "status": "candidate",
+                    "changed_component": component, "code": candidate_manifest,
+                })
+                report["parent_system_version"] = parent
+                report["parent_component_versions"] = {
+                    key: parent_components.get(key) for key in (
+                        "memory_version", "renderer_version", "contract_version")}
+                report["provisional_candidate_component_versions"] = provisional_components
+                report["fixed_contract_version"] = config.FIXED_CONTRACT_VERSION
+
                 if incident["trigger_type"] == "scored_checkpoint_failure":
                     incident, promoted = await self._post_evaluation_candidate(
                         incident, report, attempt_idx, op, work, sql, attempt_dir)
@@ -1158,12 +1732,46 @@ class OnlineRunner:
                     return True
                 if promoted:
                     continue
+            except BudgetExhausted as exc:
+                report.update({
+                    "phase": "budget_exhausted", "promotion_eligible": False,
+                    "bounded_or_inconclusive": True,
+                    "rejection_reason": "budget_exhausted",
+                    "counts_as_failed_candidate": False,
+                    "candidate_failure_category": "budget_exhausted",
+                    "reasons": list(dict.fromkeys((report.get("reasons") or []) + [str(exc)])),
+                })
+                self._finish_attempt(index, attempt_idx, "budget_exhausted", report)
+                self._transition(incident, "budget_exhausted", bounded_reason=str(exc))
+                with self.journal.db:
+                    self.journal.put("status", "budget_exhausted")
+                    self.journal.put("halt_reason", str(exc))
+                self._candidate_deadline = None
+                self._incident_deadline = None
+                raise RepairBlocked(str(exc)) from exc
             except InfrastructureFailure as exc:
-                report["phase"] = "infrastructure_blocked"
-                report["transport_failure"] = True
-                report["infrastructure_error"] = str(exc)
-                self._finish_attempt(index, attempt_idx, "infrastructure_failed", report)
-                self._transition(incident, "infrastructure_blocked", infrastructure_error=str(exc))
+                prompt_failure = isinstance(exc, PromptContextFailure)
+                blocked_phase = "prompt_blocked" if prompt_failure else "infrastructure_blocked"
+                report["phase"] = blocked_phase
+                report["transport_failure"] = not prompt_failure
+                report["prompt_failure"] = prompt_failure
+                report["infrastructure_error"] = None if prompt_failure else str(exc)
+                report["prompt_error"] = str(exc) if prompt_failure else None
+                report["candidate_failure_category"] = (
+                    "prompt_context_failure" if prompt_failure else "infrastructure_failure")
+                report["counts_as_failed_candidate"] = False
+                report["failed_candidate_attempts_after"] = int(
+                    incident.get("failed_candidate_attempts") or 0)
+                self._finish_attempt(
+                    index, attempt_idx,
+                    "prompt_failed" if prompt_failure else "infrastructure_failed",
+                    report,
+                )
+                self._transition(
+                    incident, blocked_phase,
+                    infrastructure_error=None if prompt_failure else str(exc),
+                    prompt_error=str(exc) if prompt_failure else None,
+                )
                 raise
             except DeveloperApproachUnworkable as exc:
                 incident = self._reject(
@@ -1182,6 +1790,8 @@ class OnlineRunner:
                         else "implementation_failure")
                 incident = self._reject(incident, report, attempt_idx, reason, str(exc))
                 continue
+        self._candidate_deadline = None
+        self._incident_deadline = None
         return True
 
     async def _develop_and_build(
@@ -1223,16 +1833,16 @@ class OnlineRunner:
                 if "bubblewrap sandbox unavailable" in str(exc):
                     raise InfrastructureFailure(str(exc)) from exc
                 gate_reports = exc.gate_reports or {}
-                for name in ("compile", "invariants", "unit_tests"):
+                for name in ("compile", "invariants", "unit_tests", "renderer_schema"):
                     if name in gate_reports:
                         report["gate_status"][name] = (
                             "passed" if gate_reports[name].get("ok") else "failed")
-                feedback = {
+                feedback = sanitize_build_feedback({
                     "stage": exc.origin if exc.origin in {
                         "compile", "invariants", "unit_tests"} else "build_validation",
                     "error": str(exc),
                     "gate_reports": gate_reports,
-                }
+                })
                 rounds[-1]["feedback"] = feedback
                 report.setdefault("build_test_errors", []).append(feedback)
                 if len(rounds) > self.options.max_correction_rounds:
@@ -1256,7 +1866,7 @@ class OnlineRunner:
                 )
                 first = False
                 continue
-            for name in ("compile", "invariants", "unit_tests"):
+            for name in ("compile", "invariants", "unit_tests", "renderer_schema"):
                 report["gate_status"][name] = (
                     "passed" if name not in reports or reports[name].get("ok") else "failed")
             report["build_gates"] = reports
@@ -1297,16 +1907,16 @@ class OnlineRunner:
         self._checkpoint_attempt(index, attempt_idx, report)
         if target_result["status"] != "improved":
             report["broad_validation"] = {
-                "status": "skipped", "reason": "no_measurable_improvement",
+                "status": "skipped", "reason": "unresolved_targets_remain",
             }
             write_json(attempt_dir / "broad_validation.json", report["broad_validation"])
             if target_result.get("behavioral_duplicate_of"):
                 report["duplicate_kind"] = "replay_behavior"
             reason = ("duplicate_replay_behavior" if target_result.get("behavioral_duplicate_of")
-                      else "no_measurable_improvement")
+                      else "wrong_answer_no_targeted_improvement")
             return self._reject(
                 incident, report, attempt_idx, reason,
-                "targeted replay produced no failing-to-passing transition",
+                "candidate did not make a safe measurable improvement",
             ), False
 
         incident = self._transition(incident, "broad_validation")
@@ -1389,14 +1999,19 @@ class OnlineRunner:
             }
             write_json(attempt_dir / "targeted_replay.json", report["targeted_replay"])
             return self._reject(
-                incident, report, attempt_idx, "no_measurable_improvement", str(exc)), False
+                incident, report, attempt_idx, "cannot_represent_staged_data", str(exc)), False
         report["gate_status"]["exact_staged_input"] = "passed"
         report["gate_status"]["targeted_replay"] = "passed"
         report["targeted_replay"] = {
-            "status": "improved",
+            "status": "represented",
             "exact_staged_input_digest": incident["staged_input_digest"],
             "represented_turn_ids": [turn["turn_id"] for turn in staged["turns"]],
+            "required_answers": {
+                "status": "deferred_until_committed_official_scoring",
+                "checkpoint_ids": list(event["checkpoint_ids"]),
+            },
         }
+        report["gate_status"]["required_answers"] = "deferred"
         write_json(attempt_dir / "targeted_replay.json", report["targeted_replay"])
         self._checkpoint_attempt(index, attempt_idx, report)
 
@@ -1446,14 +2061,86 @@ class OnlineRunner:
             "category", "passed", "utility_correct", "privacy_leak", "deletion_leak")}
 
     @staticmethod
+    def _aggregate_votes(votes, errors=()):
+        total = len(votes) + len(errors)
+        passed = sum(bool(score.get("passed")) for _, score in votes)
+        failed = len(votes) - passed
+        if errors or total == 0:
+            outcome = "inconclusive_or_error"
+            majority = False
+            valid = False
+        else:
+            majority = passed > failed
+            valid = True
+            if passed == total:
+                outcome = "unanimous_pass"
+            elif failed == total:
+                outcome = "unanimous_fail"
+            elif majority:
+                outcome = "majority_pass"
+            else:
+                outcome = "majority_fail"
+        return {
+            "outcome": outcome,
+            "valid": valid,
+            "votes": total,
+            "votes_passed": passed,
+            "votes_failed": failed,
+            "evaluator_errors": len(errors),
+            "passed": majority,
+        }
+
+    @staticmethod
     def _behavior(prediction, score):
         output = prediction.get("output", {})
         safe = replay_behavior(output)
-        answer = safe["rendered_answer"]
-        return {**safe,
-                "rendered_answer_hash": hashlib.sha256(
-                    " ".join(answer.split()).encode()).hexdigest(),
-                "passed": bool(score.get("passed"))}
+        return {**safe, "passed": bool(score.get("passed"))}
+
+    def _replay_cache_key(self, *, system_version, workspace, checkpoint,
+                          boundary, blob, vote, frozen_decision=None):
+        components = Backend._component_versions(workspace)
+        return digest({
+            "system_version": system_version,
+            "component_versions": {key: components.get(key) for key in (
+                "memory_version", "renderer_version", "contract_version")},
+            "code": code_manifest(workspace),
+            "checkpoint": visible_checkpoint(checkpoint),
+            "boundary": boundary,
+            "state_image": hashlib.sha256(
+                repr(image_signature(blob)).encode("utf-8")).hexdigest(),
+            "backend": f"{type(self.backend).__module__}.{type(self.backend).__qualname__}",
+            "mock": self.backend.mock,
+            "evaluator_model": config.EVALUATOR_MODEL,
+            "judge_model": config.JUDGE_MODEL,
+            "renderer_mode": self.options.renderer_mode,
+            "contract_version": config.FIXED_CONTRACT_VERSION,
+            "vote_index": vote,
+            "deterministic_seed": int(digest({
+                "checkpoint_id": checkpoint.get("checkpoint_id"), "vote": vote,
+            })[:8], 16),
+            "frozen_decision_signature": digest(frozen_decision) if frozen_decision else None,
+        })
+
+    async def _replay_vote(self, *, cache_key, operation_key, workspace, blob,
+                           header, checkpoint, frozen_decision=None):
+        cached = self.journal.replay_vote(cache_key)
+        if cached is not None:
+            return {**cached, "cache_hit": True}
+        async with self._replay_semaphore:
+            predict_call = partial(
+                self.backend.predict, workspace, blob, header,
+                visible_checkpoint(checkpoint),
+                **({"memory_decision": frozen_decision}
+                   if frozen_decision is not None else {}))
+            prediction = await self.operation(operation_key + "/predict", predict_call)
+            assert_no_hidden_fields(prediction, where="replay evaluator prediction")
+            score = await self.operation(
+                operation_key + "/judge",
+                partial(self.backend.judge, prediction, checkpoint))
+            safe = {"prediction": prediction, "score": self._score_view(score)}
+            with self.journal.db:
+                self.journal.save_replay_vote(cache_key, safe, time.time())
+            return {**safe, "cache_hit": False}
 
     async def _paired_replay(self, index, attempt, parent, work, sql, rows, *, stage, op):
         pairs = {}
@@ -1476,35 +2163,74 @@ class OnlineRunner:
                 _, event_state, image = self.journal.event(boundary)
                 image = self._migrate_to(image, event_state["frozen_version"], parent)
                 candidate_image = migrate_blob(image, sql)
-            results = {}
-            for label, workspace, blob in (
+            frozen_decision = None
+            parent_code = code_manifest(self.workspace(parent))
+            candidate_code = code_manifest(work)
+            changed_paths = {path for path in set(parent_code) | set(candidate_code)
+                             if parent_code.get(path) != candidate_code.get(path)}
+            renderer_only = bool(changed_paths) and all(
+                path.startswith("renderer/") for path in changed_paths)
+            if renderer_only and type(self.backend).predict is Backend.predict:
+                # Causal isolation: run trusted memory once, then feed the same
+                # decision/plan to parent and candidate renderer versions.
+                _, frozen_decision = await self.operation(
+                    f"{op}/{stage}_replay/{checkpoint_id}/frozen_memory_decision",
+                    partial(self.backend.memory, self.workspace(parent), image, header,
+                            checkpoint=visible_checkpoint(checkpoint)),
+                )
+            side_specs = (
                 ("parent", self.workspace(parent), image),
                 ("candidate", work, candidate_image),
-            ):
-                votes = []
-                for vote in range(self.options.replay_votes):
-                    suffix = f"/vote_{vote + 1:02d}" if self.options.replay_votes > 1 else ""
-                    prediction = await self.operation(
-                        f"{op}/{stage}_replay/{checkpoint_id}/{label}/predict{suffix}",
-                        partial(self.backend.predict, workspace, blob, header,
-                                visible_checkpoint(checkpoint)),
-                    )
-                    assert_no_hidden_fields(prediction, where=f"{stage} evaluator prediction")
-                    score = await self.operation(
-                        f"{op}/{stage}_replay/{checkpoint_id}/{label}/judge{suffix}",
-                        partial(self.backend.judge, prediction, checkpoint),
-                    )
-                    votes.append((prediction, score))
-                passes = sum(bool(score.get("passed")) for _, score in votes)
-                majority = passes * 2 > len(votes)
-                # Report the first prediction that agrees with the majority.
-                prediction, score = next(item for item in votes
-                                         if bool(item[1].get("passed")) == majority)
+            )
+            candidate_version = self.journal.get("candidate_system_version")
+
+            async def run_vote(label, workspace, side_blob, vote):
+                version = parent if label == "parent" else candidate_version
+                cache_key = self._replay_cache_key(
+                    system_version=version, workspace=workspace, checkpoint=checkpoint,
+                    boundary=boundary, blob=side_blob, vote=vote,
+                    frozen_decision=frozen_decision)
+                suffix = f"vote_{vote + 1:02d}"
+                key = f"{op}/{stage}_replay/{checkpoint_id}/{label}/{suffix}"
+                try:
+                    value = await self._replay_vote(
+                        cache_key=cache_key, operation_key=key, workspace=workspace,
+                        blob=side_blob, header=header, checkpoint=checkpoint,
+                        frozen_decision=frozen_decision)
+                    return label, value, None
+                except (InfrastructureFailure, ValidationFailure) as exc:
+                    return label, None, type(exc).__name__
+
+            completed = await asyncio.gather(*(
+                run_vote(label, workspace, side_blob, vote)
+                for label, workspace, side_blob in side_specs
+                for vote in range(self.options.replay_votes)))
+            results = {}
+            for label, _, _ in side_specs:
+                values = [value for side, value, error in completed
+                          if side == label and value is not None]
+                votes = [(value["prediction"], value["score"]) for value in values]
+                vote_errors = [error for side, value, error in completed
+                               if side == label and error is not None]
+                vote_summary = self._aggregate_votes(votes, vote_errors)
+                vote_summary["cache_hits"] = sum(bool(value.get("cache_hit"))
+                                                 for value in values)
+                if votes:
+                    # Report the first prediction that agrees with the majority
+                    # when valid, otherwise the first sanitized observation.
+                    prediction, score = next((item for item in votes
+                        if bool(item[1].get("passed")) == vote_summary["passed"]), votes[0])
+                else:
+                    prediction = {"output": {"action": "refuse", "answer": "",
+                                             "used_record_ids": []}}
+                    score = {"category": checkpoint.get("query_type"), "passed": False}
                 results[label] = {
                     "prediction": prediction,
-                    "score": {**self._score_view(score), "votes_passed": passes,
-                              "votes": len(votes)},
-                    "behavior": self._behavior(prediction, score),
+                    "score": {**self._score_view(score), **vote_summary,
+                              "passed": vote_summary["passed"]},
+                    "behavior": {**self._behavior(
+                        prediction, {**score, "passed": vote_summary["passed"]}),
+                        "vote_summary": vote_summary},
                 }
             parent_behavior = results["parent"]["behavior"]
             candidate_behavior = results["candidate"]["behavior"]
@@ -1517,6 +2243,16 @@ class OnlineRunner:
                                      candidate_behavior["authorized_evidence"]),
                 "decision_trace_changed": (parent_behavior["decision_trace"] !=
                                            candidate_behavior["decision_trace"]),
+                "selected_claims_changed": (parent_behavior.get("selected_claim_ids") !=
+                                            candidate_behavior.get("selected_claim_ids")),
+                "required_claims_changed": (parent_behavior.get("required_claim_ids") !=
+                                            candidate_behavior.get("required_claim_ids")),
+                "contract_result_changed": (parent_behavior.get("renderer_contract") !=
+                                            candidate_behavior.get("renderer_contract")),
+                "fallback_use_changed": (parent_behavior.get("fallback_used") !=
+                                         candidate_behavior.get("fallback_used")),
+                "answer_source_changed": (parent_behavior.get("answer_source") !=
+                                          candidate_behavior.get("answer_source")),
                 "answer_changed": (
                     parent_behavior["action"], parent_behavior["rendered_answer_hash"]
                 ) != (
@@ -1534,14 +2270,30 @@ class OnlineRunner:
             pair["differential"] = {
                 "action": {"before": parent_behavior["action"],
                            "after": candidate_behavior["action"]},
-                "rendered_answer": {"before": parent_behavior["rendered_answer"],
-                                    "after": candidate_behavior["rendered_answer"]},
+                "rendered_answer_hash": {
+                    "before": parent_behavior["rendered_answer_hash"],
+                    "after": candidate_behavior["rendered_answer_hash"]},
                 "authorized_evidence": {
                     "before": parent_behavior["authorized_evidence"],
                     "after": candidate_behavior["authorized_evidence"],
                 },
                 "decision_trace": {"before": parent_behavior["decision_trace"],
                                    "after": candidate_behavior["decision_trace"]},
+                "selected_claim_ids": {
+                    "before": parent_behavior.get("selected_claim_ids", []),
+                    "after": candidate_behavior.get("selected_claim_ids", [])},
+                "required_claim_ids": {
+                    "before": parent_behavior.get("required_claim_ids", []),
+                    "after": candidate_behavior.get("required_claim_ids", [])},
+                "renderer_contract": {
+                    "before": parent_behavior.get("renderer_contract", {}),
+                    "after": candidate_behavior.get("renderer_contract", {})},
+                "fallback_used": {
+                    "before": parent_behavior.get("fallback_used", False),
+                    "after": candidate_behavior.get("fallback_used", False)},
+                "answer_source": {
+                    "before": parent_behavior.get("answer_source"),
+                    "after": candidate_behavior.get("answer_source")},
                 "pass_fail": {"before": parent_behavior["passed"],
                               "after": candidate_behavior["passed"],
                               "transition": pair["transition"]},
@@ -1574,6 +2326,9 @@ class OnlineRunner:
 
     def _targeted_result(self, incident, replay):
         pairs = replay["pairs"]
+        invalid_vote_ids = sorted(checkpoint_id for checkpoint_id, pair in pairs.items()
+                                  if not (pair["parent"].get("vote_summary") or {}).get("valid")
+                                  or not (pair["candidate"].get("vote_summary") or {}).get("valid"))
         gains = sorted(checkpoint_id for checkpoint_id, pair in pairs.items()
                        if pair["transition"] == "failing_to_passing")
         losses = sorted(checkpoint_id for checkpoint_id, pair in pairs.items()
@@ -1584,7 +2339,20 @@ class OnlineRunner:
         trace_changed = any(pair["decision_trace_changed"] for pair in pairs.values())
         answer_changed = any(pair["answer_changed"] for pair in pairs.values())
         score_changed = any(pair["score_changed"] for pair in pairs.values())
-        unchanged = not evidence_changed and not trace_changed and not answer_changed and not score_changed
+        selected_changed = any(pair.get("selected_claims_changed") for pair in pairs.values())
+        required_changed = any(pair.get("required_claims_changed") for pair in pairs.values())
+        contract_changed = any(pair.get("contract_result_changed") for pair in pairs.values())
+        fallback_changed = any(pair.get("fallback_use_changed") for pair in pairs.values())
+        answer_source_changed = any(pair.get("answer_source_changed") for pair in pairs.values())
+        unchanged = not any((evidence_changed, trace_changed, answer_changed, score_changed,
+                             selected_changed, required_changed, contract_changed,
+                             fallback_changed, answer_source_changed))
+        before_reasons = sorted({str(reason) for pair in pairs.values()
+                                 for reason in (pair["parent"].get("renderer_contract") or {}).get(
+                                     "reasons", [])})
+        after_reasons = sorted({str(reason) for pair in pairs.values()
+                                for reason in (pair["candidate"].get("renderer_contract") or {}).get(
+                                    "reasons", [])})
         previous = None
         for item in reversed(self._prior_reports(incident, status={"rejected"})):
             if item.get("behavioral_signature") == replay["behavioral_signature"]:
@@ -1592,7 +2360,8 @@ class OnlineRunner:
                             "attempt_index": item["db_attempt_index"]}
                 break
         return {
-            "status": "improved" if gains and not losses else "no_improvement",
+            "status": ("inconclusive" if invalid_vote_ids else
+                       "improved" if gains and not losses else "no_improvement"),
             "pairs": pairs,
             "failing_to_passing": gains,
             "passing_to_failing": losses,
@@ -1601,10 +2370,31 @@ class OnlineRunner:
             "decision_trace_changed": trace_changed,
             "answer_changed": answer_changed,
             "score_changed": score_changed,
+            "selected_claims_changed": selected_changed,
+            "required_claims_changed": required_changed,
+            "contract_result_changed": contract_changed,
+            "contract_reasons_before": before_reasons,
+            "contract_reasons_after": after_reasons,
+            "fallback_use_changed": fallback_changed,
+            "answer_source_changed": answer_source_changed,
+            "intermediate_contract_problem_disappeared": bool(before_reasons and not after_reasons),
+            "final_result_changed": score_changed,
+            "parent_vote_summary": self._summarize_side_votes(pairs, "parent"),
+            "candidate_vote_summary": self._summarize_side_votes(pairs, "candidate"),
             "replay_unchanged": unchanged,
             "behavioral_signature": replay["behavioral_signature"],
             "behavioral_duplicate_of": previous,
+            "invalid_vote_checkpoint_ids": invalid_vote_ids,
         }
+
+    @staticmethod
+    def _summarize_side_votes(pairs, side):
+        result = {"valid": 0, "invalid": 0, "passed": 0, "failed": 0}
+        for pair in pairs.values():
+            summary = (pair.get(side) or {}).get("vote_summary") or {}
+            result["valid" if summary.get("valid") else "invalid"] += 1
+            result["passed" if summary.get("passed") else "failed"] += 1
+        return result
 
     @staticmethod
     def _combine_replays(*replays):
@@ -1617,6 +2407,9 @@ class OnlineRunner:
 
     def _broad_result(self, replay):
         pairs = replay["pairs"]
+        invalid_votes = sorted(checkpoint_id for checkpoint_id, pair in pairs.items()
+                               if not (pair["parent"].get("vote_summary") or {}).get("valid")
+                               or not (pair["candidate"].get("vote_summary") or {}).get("valid"))
         def gate_score(checkpoint_id, passed):
             category = self.checkpoints[checkpoint_id]["query_type"]
             return {
@@ -1641,6 +2434,23 @@ class OnlineRunner:
         utility = sorted(checkpoint_id for checkpoint_id, pair in pairs.items()
                          if baseline[checkpoint_id].get("category") == "utility"
                          and pair["transition"] == "passing_to_failing")
+        worsened_existing_leaks = sorted(
+            checkpoint_id for checkpoint_id, pair in pairs.items()
+            if baseline[checkpoint_id].get("category") in {"privacy", "safety"}
+            and pair["transition"] == "unchanged_fail"
+            and (pair["evidence_changed"] or pair["answer_changed"] or
+                 pair["decision_trace_changed"])
+        )
+        regressions.extend(
+            f"safety condition worsened: {checkpoint_id}"
+            for checkpoint_id in worsened_existing_leaks)
+        grounding_regressions = sorted(
+            checkpoint_id for checkpoint_id, pair in pairs.items()
+            if not (pair["parent"].get("renderer_contract") or {}).get("conflict")
+            and (pair["candidate"].get("renderer_contract") or {}).get("conflict"))
+        regressions.extend(
+            f"renderer grounding regression: {checkpoint_id}"
+            for checkpoint_id in grounding_regressions)
         metrics = candidate_metrics(candidate, minimum_coverage=1) if candidate else {
             "counts": {key: {"n": 0, "pass": 0}
                        for key in ("utility", "privacy", "safety")},
@@ -1648,12 +2458,14 @@ class OnlineRunner:
             "metric_coverage_sufficient": False,
         }
         return {
-            "status": "passed" if not regressions else "failed",
+            "status": "passed" if not regressions and not invalid_votes else "failed",
             "pairs": pairs,
             "regressions": regressions,
             "privacy_regressions": privacy,
             "deletion_regressions": deletion,
             "utility_regressions": utility,
+            "worsened_existing_leaks": worsened_existing_leaks,
+            "grounding_regressions": grounding_regressions,
             "failing_to_passing": sorted(
                 checkpoint_id for checkpoint_id, pair in pairs.items()
                 if pair["transition"] == "failing_to_passing"),
@@ -1664,11 +2476,17 @@ class OnlineRunner:
                 checkpoint_id for checkpoint_id, pair in pairs.items()
                 if not pair["candidate"]["passed"]),
             "behavioral_signature": replay["behavioral_signature"],
+            "invalid_vote_checkpoint_ids": invalid_votes,
             "metrics": metrics,
             "gates": {
-                "privacy": not privacy,
-                "deletion": not deletion,
+                "privacy": not privacy and not any(
+                    baseline[item].get("category") == "privacy"
+                    for item in worsened_existing_leaks),
+                "deletion": not deletion and not any(
+                    baseline[item].get("category") == "safety"
+                    for item in worsened_existing_leaks),
                 "utility": not any("utility regression" in reason for reason in regressions),
+                "grounding": not grounding_regressions,
             },
         }
 
@@ -1708,7 +2526,7 @@ class OnlineRunner:
             self._isolation(reopened, row["id"], episode_info)
             report["gate_status"]["database_integrity"] = "passed"
             report["gate_status"]["episode_isolation"] = "passed"
-            report["gate_status"]["patient_isolation"] = "passed"
+            report["gate_status"]["isolation"] = "passed"
             migrated[row["id"]] = reopened
         current = self.schedule[index - 1]
         info = episode_header(self.dataset.episodes_by_id[current["episode_id"]])
@@ -1751,6 +2569,11 @@ class OnlineRunner:
         incident = self._transition(incident, "promotion")
         report["phase"] = "promotion"
         report["promotion_eligible"] = True
+        report["counts_as_failed_candidate"] = False
+        report["failed_candidate_attempts_after"] = int(
+            incident.get("failed_candidate_attempts") or 0)
+        report["representation_success"] = incident["trigger_type"] == "pre_ingestion"
+        report["answer_success"] = incident["trigger_type"] == "scored_checkpoint_failure"
         report["usage"] = self._attempt_usage(index, attempt_idx)
         report["elapsed_s"] = time.time() - report["started_at"]
         candidate = report["candidate_system_version"]
@@ -1758,10 +2581,21 @@ class OnlineRunner:
         destination = self.workspace(candidate)
         copy_workspace(work, destination)
         staged_turns = (incident.get("staged_input") or {}).get("turns") or []
+        parent_components = self.version_manifest(parent)
+        suffix = int(candidate.rsplit("_", 1)[-1])
+        component = str(report.get("repair_component") or "memory")
         manifest = {
-            **self.version_manifest(parent),
+            **parent_components,
             "parent": parent,
-            "schema_version": self.version_manifest(parent)["schema_version"] + int(bool(sql.strip())),
+            "schema_version": parent_components["schema_version"] + int(bool(sql.strip())),
+            "memory_version": (f"memory_v{suffix:04d}" if component == "memory"
+                               else parent_components.get("memory_version", "memory_v0001")),
+            "renderer_version": (f"renderer_v{suffix:04d}" if component == "renderer"
+                                 else parent_components.get(
+                                     "renderer_version", config.FIXED_RENDERER_VERSION)),
+            "contract_version": config.FIXED_CONTRACT_VERSION,
+            "renderer_mode": self.options.renderer_mode,
+            "changed_component": component,
             "migration_sql": sql,
             "code": code_manifest(destination),
             "status": "committed",
@@ -1774,13 +2608,57 @@ class OnlineRunner:
         }
         write_json(destination.parent / "manifest.json", manifest)
         write_json(destination.parent / "parent.json", {"parent": parent})
-        write_json(destination.parent / "promotion_report.json", report)
-        self._verify_version(parent)
+        # Verify the copied candidate against its own provisional manifest
+        # before the committed-version pointer or any durable episode image can
+        # change. A failure is caught by the ordinary rejection path and leaves
+        # the parent active.
+        self._verify_version(candidate)
+        manifest = {**manifest, "status": "committed"}
+        write_json(destination.parent / "manifest.json", manifest)
 
         remaining_ids = set(incident.get("unresolved_target_checkpoint_ids") or [])
         remaining_ids -= set(target_gains)
-        attempt_ref = self._attempt_ref(report, "promoted")
+        partial = incident["trigger_type"] != "pre_ingestion" and bool(remaining_ids)
+        promotion_status = "partially_promoted" if partial else "promoted"
+        report["promotion_decision"] = promotion_status
+        report["improved_targets"] = sorted(target_gains)
+        report["still_unresolved_targets"] = sorted(remaining_ids)
+        report["regressed_targets"] = []
+        write_json(destination.parent / "promotion_report.json", report)
+        attempt_ref = self._attempt_ref(report, promotion_status)
         promotions = list(incident.get("promotion_history") or []) + [attempt_ref]
+        next_incident = {
+            **incident,
+            "safe_parent_version": candidate,
+            "unresolved_target_checkpoint_ids": sorted(remaining_ids),
+            "candidate_attempt_history": list(incident.get("candidate_attempt_history") or []) +
+            [attempt_ref],
+            "promotion_history": promotions,
+            "phase": "architect" if partial else "promotion",
+            "resolved": not partial,
+            "resolution": (
+                "representation_committed" if incident["trigger_type"] == "pre_ingestion"
+                else "partially_promoted" if partial else "answers_repaired"),
+            "representation_committed": True,
+            "representation_committed_version": (
+                candidate if incident["trigger_type"] == "pre_ingestion" else
+                incident.get("representation_committed_version") or parent),
+            "updated_at": time.time(),
+        }
+        if partial:
+            next_incident["architect_incident_dossier"] = self._make_incident_dossier(
+                incident["incident_id"], index, incident["trigger_type"],
+                sorted(remaining_ids), incident.get("structural_summary"), None)
+            next_incident["repair_objective"] = (
+                "improve one or more remaining unresolved targets without regressing protected passes")
+        assert_no_hidden_fields(next_incident, where="durable repair incident")
+        incident_history = list(self.journal.get("repair_incidents", []))
+        for position, old in enumerate(incident_history):
+            if old.get("incident_id") == next_incident["incident_id"]:
+                incident_history[position] = next_incident
+                break
+        else:
+            incident_history.append(next_incident)
         with self.journal.db:
             for episode_id, blob in migrated.items():
                 if event is not None and episode_id == event["episode_id"]:
@@ -1793,64 +2671,74 @@ class OnlineRunner:
                     (event["episode_id"], event["turn_position"], staged_image),
                 )
                 staged_state = self.journal.event(index)[1]
+                ingested = self.journal.get("episode_ingested_turn_ids", {})
+                ingested[event["episode_id"]] = list(dict.fromkeys(
+                    list(ingested.get(event["episode_id"], [])) +
+                    [turn["turn_id"] for turn in staged_turns]))
+                self.journal.put("episode_ingested_turn_ids", ingested)
                 self.journal.save_event(
-                    index, "ingested", {**staged_state, "frozen_version": candidate}, staged_image)
+                    index, "ingested", {
+                        **staged_state, "frozen_version": candidate,
+                        "repair_occurred": True,
+                        "representation_committed": True,
+                        "representation_committed_version": candidate,
+                        "failed_candidate_attempts": int(
+                            incident.get("failed_candidate_attempts") or 0),
+                        "invalid_proposal_count": int(
+                            incident.get("invalid_proposal_count") or 0),
+                        "staged_input_digest": incident.get("staged_input_digest"),
+                        "ingestion_occurred": True,
+                    }, staged_image)
             versions = self.journal.get("versions")
             versions[candidate] = manifest
             self.journal.put("versions", versions)
             self.journal.put("committed_system_version", candidate)
             self.journal.put("candidate_system_version", None)
+            self.journal.put("active_repair_incident", next_incident if partial else None)
+            self.journal.put("unresolved_repair_incident", next_incident if partial else None)
+            self.journal.put("repair_incidents", incident_history)
+            queue = list(self.journal.get("escalation_queue", []))
+            for queued in queue:
+                if (queued.get("repair_component") in {None, component} and
+                        queued.get("incident_id") != incident.get("incident_id")):
+                    queued["reconsideration_eligible"] = True
+                    queued["reconsideration_reasons"] = list(dict.fromkeys(
+                        list(queued.get("reconsideration_reasons") or []) +
+                        ["related_component_promoted"]))
+                    queued["related_promoted_version"] = candidate
+            self.journal.put("escalation_queue", queue)
             self.journal.db.execute(
-                "UPDATE attempts SET status='promoted',value=? WHERE boundary=? AND idx=?",
-                (encode(report), index, attempt_idx),
+                "UPDATE attempts SET status=?,value=? WHERE boundary=? AND idx=?",
+                (promotion_status, encode(report), index, attempt_idx),
             )
             if target_gains:
                 self._resolve_pending_gains(target_gains, index)
         write_json(
             self.run_dir / "events" / f"boundary_{index:04d}" / "attempts" /
             f"attempt_{attempt_idx:02d}" / "validation.json",
-            {**report, "status": "promoted"},
+            {**report, "status": promotion_status},
         )
-        self._log_attempt_result(report, "promoted")
-
-        if incident["trigger_type"] == "pre_ingestion" or not remaining_ids:
-            incident = {
-                **incident,
-                "safe_parent_version": candidate,
-                "unresolved_target_checkpoint_ids": [],
-                "candidate_attempt_history": list(incident.get("candidate_attempt_history") or []) +
-                [attempt_ref],
-                "promotion_history": promotions,
-                "phase": "promotion",
-                "resolved": True,
-                "resolution": "promoted",
-                "updated_at": time.time(),
-            }
-            self._save_incident(incident)
-            return incident
-
-        incident = {
-            **incident,
-            "safe_parent_version": candidate,
-            "unresolved_target_checkpoint_ids": sorted(remaining_ids),
-            "candidate_attempt_history": list(incident.get("candidate_attempt_history") or []) +
-            [attempt_ref],
-            "promotion_history": promotions,
-            "structured_feedback_history": [],
-            "candidate_system_version": None,
-            "stalled_rejections": 0,
-            "duplicate_rejections": 0,
-        }
-        return self._transition(
-            incident, "architect", partial_progress=True,
-            last_paired_gains=sorted(target_gains),
-        )
+        self._log_attempt_result(report, promotion_status)
+        folder = self.run_dir / "events" / f"boundary_{index:04d}"
+        write_json(folder / "repair_incident.json", next_incident)
+        self._candidate_deadline = None
+        if not partial:
+            self._incident_deadline = None
+        return next_incident
 
     def _reject(self, incident, report, attempt_idx, reason, detail):
+        """Reject one complete candidate and charge the boundary exactly once."""
         report["phase"] = "rejected_with_feedback"
         report["promotion_eligible"] = False
         report["rejection_reason"] = reason
         report["failed_gate"] = reason
+        report["counts_as_failed_candidate"] = True
+        report["counts_as_candidate_rejection"] = True
+        report["candidate_failure_category"] = self._failure_category(
+            incident["trigger_type"], reason, report)
+        failed = int(incident.get("failed_candidate_attempts") or 0) + 1
+        report["failed_candidate_attempts_after"] = failed
+        report["terminal_candidate_failure"] = failed >= self.options.max_failed_candidates
         report["reasons"] = list(dict.fromkeys((report.get("reasons") or []) + [detail]))
         report["usage"] = self._attempt_usage(incident["boundary_index"], attempt_idx)
         report["elapsed_s"] = time.time() - report["started_at"]
@@ -1859,43 +2747,336 @@ class OnlineRunner:
         attempt_dir = (self.run_dir / "events" / f"boundary_{incident['boundary_index']:04d}" /
                        "attempts" / f"attempt_{attempt_idx:02d}")
         write_json(attempt_dir / "structured_feedback.json", feedback)
-        self._finish_attempt(incident["boundary_index"], attempt_idx, "rejected", report)
         history = list(incident.get("candidate_attempt_history") or []) + [
             self._attempt_ref(report, "rejected")]
         feedback_history = list(incident.get("structured_feedback_history") or []) + [feedback]
+        # Persist the final counter in the attempt row as well as the incident.
+        self._finish_attempt(incident["boundary_index"], attempt_idx, "rejected", report)
         incident = {
             **incident,
             "candidate_attempt_history": history,
             "structured_feedback_history": feedback_history,
             "candidate_system_version": None,
             "last_rejection_reason": reason,
-            "stalled_rejections": int(incident.get("stalled_rejections") or 0) + 1,
-            "duplicate_rejections": (int(incident.get("duplicate_rejections") or 0) +
-                                     int(reason in _DUPLICATE_REASONS)),
+            "failed_candidate_attempts": failed,
+            "invalid_proposal_count": 0,
+            "planner_attempt_count": 0,
         }
         incident = self._transition(incident, "rejected_with_feedback")
+        if failed >= self.options.max_failed_candidates:
+            return self._terminalize_failed_boundary(incident)
         return self._transition(incident, "architect")
 
-    def _raise_if_stalled(self, incident):
-        stalled = int(incident.get("stalled_rejections") or 0)
-        duplicates = int(incident.get("duplicate_rejections") or 0)
-        if stalled >= self.options.max_stalled_attempts:
-            self._block_stalled(
-                incident, f"{stalled} consecutive rejected candidates without a promotion")
-        if duplicates >= self.options.max_duplicate_proposals:
-            self._block_stalled(
-                incident, f"{duplicates} proposals duplicated earlier rejected work")
+    def _record_planner_abstention(
+        self, incident, report, attempt_idx, reason, detail, *, force_escalate=False,
+    ):
+        """Record an Architect-only outcome; it is never a candidate rejection.
 
-    def _block_stalled(self, incident, why):
-        reason = (f"repair incident {incident['incident_id']} stalled at boundary "
-                  f"{incident['boundary_index']}: {why.rstrip('.')}. Resume with --retry-blocked to try "
-                  "again, or --abandon-blocked to record the targets as unrepaired and advance.")
-        self._transition(incident, "stalled", stall_reason=why)
+        No version number or workspace exists on this path. Two unsuccessful
+        planning attempts are enough evidence that another blind retry is unsafe,
+        so the incident moves to the operator queue without spending either the
+        candidate or legacy invalid-proposal allowance.
+        """
+        schema_only = reason == "diagnosis_review_rejected" and not report.get(
+            "repair_intent_signature")
+        abstention_signature = digest({
+            "reason": reason,
+            "diagnosis": self._normalize(report.get("diagnosis")),
+            "decision": (report.get("design") or {}).get("decision")
+            if isinstance(report.get("design"), dict) else None,
+        })
+        repeated_abstention = any(
+            item.get("abstention_signature") == abstention_signature
+            for item in incident.get("planner_abstention_history") or [])
+        duplicate = reason == "equivalent_previous_attempt" or repeated_abstention
+        meaningful = not schema_only and not duplicate
+        planner_count = int(incident.get("planner_attempt_count") or 0) + int(meaningful)
+        invalid_count = int(incident.get("invalid_proposal_count") or 0) + int(
+            schema_only or duplicate)
+        report.update({
+            "phase": "planner_abstention",
+            "promotion_eligible": False,
+            "rejection_reason": reason,
+            "failed_gate": reason,
+            "counts_as_failed_candidate": False,
+            "counts_as_candidate_rejection": False,
+            "candidate_failure_category": None,
+            "planner_outcome": "abstained",
+            "planner_attempt_count_after": planner_count,
+            "invalid_proposal_count_after": invalid_count,
+            "counts_as_meaningful_planner_attempt": meaningful,
+            "abstention_signature": abstention_signature,
+            "failed_candidate_attempts_after": int(
+                incident.get("failed_candidate_attempts") or 0),
+            "reasons": list(dict.fromkeys((report.get("reasons") or []) + [detail])),
+        })
+        report["usage"] = self._attempt_usage(incident["boundary_index"], attempt_idx)
+        report["elapsed_s"] = time.time() - report["started_at"]
+        feedback = self._structured_feedback(incident, report)
+        report["structured_feedback"] = feedback
+        attempt_dir = (self.run_dir / "events" /
+                       f"boundary_{incident['boundary_index']:04d}" / "attempts" /
+                       f"attempt_{attempt_idx:02d}")
+        write_json(attempt_dir / "structured_feedback.json", feedback)
+        self._finish_attempt(
+            incident["boundary_index"], attempt_idx, "planner_abstention", report)
+        attempt_ref = self._attempt_ref(report, "planner_abstention")
+        changed = {
+            **incident,
+            "candidate_attempt_history": list(
+                incident.get("candidate_attempt_history") or []) + [attempt_ref],
+            "structured_feedback_history": list(
+                incident.get("structured_feedback_history") or []) + [feedback],
+            "planner_attempt_count": planner_count,
+            "invalid_proposal_count": invalid_count,
+            "planner_abstention_history": list(
+                incident.get("planner_abstention_history") or []) + [attempt_ref],
+            "last_rejection_reason": reason,
+        }
+        changed = self._transition(changed, "planner_abstention")
+        if (force_escalate or planner_count >= _MAX_PLANNER_ATTEMPTS or
+                invalid_count >= self.options.max_invalid_proposals):
+            return self._escalate_incident(changed, detail)
+        return self._transition(changed, "architect")
+
+    def _escalate_incident(self, incident, why):
+        """Queue one privacy-safe incident report and advance the scheduler."""
+        index = incident["boundary_index"]
+        event = self.schedule[index - 1]
+        targets = sorted(incident.get("unresolved_target_checkpoint_ids") or [])
+        dossier = incident.get("architect_incident_dossier") or {}
+        trace_summary = []
+        for target in dossier.get("targets") or []:
+            if not isinstance(target, dict):
+                continue
+            trace_summary.append({
+                "checkpoint_id": target.get("checkpoint_id"),
+                "requester_role": target.get("requester_role"),
+                "heuristic_action_hint": target.get("heuristic_action_hint"),
+                "heuristic_action_hint_confidence": target.get(
+                    "heuristic_action_hint_confidence"),
+                "heuristic_action_hint_derivation": target.get(
+                    "heuristic_action_hint_derivation"),
+                "observed_action_category": target.get("observed_action_category") or
+                    (target.get("official_output") or {}).get("action"),
+                "authorized_evidence_count": int(
+                    target.get("authorized_evidence_count") or 0),
+                "denied_evidence_count": int(target.get("denied_evidence_count") or 0),
+                "decision_rule_summaries": target.get("decision_rule_summaries") or [],
+                "allowed_trace_ids": target.get("allowed_trace_ids") or (
+                    [target["trace_id"]] if target.get("trace_id") else []),
+                "likely_problem": target.get("likely_problem") or (
+                    "INGESTION" if incident["trigger_type"] == "pre_ingestion" else None),
+            })
+        prior_hypotheses = [
+            {
+                "attempt_index": item.get("attempt_index"),
+                "failure_classification": item.get("failure_classification"),
+                "diagnosis": item.get("diagnosis"),
+                "specific_hypothesis": item.get("specific_hypothesis"),
+                "diagnosis_signature": item.get("diagnosis_signature"),
+                "design_signature": item.get("design_signature"),
+                "outcome": item.get("rejection_reason") or item.get("status"),
+            }
+            for item in incident.get("candidate_attempt_history") or []
+        ]
+        report = {
+            "format_version": 1,
+            "incident_id": incident["incident_id"],
+            "boundary_index": index,
+            "failure_type": incident["trigger_type"],
+            "repair_component": next((
+                item.get("repair_component") for item in reversed(
+                    incident.get("candidate_attempt_history") or [])
+                if item.get("repair_component")), None),
+            "failed_checkpoint_ids": targets,
+            "decision_trace_summary": trace_summary,
+            "prior_hypotheses": prior_hypotheses,
+            "reason_safe_proposal_not_produced": str(why),
+            "failed_candidate_attempts": int(
+                incident.get("failed_candidate_attempts") or 0),
+            "invalid_proposal_count": int(
+                incident.get("invalid_proposal_count") or 0),
+            "created_at": time.time(),
+            "reconsideration_eligible": False,
+            "reconsideration_reasons": [],
+        }
+        assert_no_hidden_fields(report, where="escalation report")
+        queue = list(self.journal.get("escalation_queue", []))
+        if not any(item.get("incident_id") == report["incident_id"] for item in queue):
+            queue.append(report)
+        _, state, snapshot = self.journal.event(index)
+        ingestion_occurred = incident["trigger_type"] != "pre_ingestion"
+        terminal = {
+            **incident,
+            "phase": "escalated",
+            "resolved": True,
+            "resolution": "escalated",
+            "boundary_outcome": "escalated",
+            "schedule_advanced": True,
+            "ingestion_occurred": ingestion_occurred,
+            "candidate_system_version": None,
+            "escalation_report": report,
+            "updated_at": time.time(),
+        }
+        pending = [
+            {**item, "terminal_outcome": "escalated", "terminal_at_boundary": index}
+            if item["checkpoint_id"] in set(targets) else item
+            for item in self.journal.get("pending_repairs", [])
+        ]
+        history = list(self.journal.get("repair_incidents", []))
+        for position, old in enumerate(history):
+            if old.get("incident_id") == terminal["incident_id"]:
+                history[position] = terminal
+                break
+        else:
+            history.append(terminal)
+        terminal_state = {
+            **state,
+            "boundary_outcome": "escalated",
+            "schedule_advanced": True,
+            "ingestion_occurred": ingestion_occurred,
+            "representation_committed": ingestion_occurred,
+            "representation_committed_version": (
+                incident.get("representation_committed_version")
+                if ingestion_occurred else None),
+            "failed_candidate_attempts": report["failed_candidate_attempts"],
+            "invalid_proposal_count": report["invalid_proposal_count"],
+            "planner_attempt_count": int(incident.get("planner_attempt_count") or 0),
+            "committed_system_version": self.committed,
+        }
         with self.journal.db:
-            self.journal.put("status", "repair_blocked")
-            self.journal.put("halt_reason", reason)
-        log.warning(reason)
-        raise RepairBlocked(reason)
+            schedule_cursors = self.journal.get("episode_schedule_cursors", {})
+            schedule_cursors[event["episode_id"]] = event["turn_position"]
+            self.journal.put("episode_schedule_cursors", schedule_cursors)
+            self.journal.put("pending_repairs", pending)
+            self.journal.put("escalation_queue", queue)
+            self.journal.put("repair_incidents", history)
+            self.journal.put("active_repair_incident", None)
+            self.journal.put("unresolved_repair_incident", None)
+            self.journal.put("candidate_system_version", None)
+            self.journal.put("event_boundary_index", index + 1)
+            self.journal.put("repair_attempt_index", 0)
+            self.journal.put("status", "ready")
+            self.journal.put("halt_reason", None)
+            self.journal.save_event(index, "escalated", terminal_state, snapshot)
+        folder = self.run_dir / "events" / f"boundary_{index:04d}"
+        write_json(folder / "repair_incident.json", terminal)
+        write_json(folder / "escalation.json", report)
+        write_json(self.run_dir / "escalations" / f"{incident['incident_id']}.json", report)
+        write_json(folder / "boundary_outcome.json", terminal_state)
+        log.warning("repair incident %s escalated; scheduling continues", incident["incident_id"])
+        self._candidate_deadline = None
+        self._incident_deadline = None
+        return terminal
+
+    @staticmethod
+    def _failure_category(trigger_type, reason, report):
+        if reason == "no_actionable_candidate_produced":
+            return "invalid_no_actionable_proposal"
+        if reason in {"implementation_failure", "approach_unworkable",
+                      "no_material_code_change", "duplicate_source_change"}:
+            return "implementation_build_failure"
+        if reason in {"safety_regression"}:
+            return "safety_privacy_deletion_preservation_regression"
+        if trigger_type == "pre_ingestion" and (
+                reason in {"no_measurable_improvement", "cannot_represent_staged_data"} or
+                report.get("gate_status", {}).get("exact_staged_input") == "failed"):
+            return "cannot_represent_staged_data"
+        return "wrong_answer_no_targeted_improvement"
+
+    def _terminalize_failed_boundary(self, incident):
+        """Atomically release an exhausted boundary without inventing success."""
+        index = incident["boundary_index"]
+        had_partial = any(
+            item.get("status") == "partially_promoted"
+            for item in incident.get("promotion_history") or [])
+        outcome = (
+            "unrepresented_after_5_attempts"
+            if incident["trigger_type"] == "pre_ingestion" else
+            "partially_repaired_with_remaining_failures"
+            if had_partial else "unrepaired_after_5_attempts"
+        )
+        _, state, snapshot = self.journal.event(index)
+        event = self.schedule[index - 1]
+        targets = set(incident.get("unresolved_target_checkpoint_ids") or [])
+        pending = [
+            {**item, "terminal_outcome": outcome, "terminal_at_boundary": index}
+            if item["checkpoint_id"] in targets else item
+            for item in self.journal.get("pending_repairs", [])
+        ]
+        terminal = {
+            **incident,
+            "phase": outcome,
+            "resolved": True,
+            "resolution": outcome,
+            "terminal_reason": "unrepaired_after_attempt_limit",
+            "boundary_outcome": outcome,
+            "schedule_advanced": True,
+            "ingestion_occurred": incident["trigger_type"] != "pre_ingestion",
+            "representation_committed": incident["trigger_type"] != "pre_ingestion",
+            "representation_committed_version": (
+                incident.get("representation_committed_version")
+                if incident["trigger_type"] != "pre_ingestion" else None),
+            "candidate_system_version": None,
+            "updated_at": time.time(),
+        }
+        history = list(self.journal.get("repair_incidents", []))
+        for position, old in enumerate(history):
+            if old.get("incident_id") == terminal["incident_id"]:
+                history[position] = terminal
+                break
+        else:
+            history.append(terminal)
+        terminal_state = {
+            **state,
+            "boundary_outcome": outcome,
+            "failed_candidate_attempts": terminal["failed_candidate_attempts"],
+            "invalid_proposal_count": int(terminal.get("invalid_proposal_count") or 0),
+            "schedule_advanced": True,
+            "ingestion_occurred": terminal["ingestion_occurred"],
+            "representation_committed": terminal["representation_committed"],
+            "representation_committed_version": terminal[
+                "representation_committed_version"],
+            "committed_system_version": self.committed,
+            "staged_input_digest": incident.get("staged_input_digest"),
+        }
+        with self.journal.db:
+            schedule_cursors = self.journal.get("episode_schedule_cursors", {})
+            schedule_cursors[event["episode_id"]] = event["turn_position"]
+            self.journal.put("episode_schedule_cursors", schedule_cursors)
+            self.journal.put("pending_repairs", pending)
+            self.journal.put("active_repair_incident", None)
+            self.journal.put("unresolved_repair_incident", None)
+            self.journal.put("repair_incidents", history)
+            self.journal.put("candidate_system_version", None)
+            self.journal.put("event_boundary_index", index + 1)
+            self.journal.put("repair_attempt_index", 0)
+            self.journal.put("status", "ready")
+            self.journal.put("halt_reason", None)
+            self.journal.save_event(index, outcome, terminal_state, snapshot)
+        folder = self.run_dir / "events" / f"boundary_{index:04d}"
+        write_json(folder / "repair_incident.json", terminal)
+        write_json(folder / "boundary_outcome.json", {
+            "boundary_index": index,
+            "boundary_outcome": outcome,
+            "failed_candidate_attempts": terminal["failed_candidate_attempts"],
+            "invalid_proposal_count": int(terminal.get("invalid_proposal_count") or 0),
+            "schedule_advanced": True,
+            "ingestion_occurred": terminal["ingestion_occurred"],
+            "representation_committed": terminal["representation_committed"],
+            "representation_committed_version": terminal[
+                "representation_committed_version"],
+            "committed_system_version": self.committed,
+            "staged_input_digest": incident.get("staged_input_digest"),
+        })
+        log.warning(
+            "repair incident %s exhausted %d failed candidates; boundary=%d outcome=%s "
+            "schedule_advanced=true ingestion_occurred=%s parent=%s",
+            terminal["incident_id"], terminal["failed_candidate_attempts"], index,
+            outcome, terminal["ingestion_occurred"], terminal["safe_parent_version"],
+        )
+        return terminal
 
     def _abandon_incident(self, incident):
         """Record a stalled scored incident's targets as unrepaired and release the stream."""
@@ -1928,91 +3109,23 @@ class OnlineRunner:
             "status": status,
             "diagnosis_signature": report.get("diagnosis_signature"),
             "design_signature": report.get("design_signature"),
+            "failure_classification": (
+                (report.get("design") or {}).get("failure_classification")
+                if isinstance(report.get("design"), dict) else None),
+            "diagnosis": report.get("diagnosis"),
+            "specific_hypothesis": (
+                (report.get("design") or {}).get("specific_hypothesis")
+                if isinstance(report.get("design"), dict) else None),
             "migration_signature": report.get("migration_signature"),
             "source_diff_signature": report.get("source_diff_signature"),
             "behavioral_signature": report.get("behavioral_signature"),
+            "repair_intent_signature": report.get("repair_intent_signature"),
+            "abstention_signature": report.get("abstention_signature"),
             "rejection_reason": report.get("rejection_reason"),
         }
 
     def _structured_feedback(self, incident, report):
-        targeted = report.get("targeted_replay") or {"status": "not_run"}
-        broad = report.get("broad_validation") or {"status": "not_run"}
-        broad_for_architect = {key: broad.get(key) for key in (
-            "status", "pairs", "failing_to_passing", "passing_to_failing",
-            "failed_checkpoint_ids", "behavioral_signature",
-        ) if key in broad}
-        broad_for_architect["regression_count"] = len(broad.get("regressions") or [])
-        previous = [item for item in incident.get("candidate_attempt_history", [])
-                    if item.get("status") in {"rejected", "interrupted"}]
-        feedback = {
-            "format_version": 1,
-            "incident_id": incident["incident_id"],
-            "repair_objective": incident["repair_objective"],
-            "triggering_boundary": incident["boundary_index"],
-            "failure_type": incident["trigger_type"],
-            "safe_parent_version": report.get("safe_parent_version"),
-            "diagnosis_attempted": report.get("diagnosis"),
-            "focused_goal_attempted": report.get("focused_goal"),
-            "work_order_attempted": report.get("design_summary"),
-            "files_changed": report.get("files_changed", []),
-            "build_and_test_results": report.get("build_validation", {"status": "not_run"}),
-            "exact_build_test_errors": report.get("build_test_errors", []),
-            "gate_status": report.get("gate_status", {}),
-            "diagnosis_review": report.get("diagnosis_review", {"status": "not_run"}),
-            "failure_classification": {
-                "transport_failure": bool(report.get("transport_failure")),
-                "infrastructure_failure": bool(report.get("transport_failure")),
-                "no_material_code_change": report.get("rejection_reason") == "no_material_code_change",
-                "duplicate_proposal": (
-                    report.get("rejection_reason") == "equivalent_previous_attempt"),
-                "duplicate_source_change": (
-                    report.get("rejection_reason") == "duplicate_source_change"),
-                "duplicate_replay_behavior": (
-                    report.get("rejection_reason") == "duplicate_replay_behavior"),
-                "diagnosis_review_rejection": (
-                    report.get("rejection_reason") == "diagnosis_review_rejected"),
-                "build_or_test_failure": any(
-                    report.get("gate_status", {}).get(key) == "failed"
-                    for key in ("compile", "invariants", "unit_tests")),
-                "implementation_failure": report.get("rejection_reason") == "implementation_failure",
-                "ineffective_design": report.get("rejection_reason") == "no_measurable_improvement",
-                "safety_regression": report.get("rejection_reason") == "safety_regression",
-                "tests_ran_and_failed": sorted(
-                    key for key in ("compile", "invariants", "unit_tests")
-                    if report.get("gate_status", {}).get(key) == "failed"),
-                "tests_never_ran": sorted(
-                    key for key in ("compile", "invariants", "unit_tests")
-                    if report.get("gate_status", {}).get(key) == "not_run"),
-                "gates_never_ran": sorted(
-                    key for key, value in report.get("gate_status", {}).items()
-                    if value == "not_run"),
-            },
-            "targeted_replay": targeted,
-            "broad_validation": broad_for_architect,
-            "evidence_changed": targeted.get("evidence_changed"),
-            "decision_trace_changed": targeted.get("decision_trace_changed"),
-            "rendered_answer_changed": targeted.get("answer_changed"),
-            "score_changed": targeted.get("score_changed"),
-            "failing_to_passing": targeted.get("failing_to_passing", []),
-            "passing_to_failing": (
-                targeted.get("passing_to_failing", []) + broad.get("passing_to_failing", [])),
-            "remaining_failed_checkpoints": targeted.get("failed_checkpoint_ids"),
-            "regressions": {
-                "checkpoint_transitions": broad.get("passing_to_failing", []),
-                "preservation": report.get("protected_state_difference"),
-                "isolation": report.get("gate_status", {}).get("episode_isolation") == "failed",
-            },
-            "behavioral_signature": report.get("behavioral_signature"),
-            "source_diff_signature": report.get("source_diff_signature"),
-            "design_signature": report.get("design_signature"),
-            "diagnosis_signature": report.get("diagnosis_signature"),
-            "migration_signature": report.get("migration_signature"),
-            "token_usage": report.get("usage", {}).get("tokens", 0),
-            "time_usage_s": report.get("usage", {}).get("seconds", 0.0),
-            "previous_approaches_already_attempted": previous,
-            "rejection_reason": report.get("rejection_reason"),
-            "rejection_detail": (report.get("reasons") or [None])[-1],
-        }
+        feedback = sanitized_failure_feedback(incident, report)
         assert_no_hidden_fields(feedback, where="Architect rejection feedback")
         return feedback
 
@@ -2051,16 +3164,32 @@ class OnlineRunner:
                         for name in ("compile", "invariants", "unit_tests")]
         build = "failed" if "failed" in build_values else (
             "passed" if all(value == "passed" for value in build_values) else "not_run")
+        vote_outcomes = {}
+        for pair in (targeted.get("pairs") or {}).values():
+            for side in ("parent", "candidate"):
+                outcome = ((pair.get(side) or {}).get("vote_summary") or {}).get("outcome")
+                if outcome:
+                    vote_outcomes[outcome] = vote_outcomes.get(outcome, 0) + 1
+        regressions = set(targeted.get("passing_to_failing") or []) | set(
+            broad.get("passing_to_failing") or [])
         log.info(
-            "repair incident %s candidate %s: focused_goal=%s build=%s "
-            "targeted_replay=%s broad_validation=%s evidence_changed=%s "
-            "answer_changed=%s score_changed=%s failed_remaining=%s reason=%s action=%s",
-            report.get("incident_id"), report.get("candidate_number"),
-            report.get("focused_goal"), build, targeted.get("status", "not_run"),
-            broad.get("status", "not_run"), targeted.get("evidence_changed"),
-            targeted.get("answer_changed"), targeted.get("score_changed"), remaining,
-            report.get("rejection_reason") or ("promoted" if status == "promoted" else "unknown"),
-            "promoted" if status == "promoted" else "return_to_architect",
+            "repair incident %s parent=%s candidate=%s phase=%s intended=%s build=%s "
+            "targeted_replay=%s broad_validation=%s votes=%s improved=%s "
+            "failed_remaining=%s regressions=%d decision=%s reason=%s elapsed_s=%.3f next=%s",
+            report.get("incident_id"), report.get("safe_parent_version"),
+            report.get("candidate_system_version") or report.get("candidate_number"),
+            report.get("phase"),
+            report.get("intended_target_ids", []), build,
+            targeted.get("status", "not_run"), broad.get("status", "not_run"),
+            vote_outcomes, targeted.get("failing_to_passing", []), remaining, len(regressions),
+            report.get("promotion_decision") or "rejected",
+            report.get("rejection_reason") or (
+                status if status in {"promoted", "partially_promoted"} else "unknown"),
+            float(report.get("elapsed_s") or 0.0),
+            ("remaining_targets" if status == "partially_promoted" else
+             "none" if status == "promoted" else
+             "terminalize_boundary" if report.get("terminal_candidate_failure") else
+             "return_to_architect"),
         )
 
     def _checkpoint_attempt(self, index, count, report):
@@ -2082,8 +3211,42 @@ class OnlineRunner:
 
     # Immutable version/image helpers.
     def _verify_version(self, version):
-        if code_manifest(self.workspace(version)) != self.version_manifest(version)["code"]:
+        versions = self.journal.get("versions", {})
+        manifest = versions.get(version)
+        provisional = manifest is None
+        if manifest is None:
+            path = self.workspace(version).parent / "manifest.json"
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise ValidationFailure("candidate manifest is missing or malformed",
+                                        stage="promotion_verification") from exc
+        if code_manifest(self.workspace(version)) != manifest.get("code"):
             raise ValidationFailure("committed workspace changed outside promotion")
+        if provisional:
+            if manifest.get("contract_version") != config.FIXED_CONTRACT_VERSION:
+                raise ValidationFailure("candidate fixed contract version mismatch",
+                                        stage="promotion_verification")
+            if manifest.get("renderer_mode") != self.options.renderer_mode:
+                raise ValidationFailure("candidate renderer mode mismatch",
+                                        stage="promotion_verification")
+            parent = versions.get(manifest.get("parent"))
+            component = manifest.get("changed_component")
+            if parent is None or component not in {"memory", "renderer"}:
+                raise ValidationFailure("candidate component lineage is invalid",
+                                        stage="promotion_verification")
+            memory_version = manifest.get("memory_version")
+            renderer_version = manifest.get("renderer_version")
+            if not all(isinstance(item, str) and item for item in (
+                    memory_version, renderer_version)):
+                raise ValidationFailure("candidate component version is missing",
+                                        stage="promotion_verification")
+            changed_key = f"{component}_version"
+            retained_key = "renderer_version" if component == "memory" else "memory_version"
+            if (manifest.get(changed_key) == parent.get(changed_key) or
+                    manifest.get(retained_key) != parent.get(retained_key)):
+                raise ValidationFailure("candidate component version tuple is inconsistent",
+                                        stage="promotion_verification")
 
     @staticmethod
     def _isolation(blob, episode_id, header):
@@ -2130,20 +3293,38 @@ class OnlineRunner:
             path.write_bytes(blob)
             with sqlite3.connect(path) as connection:
                 found = {row[1]: row for row in connection.execute(
-                    "SELECT observation_id,turn_id,raw_text,raw_payload_json "
+                    "SELECT observation_id,turn_id,raw_text,raw_payload_json,content_hash "
                     "FROM observations WHERE episode_id=?", (episode_id,))}
                 tombstones = {row[0] for row in connection.execute(
                     "SELECT target_id FROM tombstones WHERE target_type='observation'")}
         missing = [turn["turn_id"] for turn in delta if turn["turn_id"] not in found]
-        empty = [turn["turn_id"] for turn in delta if turn.get("text") and
-                 turn["turn_id"] in found and not (
-                     found[turn["turn_id"]][2] or found[turn["turn_id"]][3]) and
-                 found[turn["turn_id"]][0] not in tombstones]
-        if missing or empty:
+        mismatched = []
+        for turn in delta:
+            row = found.get(turn["turn_id"])
+            if row is None:
+                continue
+            canonical = json.dumps(
+                turn, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+            expected_hash = hashlib.sha256(canonical.encode()).hexdigest()
+            if row[0] in tombstones:
+                if row[4] != expected_hash:
+                    mismatched.append(turn["turn_id"])
+                continue
+            try:
+                payload = json.loads(row[3])
+            except (TypeError, ValueError):
+                payload = None
+            if row[2] != str(turn.get("text") or "") or payload != turn or row[4] != expected_hash:
+                mismatched.append(turn["turn_id"])
+        if missing or mismatched:
             raise ValidationFailure(
-                f"actual incoming delta not represented in observations: missing={missing}, empty={empty}",
+                "actual incoming delta not represented exactly in observations: "
+                f"missing={missing}, mismatched={mismatched}",
                 stage="runtime_derivation", table="observations",
-                row_difference={"missing_turn_ids": missing, "empty_turn_ids": empty},
+                row_difference={
+                    "missing_turn_ids": missing,
+                    "mismatched_turn_ids": mismatched,
+                },
                 origin="runtime_derivation",
             )
 
@@ -2166,7 +3347,14 @@ class OnlineRunner:
         empty, _ = await self.operation(
             key + "/empty", partial(self.backend.memory, workspace, None, header, delta=[]))
         empty = migrate_blob(self._migrate_to(empty, "version_0001", parent), sql)
-        turns = strip_hidden_fields(episode["turns"][:position + 1])
+        ingestion_map = self.journal.get("episode_ingested_turn_ids", None)
+        if ingestion_map is None:  # legacy journal: cursor implied a contiguous prefix
+            selected = episode["turns"][:position + 1]
+        else:
+            committed_ids = set(ingestion_map.get(episode_id, []))
+            selected = [turn for turn in episode["turns"][:position + 1]
+                        if turn["turn_id"] in committed_ids]
+        turns = strip_hidden_fields(selected)
         rebuilt, _ = await self.operation(
             key + "/ingest", partial(self.backend.memory, workspace, empty, header, delta=turns))
         return rebuilt
@@ -2181,11 +3369,21 @@ class OnlineRunner:
                 with sqlite3.connect(path) as connection:
                     states.append((
                         sorted(connection.execute(
-                            "SELECT episode_id,turn_id,raw_text,content_hash FROM observations")),
+                            "SELECT episode_id,turn_id,raw_text,content_hash,seq "
+                            "FROM observations ORDER BY seq")),
                         {tuple(row) for row in connection.execute(
-                            "SELECT target_id,target_type FROM tombstones")},
+                            "SELECT target_id,target_type,shredded FROM tombstones")},
+                        {tuple(row) for row in connection.execute(
+                            "SELECT principal_id,observed_role,attributes_json FROM principals")},
+                        {tuple(row) for row in connection.execute(
+                            "SELECT episode_id,subject_id,predicate,object_id,status "
+                            "FROM relationships")},
+                        {tuple(row) for row in connection.execute(
+                            "SELECT episode_id,grantee_id,resource_owner_id,effect,scope_json,"
+                            "exclusions_json,status,source_observation_id FROM permissions")},
                     ))
-        (old_obs, old_tombs), (new_obs, new_tombs) = states
+        (old_obs, old_tombs, old_principals, old_relationships, old_permissions), (
+            new_obs, new_tombs, new_principals, new_relationships, new_permissions) = states
         if old_tombs - new_tombs:
             raise ValidationFailure("rebuilt image lost tombstones", stage="data_preservation",
                                     table="tombstones",
@@ -2195,6 +3393,16 @@ class OnlineRunner:
             raise ValidationFailure("rebuilt image changed raw observations",
                                     stage="data_preservation", table="observations",
                                     origin="reingest")
+        for table, old, new in (
+            ("principals", old_principals, new_principals),
+            ("relationships", old_relationships, new_relationships),
+            ("permissions", old_permissions, new_permissions),
+        ):
+            if old - new:
+                raise ValidationFailure(
+                    f"rebuilt image lost authoritative {table}", stage="data_preservation",
+                    table=table, row_difference={"lost_count": len(old - new)},
+                    origin="reingest")
 
     @staticmethod
     def _preserve_images(before, after):
@@ -2227,31 +3435,118 @@ class OnlineRunner:
             bucket["seconds"] += operation["seconds"]
             bucket["transport_retries"] += operation["retries"]
         incidents = self.journal.get("repair_incidents", [])
+        answering_outputs = [row.get("prediction", {}).get("output", {}) for row in rows
+                             if row.get("prediction", {}).get("output", {}).get("action")
+                             in {"answer", "answer_redacted"}]
+        conflict_reasons = [reason for output in answering_outputs
+                            for reason in (output.get("renderer_contract") or {}).get("reasons", [])]
+        current_manifest = self.version_manifest()
+        escalation_queue = self.journal.get("escalation_queue", [])
+        incident_count = len([item for item in incidents if item.get("incident_id")])
+        escalation_rate = len(escalation_queue) / incident_count if incident_count else 0.0
         return {
             "status": self.journal.get("status"),
             "event_boundary_index": self.journal.get("event_boundary_index"),
             "committed_system_version": self.committed,
             "candidate_system_version": self.journal.get("candidate_system_version"),
+            "effective_system_version": {
+                "memory_version": current_manifest.get("memory_version", "memory_v0001"),
+                "renderer_version": current_manifest.get(
+                    "renderer_version", config.FIXED_RENDERER_VERSION),
+                "contract_version": current_manifest.get(
+                    "contract_version", config.FIXED_CONTRACT_VERSION),
+                "renderer_mode": self.options.renderer_mode,
+            },
             "active_repair_incident": self.journal.get("active_repair_incident"),
             "scoreboard": cumulative(rows),
             "adaptation": {
                 "repair_incidents": len([item for item in incidents if item.get("incident_id")]),
-                "candidate_promotions": sum(row["status"] == "promoted" for row in attempts),
+                "candidate_promotions": sum(row["status"] in {
+                    "promoted", "partially_promoted"} for row in attempts),
+                "memory_promotions": sum(row["status"] in {"promoted", "partially_promoted"}
+                                         and report.get("repair_component") == "memory"
+                                         for row, report in zip(attempts, reports)),
+                "renderer_promotions": sum(row["status"] in {"promoted", "partially_promoted"}
+                                           and report.get("repair_component") == "renderer"
+                                           for row, report in zip(attempts, reports)),
+                "renderer_validation_pass_rate": (
+                    sum(output.get("answer_source") == "validated_renderer"
+                        for output in answering_outputs) / len(answering_outputs)
+                    if answering_outputs else None),
+                "deterministic_fallback_rate": (
+                    sum(output.get("answer_source") == "deterministic_claim_fallback"
+                        for output in answering_outputs) / len(answering_outputs)
+                    if answering_outputs else None),
+                "missing_required_claim_conflicts": conflict_reasons.count(
+                    "missing_required_claim"),
+                "unsupported_statement_conflicts": conflict_reasons.count(
+                    "unsupported_sentence"),
+                "critical_value_conflicts": sum(reason in {
+                    "critical_value_changed", "negation_or_status_changed"}
+                    for reason in conflict_reasons),
+                "rendering_diagnoses": sum(
+                    report.get("failure_classification") == "RENDERING" for report in reports),
+                "fact_selection_diagnoses": sum(
+                    report.get("failure_classification") == "FACT_SELECTION" for report in reports),
                 "candidate_rejections": sum(row["status"] == "rejected" for row in attempts),
+                "planner_abstentions": sum(
+                    row["status"] == "planner_abstention" for row in attempts),
+                "escalations": len(escalation_queue),
+                "escalation_rate": escalation_rate,
+                "escalation_rate_warning": (
+                    "high escalation rate" if incident_count and
+                    escalation_rate >= config.ONLINE_ESCALATION_RATE_WARN else None),
+                "reconsiderable_escalations": sorted(
+                    item.get("incident_id") for item in escalation_queue
+                    if item.get("reconsideration_eligible")),
+                "escalated_incidents": [{
+                    "incident_id": item.get("incident_id"),
+                    "boundary_index": item.get("boundary_index"),
+                    "safe_reason": item.get("reason_safe_proposal_not_produced"),
+                    "reconsideration_eligible": bool(
+                        item.get("reconsideration_eligible")),
+                } for item in escalation_queue],
+                "unresolved_incidents": [{
+                    "incident_id": item.get("incident_id"),
+                    "boundary_index": item.get("boundary_index"),
+                    "phase": item.get("phase"),
+                    "safe_reason": item.get("last_rejection_reason") or
+                    item.get("bounded_reason"),
+                } for item in incidents if item.get("incident_id") and
+                    not item.get("resolved")],
                 "interrupted_candidates": sum(row["status"] == "interrupted" for row in attempts),
                 "unresolved_repair_incidents": sum(
                     bool(item.get("incident_id") and not item.get("resolved")) for item in incidents),
                 "pending_repairs": len([item for item in pending if not item.get("resolved")
+                                        and not item.get("terminal_outcome")
                                         and not item.get("abandoned")]),
                 "unresolved_failures": sorted(item["checkpoint_id"] for item in pending
                                               if not item.get("resolved")),
                 "abandoned_failures": sorted(item["checkpoint_id"] for item in pending
                                              if item.get("abandoned")),
+                "terminal_unrepaired_failures": sorted(
+                    item["checkpoint_id"] for item in pending
+                    if item.get("terminal_outcome") in {
+                        "unrepaired_after_5_attempts",
+                        "partially_repaired_with_remaining_failures"}),
+                "invalid_proposals": sum(row["status"] == "invalid_proposal"
+                                         for row in attempts),
+                "failed_candidate_attempts": sum(
+                    bool(report.get("counts_as_failed_candidate")) for report in reports),
+                "terminal_boundary_outcomes": {
+                    str(item["boundary_index"]): item.get("resolution")
+                    for item in incidents if item.get("resolution") in {
+                        "unrepaired_after_5_attempts", "unrepresented_after_5_attempts",
+                        "partially_repaired_with_remaining_failures", "escalated"}
+                },
                 "equivalent_attempt_rejections": sum(
                     report.get("rejection_reason") == "equivalent_previous_attempt"
                     for report in reports),
                 "no_improvement_rejections": sum(
-                    report.get("rejection_reason") == "no_measurable_improvement"
+                    report.get("rejection_reason") in {
+                        "no_measurable_improvement", "wrong_answer_no_targeted_improvement",
+                        "cannot_represent_staged_data",
+                    }
                     for report in reports),
                 "safety_rejections": sum(
                     report.get("rejection_reason") == "safety_regression"
@@ -2283,7 +3578,7 @@ class OnlineRunner:
         repairs = [json.loads(row[0]) for row in self.journal.db.execute(
             "SELECT value FROM repairs ORDER BY boundary,attempt,id")]
         promoted = {(row[0], row[1]) for row in self.journal.db.execute(
-            "SELECT boundary,idx FROM attempts WHERE status='promoted'")}
+            "SELECT boundary,idx FROM attempts WHERE status IN ('promoted','partially_promoted')")}
         for row in rows:
             row["output"] = row["prediction"]["output"]
             related = [repair for repair in repairs
@@ -2309,6 +3604,25 @@ class OnlineRunner:
         for row in self.journal.db.execute("SELECT * FROM events"):
             folder = self.run_dir / "events" / f"boundary_{row['idx']:04d}"
             state = json.loads(row["value"])
+            if state.get("boundary_outcome"):
+                write_json(folder / "boundary_outcome.json", {
+                    "boundary_index": row["idx"],
+                    "boundary_outcome": state["boundary_outcome"],
+                    "failed_candidate_attempts": int(
+                        state.get("failed_candidate_attempts") or 0),
+                    "invalid_proposal_count": int(
+                        state.get("invalid_proposal_count") or 0),
+                    "schedule_advanced": bool(state.get("schedule_advanced")),
+                    "ingestion_occurred": bool(state.get("ingestion_occurred")),
+                    "representation_committed": bool(
+                        state.get("representation_committed")),
+                    "representation_committed_version": state.get(
+                        "representation_committed_version"),
+                    "committed_system_version": state.get(
+                        "committed_system_version", state.get("frozen_version")),
+                    "staged_input_digest": state.get(
+                        "staged_input_digest", state.get("delta_digest")),
+                })
             judged = [item for item in rows
                       if item["event_boundary_index"] == row["idx"] and item["score"]]
             if judged:

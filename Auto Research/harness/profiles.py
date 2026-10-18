@@ -40,6 +40,22 @@ from __future__ import annotations
 import config
 from harness.dsh_client import DSHProfile
 
+
+def _route_connection(route: str) -> tuple[str, str]:
+    """Return the endpoint and credential variable for a serving route."""
+    if route == "openrouter":
+        return config.OPENROUTER_BASE_URL, config.OPENROUTER_API_KEY_ENV
+    if route == "vllm":
+        return config.VLLM_BASE_URL, config.VLLM_API_KEY_ENV
+    if route == "openai":
+        return config.OPENAI_BASE_URL, config.OPENAI_API_KEY_ENV
+    raise ValueError(f"unsupported serving route: {route!r}")
+
+
+_ARCHITECT_BASE_URL, _ARCHITECT_API_KEY_ENV = _route_connection(config.ARCHITECT_ROUTE)
+_DEVELOPER_BASE_URL, _DEVELOPER_API_KEY_ENV = _route_connection(config.DEVELOPER_ROUTE)
+_CRITIC_BASE_URL, _CRITIC_API_KEY_ENV = _route_connection(config.CRITIC_ROUTE)
+
 # COMPLETION BUDGETS. Every profile below takes its `max_tokens` from config,
 # and the shipped default for all five is `None` -- uncapped. A node generates
 # until it emits a stop token; nothing truncates a design document or an action
@@ -77,8 +93,9 @@ _SQL_ONLY_CONSTRAINT = (
 ARCHITECT_PROFILE = DSHProfile(
     name="architect",
     model=config.ARCHITECT_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
+    base_url=_ARCHITECT_BASE_URL,
+    api_key_env=_ARCHITECT_API_KEY_ENV,
+    route=config.ARCHITECT_ROUTE,
     # No fs_write, no bash: the Architect proposes, it does not build.
     #
     # No `todo` either. Its deliverable is ONE document, and a todo tool only
@@ -120,8 +137,9 @@ ARCHITECT_PROFILE = DSHProfile(
 DEVELOPER_PROFILE = DSHProfile(
     name="developer",
     model=config.DEVELOPER_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
+    base_url=_DEVELOPER_BASE_URL,
+    api_key_env=_DEVELOPER_API_KEY_ENV,
+    route=config.DEVELOPER_ROUTE,
     # NO HARNESS-NATIVE TOOLS -- and this is not the same statement as "no
     # tools". The Developer has ten real tools; they are `DevToolbox`
     # (nodes/dev_tools.py), advertised to the model as a genuine tool schema
@@ -264,9 +282,9 @@ JUDGE_PROFILE = DSHProfile(
 CRITIC_PROFILE = DSHProfile(
     name="critic",
     model=config.CRITIC_MODEL,
-    base_url=config.OPENROUTER_BASE_URL,
-    api_key_env=config.OPENROUTER_API_KEY_ENV,
-    route="openrouter",
+    base_url=_CRITIC_BASE_URL,
+    api_key_env=_CRITIC_API_KEY_ENV,
+    route=config.CRITIC_ROUTE,
     # NO CAPABILITIES AT ALL, so the persona's "YOU HAVE NO TOOLS" is true on
     # BOTH transports rather than only on http.
     #

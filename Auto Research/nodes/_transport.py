@@ -51,6 +51,80 @@ from harness.dsh_client import (
 
 log = logging.getLogger("orchestrator.transport")
 
+
+def is_tool_parser_error(error: str | None) -> bool:
+    """Recognize vLLM's deterministic native-tool configuration failure."""
+    value = str(error or "").lower()
+    return (
+        "tool_choice" in value and "required" in value and
+        ("tool-call-parser" in value or "tool call parser" in value)
+    )
+
+
+async def validate_developer_tool_calling() -> dict[str, Any]:
+    """Smoke-test `required` before a real Developer episode can spend a candidate.
+
+    A local vLLM without an enabled parser rejects this request with HTTP 400.
+    The safe automatic policy is to retain the tool schema but relax the choice
+    to `auto`; the returned record is suitable for startup logs/artifacts.
+    """
+    requested = str(config.DEV_TOOL_CHOICE or "auto")
+    outcome: dict[str, Any] = {
+        "requested_tool_choice": requested,
+        "effective_tool_choice": requested,
+        "status": "not_required",
+    }
+    if config.MOCK_MODE or requested != "required":
+        return outcome
+
+    from harness.profiles import DEVELOPER_PROFILE
+    from llm import get_llm_client
+
+    smoke_tools = [{
+        "type": "function",
+        "function": {
+            "name": "developer_tool_smoke_test",
+            "description": "A no-op startup capability probe.",
+            "parameters": {"type": "object", "properties": {},
+                           "additionalProperties": False},
+        },
+    }]
+    result = await get_llm_client().chat(
+        route=route_for(DEVELOPER_PROFILE),
+        model=DEVELOPER_PROFILE.model,
+        messages=[{
+            "role": "user",
+            "content": "Call developer_tool_smoke_test now with no arguments.",
+        }],
+        temperature=0.0,
+        max_tokens=32,
+        timeout_s=min(float(config.HTTP_TIMEOUT_S), 30.0),
+        role="developer_tool_smoke",
+        tools=smoke_tools,
+        tool_choice="required",
+    )
+    passed = bool(result.ok and any(
+        call.get("name") == "developer_tool_smoke_test"
+        for call in result.tool_calls
+    ))
+    if passed:
+        return {**outcome, "status": "passed"}
+
+    error = str(result.error or "required tool call was not returned")
+    config.DEV_TOOL_CHOICE = "auto"
+    fallback = {
+        **outcome,
+        "status": "fallback_to_auto",
+        "effective_tool_choice": "auto",
+        "error": error,
+        "tool_parser_error": is_tool_parser_error(error),
+    }
+    log.warning(
+        "Developer native tool-call smoke test failed; DEV_TOOL_CHOICE falls back "
+        "from required to auto for this process: %s", error,
+    )
+    return fallback
+
 def route_for(profile: DSHProfile) -> str:
     """The HTTP serving route this profile declares."""
     return profile.route

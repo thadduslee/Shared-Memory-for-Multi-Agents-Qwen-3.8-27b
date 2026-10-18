@@ -3,10 +3,32 @@
 **Online execution is available:** `MOCK_MODE=true python main.py --online
 --thread-id demo --max-boundaries 3`. It incrementally persists episode memory,
 freezes each event boundary, records immutable first attempts before judging,
-and blocks the current boundary in a feedback-driven repair loop until staged
-ingestion or failed checkpoints are resolved. Repair results remain separate;
-promotions affect only future official predictions. Resume with the same command
-plus `--resume`. See [the online protocol and controls](docs/online.md).
+and runs a feedback-driven repair loop when staged ingestion or checkpoints
+fail. A complete candidate is charged once after Developer self-correction;
+after five failures the journal records `unrepaired_after_5_attempts` or
+`unrepresented_after_5_attempts`. Safe representation is promoted and the data
+is committed before official scoring, even if the resulting official answer is
+wrong. That wrong answer opens scored repair from the new committed parent and
+does not consume an attempt; both phases share one counter. Official results
+and staged unrepresented data remain immutable and auditable. Repair rows stay
+separate, and `boundary_outcome.json` exposes whether scheduling advanced and
+ingestion occurred. Resume with the same command plus `--resume`.
+See [the online protocol and controls](docs/online.md).
+
+Recommended new-run commands (do not change replay semantics while resuming):
+
+```bash
+.venv/bin/python main.py --real --online \
+  --thread-id medical-online-partial-v2-smoke \
+  --replay-reingest --replay-votes 3 --max-boundaries 3
+
+.venv/bin/python main.py --real --online \
+  --thread-id medical-online-full-partial-v2 \
+  --replay-reingest --replay-votes 3
+```
+
+The first command is the bounded connectivity/behavior smoke run. Run the
+second only after inspecting the smoke artifacts; it is the paid full run.
 The batch research loop below remains available unchanged.
 
 A LangGraph **macro-graph** that iteratively designs → codes → runs → judges → critiques a
@@ -303,6 +325,19 @@ export EVALUATOR_MODEL=qwen3.8-27b
 export VLLM_MAX_CONCURRENCY=12              # ~2 in flight per GPU
 ```
 
+When vLLM serves the tool-using Qwen Developer, launch it with native tool
+parsing enabled:
+
+```bash
+vllm serve <model> --enable-auto-tool-choice --tool-call-parser qwen3_xml
+```
+
+At process startup, `DEV_TOOL_CHOICE=required` is checked with a tiny native
+tool call. It remains `required` only when that probe succeeds; otherwise the
+runtime logs the failure and falls back to `auto`. A later HTTP 400 or transport
+failure in a Developer turn is recorded as `infrastructure_blocked`, never as a
+failed repair design or candidate rejection.
+
 > **`EVALUATOR_MODEL` must equal the server's `--served-model-name` exactly**, or every
 > request comes back 404. Confirm with `curl $VLLM_BASE_URL/models`.
 
@@ -477,7 +512,7 @@ iteration died before the Evaluator, Judge or Critic ran at all.
 load-bearing: the template is ~47k characters, and under a plain alphabetical walk
 `memory_system/store.py` alone (22k) would consume the whole budget and push the tests off the
 end, showing the Architect an implementation with none of the assertions binding it.
-`ARCHITECT_CODE_VIEW_MAX_CHARS` (default 96000) is sized to fit the entire baseline — about 1%
+`ARCHITECT_CODE_VIEW_MAX_CHARS` (default 120000) is sized to fit the entire baseline — about 1%
 of the model's 1.31M-token context, and the highest-leverage context in the run.
 
 ### The `dsh` harness

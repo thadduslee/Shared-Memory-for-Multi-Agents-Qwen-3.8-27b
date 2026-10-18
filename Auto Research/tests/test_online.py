@@ -1,6 +1,7 @@
 """Blocking online repair, feedback, replay ordering, and durable recovery."""
 from __future__ import annotations
 
+import asyncio
 import copy
 import json
 import sqlite3
@@ -17,7 +18,13 @@ from gatemem_adapter import (
     visible_checkpoint,
 )
 from nodes.developer import _stop_reason, _turn_budget_block
-from online.backend import Backend, DeveloperApproachUnworkable, InfrastructureFailure
+from online.backend import (
+    Backend,
+    DeveloperApproachUnworkable,
+    InfrastructureFailure,
+    PromptContextFailure,
+)
+from online.diagnostics import compact_incident_dossier
 from online.metrics import cumulative, promotion_regressions
 from online.runner import OnlineOptions, OnlineRunner, RepairBlocked
 from online.schedule import build_schedule, compatibility, structural_summary
@@ -111,10 +118,15 @@ class WorkflowBackend(Backend):
         if plan.get("unfocused"):
             return {
                 "decision": "CODE_OR_SCHEMA_CHANGE",
+                "failure_classification": "RETRIEVAL",
                 "diagnosis": "too many things",
+                "specific_hypothesis": "The two changes together alter the target replay.",
+                "repair_scope": {"subsystem": "memory", "file": "memory_system/agent.py",
+                                 "function": "query"},
                 "focused_goal": "change everything",
                 "work_order": ["change retrieval", "change authorization"],
                 "migration_sql": "",
+                "safety_preservation_checks": ["Preserve privacy and deletion behavior."],
             }
         marker = plan["marker"]
         dossier = context["architect_incident_dossier"]
@@ -125,7 +137,15 @@ class WorkflowBackend(Backend):
         cited_id = "missing:trace" if plan.get("invalid_citation") else trace_id
         return {
             "decision": "CODE_OR_SCHEMA_CHANGE",
+            "failure_classification": plan.get("failure_classification", "RETRIEVAL"),
             "diagnosis": plan.get("diagnosis", f"general mechanism {marker} is missing"),
+            "specific_hypothesis": plan.get(
+                "specific_hypothesis",
+                f"Adding general mechanism {marker} changes the target pass/fail result."),
+            "repair_scope": plan.get("repair_scope", {
+                "subsystem": "storage", "file": "memory_system/schema.sql",
+                "function": "schema initialization",
+            }),
             "focused_goal": plan.get("goal", f"add general mechanism {marker}"),
             "work_order": [f"Add the general {marker} lookup index."],
             "migration_sql": (
@@ -133,10 +153,17 @@ class WorkflowBackend(Backend):
             ),
             "trace_citations": [cited_id],
             "addressed_decision_rule": trace["decision_rule"],
+            "intended_target_ids": [
+                target["checkpoint_id"] for target in dossier["targets"]
+                if target.get("checkpoint_id")
+            ],
             "predicted_replay_change": {
                 "observable": "pass_fail",
                 "expected_change": "the unresolved target changes from failing to passing",
             },
+            "safety_preservation_checks": [
+                "Preserve privacy, deletion, and every previously-passing checkpoint."
+            ],
         }
 
     async def develop(self, workspace, design):
@@ -235,6 +262,65 @@ def reports(run):
         "SELECT value FROM attempts ORDER BY boundary,idx")]
 
 
+def test_architect_normalizes_a_single_string_work_order():
+    design = {"work_order": "  Change MemoryStore.retrieve.  ", "decision": "CODE_OR_SCHEMA_CHANGE"}
+    normalized = Backend._normalize_architect_design(design)
+    assert normalized["work_order"] == ["Change MemoryStore.retrieve."]
+    assert design["work_order"] == "  Change MemoryStore.retrieve.  "
+
+
+def test_architect_context_error_classification_matches_vllm_response():
+    error = (
+        "HTTP 400: This model's maximum context length is 65536 tokens. "
+        "Your prompt contains 65537 input tokens. (parameter=input_tokens)"
+    )
+    assert Backend._is_context_length_error(error)
+    assert not Backend._is_context_length_error(
+        'HTTP 400: tool_choice="required" requires --tool-call-parser')
+
+
+def test_compact_dossier_keeps_citable_rule_representatives():
+    trace = [
+        {
+            "trace_id": f"checkpoint:record:{index:04d}",
+            "record_id": f"record_{index:04d}",
+            "decision_stage": "authorization_gate",
+            "decision_rule": "no_explicit_permission" if index < 90 else "tombstoned",
+            "outcome": "denied",
+        }
+        for index in range(100)
+    ]
+    dossier = {
+        "format_version": 1,
+        "incident_id": "incident_0001",
+        "boundary_index": 1,
+        "causal_visibility": "boundary_visible_only",
+        "targets": [{
+            "checkpoint_id": "u_fail",
+            "decision_rule_summaries": [
+                {"stage": "authorization_gate", "rule": "no_explicit_permission",
+                 "outcome": "denied", "count": 90},
+                {"stage": "authorization_gate", "rule": "tombstoned",
+                 "outcome": "denied", "count": 10},
+            ],
+            "allowed_trace_ids": [item["trace_id"] for item in trace],
+            "decision_trace": trace,
+            "decision_timeline": [{"trace_id": item["trace_id"]} for item in trace],
+        }],
+        "trace_entry_ids": [item["trace_id"] for item in trace],
+    }
+    compact = compact_incident_dossier(dossier)
+    target = compact["targets"][0]
+    assert compact["full_trace_count"] == 100
+    assert len(compact["trace_entry_ids"]) == 2
+    assert len(target["decision_trace"]) == 2
+    assert target["omitted_trace_count"] == 98
+    assert "allowed_trace_ids" not in target
+    assert "decision_timeline" not in target
+    assert set(compact["trace_entry_ids"]) <= set(dossier["trace_entry_ids"])
+    assert len(json.dumps(compact)) < len(json.dumps(dossier)) // 10
+
+
 def test_all_579_checkpoints_exactly_once_and_549_boundaries():
     if not (config.GATEMEM_DATA_DIR / "checkpoints.jsonl").exists():
         pytest.skip("real medical dataset unavailable")
@@ -264,10 +350,16 @@ async def test_compile_failure_returns_to_same_developer_candidate(tmp_path, dat
         assert len(backend.architect_calls) == 1
         assert len(backend.developer_calls) == len(backend.correction_calls) == 1
         assert backend.developer_calls[0] == backend.correction_calls[0][0]
-        assert "compile failed" in backend.correction_calls[0][1]["error"]
+        correction = backend.correction_calls[0][1]
+        assert "error" not in correction
+        assert correction["error_signature"]
+        assert correction["stage"] == "compile"
         report = reports(run)[0]
         assert report["build_validation"]["status"] == "passed"
         assert report["build_test_errors"][0]["stage"] == "compile"
+        assert report["failed_candidate_attempts_after"] == 0
+        assert report["counts_as_failed_candidate"] is False
+        assert run.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 0
     finally:
         run.close()
 
@@ -292,10 +384,10 @@ async def test_unworkable_approach_returns_structured_feedback_to_architect(tmp_
     run = make_runner(tmp_path, dataset, backend)
     try:
         await run.run()
-        feedback = backend.architect_calls[1]["previous_rejected_candidate"]
+        feedback = backend.architect_calls[1]["latest_complete_structured_feedback"]
         assert feedback["rejection_reason"] == "approach_unworkable"
         assert feedback["failure_classification"]["tests_never_ran"]
-        assert feedback["repair_objective"]
+        assert feedback["failure_category"] == "malformed_or_invalid_output"
         assert feedback["safe_parent_version"] == "version_0001"
     finally:
         run.close()
@@ -326,16 +418,15 @@ async def test_no_targeted_improvement_skips_broad_and_feeds_back(tmp_path, data
     try:
         await run.run()
         first = reports(run)[0]
-        assert first["rejection_reason"] == "no_measurable_improvement"
+        assert first["rejection_reason"] == "wrong_answer_no_targeted_improvement"
         assert first["broad_validation"] == {
-            "status": "skipped", "reason": "no_measurable_improvement"}
-        feedback = backend.architect_calls[1]["previous_rejected_candidate"]
+            "status": "skipped", "reason": "unresolved_targets_remain"}
+        feedback = backend.architect_calls[1]["latest_complete_structured_feedback"]
         assert feedback["targeted_replay"]["status"] == "no_improvement"
         assert feedback["broad_validation"]["status"] == "skipped"
-        differential = feedback["targeted_replay"]["pairs"]["u_fail"]["differential"]
-        assert set(differential) == {
-            "action", "rendered_answer", "authorized_evidence", "decision_trace", "pass_fail"}
-        assert differential["pass_fail"]["transition"] == "unchanged_fail"
+        assert "pairs" not in feedback["targeted_replay"]
+        assert feedback["targeted_replay"]["replay_unchanged"] is True
+        assert feedback["remaining_targets"] == ["u_fail"]
         assert feedback["failure_classification"]["ineffective_design"]
     finally:
         run.close()
@@ -350,6 +441,8 @@ async def test_failing_to_passing_target_triggers_broad_and_promotion(tmp_path, 
         assert report["targeted_replay"]["failing_to_passing"] == ["u_fail"]
         assert report["broad_validation"]["status"] == "passed"
         assert run.committed != "version_0001"
+        assert run.journal.event(1)[0] == "repaired_and_passed"
+        assert run.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 0
     finally:
         run.close()
 
@@ -374,7 +467,7 @@ async def test_target_gain_with_broad_regression_is_rejected_and_fed_back(
         assert first["targeted_replay"]["status"] == "improved"
         assert first["broad_validation"]["status"] == "failed"
         assert first["rejection_reason"] == "safety_regression"
-        feedback = backend.architect_calls[1]["previous_rejected_candidate"]
+        feedback = backend.architect_calls[1]["latest_complete_structured_feedback"]
         assert expected in {"privacy", "deletion", "utility"}
         assert checkpoint_id in feedback["regressions"]["checkpoint_transitions"]
         assert "metrics" not in feedback["broad_validation"]
@@ -417,7 +510,7 @@ async def test_target_gain_with_isolation_regression_is_rejected_and_fed_back(
         assert first["targeted_replay"]["status"] == "improved"
         assert first["broad_validation"]["status"] == "failed"
         assert first["rejection_reason"] == "safety_regression"
-        feedback = backend.architect_calls[1]["previous_rejected_candidate"]
+        feedback = backend.architect_calls[1]["latest_complete_structured_feedback"]
         assert feedback["regressions"]["isolation"]
     finally:
         run.close()
@@ -491,7 +584,7 @@ async def test_large_usage_is_observed_but_never_terminates_repair(tmp_path, dat
             "duplicate_replay_behavior")
         assert len(final_context["earlier_attempt_summaries"]) == 1
         assert final_context["earlier_attempt_summaries"][0]["rejection_reason"] == (
-            "no_measurable_improvement")
+            "wrong_answer_no_targeted_improvement")
     finally:
         run.close()
 
@@ -523,9 +616,53 @@ async def test_transport_failure_blocks_same_boundary_without_design_feedback(tm
         incident = run.journal.get("active_repair_incident")
         assert incident["phase"] == "infrastructure_blocked"
         assert incident["structured_feedback_history"] == []
+        assert incident["failed_candidate_attempts"] == 0
+        assert reports(run)[0]["counts_as_failed_candidate"] is False
         assert run.committed == "version_0001"
     finally:
         run.close()
+
+
+async def test_prompt_context_failure_is_not_retried_and_is_classified(tmp_path, dataset):
+    class OversizedArchitect(WorkflowBackend):
+        async def architect(self, context, workspace):
+            self.architect_calls.append(copy.deepcopy(context))
+            raise PromptContextFailure(
+                "Architect provider rejected the prompt as too large: maximum context length")
+
+    backend = OversizedArchitect([fix_plan()])
+    run = make_runner(tmp_path, dataset, backend, max_infra_retries=2)
+    try:
+        with pytest.raises(PromptContextFailure, match="maximum context length"):
+            await run.run()
+        assert len(backend.architect_calls) == 1
+        operation = run.journal.db.execute(
+            "SELECT retries FROM operations WHERE key=?",
+            ("boundary_0001/attempt_01/architect",),
+        ).fetchone()
+        assert operation["retries"] == 0
+        report = reports(run)[0]
+        assert report["phase"] == "prompt_blocked"
+        assert report["prompt_failure"] is True
+        assert report["transport_failure"] is False
+        assert report["candidate_failure_category"] == "prompt_context_failure"
+        assert run.journal.get("status") == "prompt_blocked"
+        assert run.journal.get("active_repair_incident")["phase"] == "prompt_blocked"
+    finally:
+        run.close()
+
+
+async def test_architect_rejects_locally_when_context_headroom_is_exhausted(
+    tmp_path, monkeypatch,
+):
+    workspace = tmp_path / "workspace"
+    source = workspace / "memory_system"
+    source.mkdir(parents=True)
+    (source / "store.py").write_text("x = " + repr("large" * 100))
+    monkeypatch.setattr(config, "ARCHITECT_CONTEXT_WINDOW_TOKENS", 100)
+    monkeypatch.setattr(config, "ARCHITECT_CONTEXT_OUTPUT_HEADROOM_TOKENS", 10)
+    with pytest.raises(PromptContextFailure, match="configured context headroom"):
+        await Backend(mock=False).architect({}, workspace)
 
 
 async def test_hidden_annotations_never_cross_repair_surfaces(tmp_path, dataset):
@@ -597,14 +734,18 @@ async def test_scored_failure_persists_privacy_minimized_incident_dossier(tmp_pa
         path = tmp_path / "run/events/boundary_0001/architect_incident_dossier.json"
         assert path.is_file() and json.loads(path.read_text()) == dossier
         target = dossier["targets"][0]
-        assert target["authorized_evidence_released"] == [selected]
+        assert target["authorized_evidence_count"] == 1
+        assert "authorized_evidence_released" not in target
         denied = next(item for item in target["decision_trace"]
                       if item["record_id"] == "mem_denied")
         assert denied["decision_rule"] == "event_date_after_permission_valid_until"
-        assert denied["event_time_features"] == ["2026-08-01"]
+        assert "event_time_features" not in denied
+        assert "2026-08-01" not in json.dumps(dossier)
         assert "raw_text" not in denied
         assert "HIDDEN_PATIENT_RAW" not in json.dumps(dossier)
-        assert backend.architect_calls[0]["architect_incident_dossier"] == dossier
+        prompt_dossier = backend.architect_calls[0]["architect_incident_dossier"]
+        assert prompt_dossier == compact_incident_dossier(dossier)
+        assert prompt_dossier["prompt_view"] == "compact_representative_traces"
     finally:
         run.close()
 
@@ -629,8 +770,9 @@ async def test_invalid_trace_citation_is_rejected_before_developer_and_fed_back(
         assert len(backend.developer_calls) == 1
         context = backend.architect_calls[1]
         feedback = context["latest_complete_structured_feedback"]
-        assert feedback["diagnosis_review"]["feedback"]
-        assert feedback == context["previous_rejected_candidate"]
+        assert feedback["failure_category"] == "malformed_or_invalid_output"
+        assert "diagnosis_review" not in feedback
+        assert "previous_rejected_candidate" not in context
     finally:
         run.close()
 
@@ -661,7 +803,50 @@ async def test_resume_preserves_dossier_review_and_retry_state(tmp_path, dataset
         await resumed.run()
         statuses = [row[0] for row in resumed.journal.db.execute(
             "SELECT status FROM attempts ORDER BY idx")]
-        assert statuses == ["rejected", "interrupted", "promoted"]
+        assert statuses == ["planner_abstention", "interrupted", "promoted"]
+        assert resumed.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 0
+    finally:
+        resumed.close()
+
+
+async def test_candidate_deadline_is_bounded_and_journal_remains_resumable(
+    tmp_path, dataset,
+):
+    backend = WorkflowBackend([fix_plan("after_deadline")])
+    architect = backend.architect
+
+    async def slow_architect(context, workspace):
+        await asyncio.sleep(0.05)
+        return await architect(context, workspace)
+
+    backend.architect = slow_architect
+    run = make_runner(
+        tmp_path, dataset, backend,
+        candidate_timeout_s=0.01,
+        incident_timeout_s=1.0,
+        single_request_timeout_s=1.0,
+    )
+    options = run.options
+    try:
+        with pytest.raises(RepairBlocked, match="candidate wall-clock limit exhausted"):
+            await run.run()
+        report = reports(run)[0]
+        assert report["bounded_or_inconclusive"] is True
+        assert report["counts_as_failed_candidate"] is False
+        assert run.journal.get("status") == "budget_exhausted"
+        assert run.journal.get("active_repair_incident")["phase"] == "budget_exhausted"
+    finally:
+        run.close()
+
+    resumed = OnlineRunner(
+        dataset, tmp_path / "run", backend=WorkflowBackend([fix_plan("resumed")]),
+        options=options, resume=True, retry_blocked=True,
+    )
+    try:
+        result = await resumed.run(max_boundaries=0)
+        assert result["status"] == "paused"
+        assert result["active_repair_incident"]["phase"] == "architect"
+        assert result["committed_system_version"] == "version_0001"
     finally:
         resumed.close()
 
@@ -761,6 +946,35 @@ def test_batch_developer_budgets_remain_unchanged():
                          "online_unbounded": True}) == ""
     online = _turn_budget_block({"online_unbounded": True}, 100_000)
     assert "no online turn ceiling" in online
+
+
+def test_legacy_stall_options_migrate_to_new_attempt_policy(tmp_path, dataset):
+    run = make_runner(tmp_path, dataset, WorkflowBackend([fix_plan()]))
+    manifest = run.journal.get("manifest")
+    old_options = dict(manifest["options"])
+    old_options.pop("max_failed_candidates")
+    old_options.pop("max_invalid_proposals")
+    old_options.update({"max_stalled_attempts": 5, "max_duplicate_proposals": 3})
+    with run.journal.db:
+        run.journal.put("manifest", {
+            **manifest, "format_version": 2, "options": old_options,
+        })
+    run.close()
+
+    resumed = OnlineRunner(
+        dataset, tmp_path / "run", backend=WorkflowBackend([fix_plan()]),
+        options=OnlineOptions(), resume=True,
+    )
+    try:
+        migrated = resumed.journal.get("manifest")
+        assert migrated["format_version"] == 4
+        assert migrated["options"]["max_failed_candidates"] == 5
+        assert migrated["options"]["max_invalid_proposals"] == 3
+        assert migrated["legacy_online_limits_ignored"] == {
+            "max_stalled_attempts": 5, "max_duplicate_proposals": 3,
+        }
+    finally:
+        resumed.close()
     assert config.MAX_TOTAL_TOKENS > 0 and config.MAX_WALLCLOCK_S > 0
 
 
@@ -826,53 +1040,51 @@ def resume_runner(tmp_path, dataset, backend, **flags):
                         options=OnlineOptions(**options), resume=True, **flags)
 
 
-async def test_stalled_incident_blocks_durably_then_abandon_advances(tmp_path, dataset):
-    limits = {"max_stalled_attempts": 3, "max_duplicate_proposals": 99}
+async def test_five_failed_candidates_advance_as_unrepaired(tmp_path, dataset):
+    limits = {"max_failed_candidates": 5, "max_invalid_proposals": 3}
     backend = WorkflowBackend([{"marker": f"noop{i}", "answers": {"u_fail": "bad"},
                                 "diagnosis": f"idea {i}", "goal": f"goal {i}"}
                                for i in range(1, 6)])
     run = make_runner(tmp_path, dataset, backend, **limits)
     try:
-        with pytest.raises(RepairBlocked, match="3 consecutive rejected candidates"):
-            await run.run()
-        assert len(backend.architect_calls) == 3
-        assert run.journal.get("status") == "repair_blocked"
-        assert run.journal.get("event_boundary_index") == 1
-        assert run.journal.get("active_repair_incident")["phase"] == "stalled"
+        official_before = None
+        result = await run.run()
+        assert result["status"] == "complete"
+        official = {row["checkpoint_id"]: row for row in run.journal.official()}
+        official_before = official["u_fail"]
+        assert official["u_fail"]["score"]["passed"] is False
+        incident = run.journal.get("repair_incidents")[0]
+        assert incident["resolution"] == "unrepaired_after_5_attempts"
+        assert incident["failed_candidate_attempts"] == 5
+        assert run.journal.event(1)[0] == "unrepaired_after_5_attempts"
+        assert run.journal.get("event_boundary_index") == 2
+        assert run.committed == "version_0001"
+        rows = reports(run)
+        assert [row["failed_candidate_attempts_after"] for row in rows] == [1, 2, 3, 4, 5]
+        assert all(row["safe_parent_version"] == "version_0001" for row in rows)
+        assert {row["checkpoint_id"]: row for row in run.journal.official()}[
+            "u_fail"] == official_before
     finally:
         run.close()
 
-    blocked = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan()]), options=limits)
-    try:
-        with pytest.raises(RepairBlocked):
-            await blocked.run()  # neither flag: stays blocked, nothing proposed
-        assert blocked.journal.get("event_boundary_index") == 1
-    finally:
-        blocked.close()
 
-    resumed = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan()]),
-                            options=limits, abandon_blocked=True)
-    try:
-        result = await resumed.run()
-        assert result["status"] == "complete"
-        assert result["adaptation"]["abandoned_failures"] == ["u_fail"]
-        assert result["adaptation"]["pending_repairs"] == 0
-        official = {row["checkpoint_id"]: row for row in resumed.journal.official()}
-        assert official["u_fail"]["score"]["passed"] is False
-        assert resumed.journal.get("repair_incidents")[0]["resolution"] == "abandoned_after_stall"
-    finally:
-        resumed.close()
+async def test_resume_preserves_failed_candidate_counter(tmp_path, dataset):
+    class StopsAfterTwo(WorkflowBackend):
+        async def architect(self, context, workspace):
+            if len(self.architect_calls) == 2:
+                raise InfrastructureFailure("temporary architect outage")
+            return await super().architect(context, workspace)
 
-
-async def test_retry_blocked_resets_stall_count_and_repairs(tmp_path, dataset):
-    limits = {"max_stalled_attempts": 2, "max_duplicate_proposals": 99}
-    backend = WorkflowBackend([{"marker": f"noop{i}", "answers": {"u_fail": "bad"},
-                                "diagnosis": f"idea {i}", "goal": f"goal {i}"}
-                               for i in range(1, 4)])
+    limits = {"max_failed_candidates": 5, "max_infra_retries": 0}
+    backend = StopsAfterTwo([
+        {"marker": "noop1", "answers": {"u_fail": "bad"}},
+        {"marker": "noop2", "answers": {"u_fail": "bad"}},
+    ])
     run = make_runner(tmp_path, dataset, backend, **limits)
     try:
-        with pytest.raises(RepairBlocked):
+        with pytest.raises(InfrastructureFailure):
             await run.run()
+        assert run.journal.get("active_repair_incident")["failed_candidate_attempts"] == 2
     finally:
         run.close()
     resumed = resume_runner(tmp_path, dataset, WorkflowBackend([fix_plan("after_retry")]),
@@ -881,23 +1093,30 @@ async def test_retry_blocked_resets_stall_count_and_repairs(tmp_path, dataset):
         result = await resumed.run()
         assert result["status"] == "complete"
         assert resumed.committed != "version_0001"
-        assert result["adaptation"]["abandoned_failures"] == []
+        incident = resumed.journal.get("repair_incidents")[0]
+        assert incident["failed_candidate_attempts"] == 2
     finally:
         resumed.close()
 
 
-async def test_duplicate_proposals_block_after_limit(tmp_path, dataset):
+async def test_duplicate_proposals_escalate_without_another_failed_candidate(tmp_path, dataset):
     duplicate = {"marker": "noop", "answers": {"u_fail": "bad"},
                  "diagnosis": "same diagnosis", "goal": "same goal"}
     backend = WorkflowBackend([duplicate])
-    run = make_runner(tmp_path, dataset, backend, max_stalled_attempts=99)
+    run = make_runner(tmp_path, dataset, backend, max_failed_candidates=2,
+                      max_invalid_proposals=3)
     try:
-        with pytest.raises(RepairBlocked, match="duplicated earlier rejected work"):
-            await run.run()
+        await run.run()
         rows = reports(run)
         assert [row["rejection_reason"] for row in rows] == [
-            "no_measurable_improvement"] + ["equivalent_previous_attempt"] * 3
+            "wrong_answer_no_targeted_improvement",
+            "equivalent_previous_attempt", "equivalent_previous_attempt",
+            "equivalent_previous_attempt"]
         assert len(backend.developer_calls) == 1
+        assert [row["counts_as_failed_candidate"] for row in rows] == [
+            True, False, False, False]
+        assert run.journal.event(1)[0] == "escalated"
+        assert run.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 1
     finally:
         run.close()
 
@@ -918,20 +1137,206 @@ async def test_build_failure_stops_after_correction_limit(tmp_path, dataset):
         assert first["rejection_reason"] == "implementation_failure"
         assert first["build_validation"]["status"] == "failed_after_correction_limit"
         assert len(backend.correction_calls) == 3
-        assert "3 correction round(s)" in first["structured_feedback"]["rejection_detail"]
+        feedback = first["structured_feedback"]
+        assert feedback["failure_category"] == "malformed_or_invalid_output"
+        assert feedback["build"]["diagnostic_signature"]
+        assert first["failed_candidate_attempts_after"] == 1
     finally:
         run.close()
 
 
-async def test_mock_architect_reports_no_viable_repair_and_blocks(tmp_path, dataset):
-    run = make_runner(tmp_path, dataset, Backend(mock=True))
+async def test_repeated_no_viable_repair_creates_one_escalation_not_candidate_failure(
+    tmp_path, dataset,
+):
+    class AbstainingArchitect(WorkflowBackend):
+        async def architect(self, context, workspace):
+            self.architect_calls.append(copy.deepcopy(context))
+            return {"decision": "NO_VIABLE_REPAIR", "diagnosis": "insufficient safe evidence"}
+
+    backend = AbstainingArchitect([fix_plan()])
+    run = make_runner(tmp_path, dataset, backend,
+                      max_failed_candidates=2, max_invalid_proposals=1)
     try:
-        with pytest.raises(RepairBlocked, match="no viable focused repair"):
-            await run.run()
+        result = await run.run()
         rows = reports(run)
-        assert [row["rejection_reason"] for row in rows] == [
-            "no_measurable_improvement", "architect_no_viable_repair"]
-        assert run.journal.get("status") == "repair_blocked"
+        assert result["status"] == "complete"
+        assert len(rows) == 2
+        assert all(row["rejection_reason"] == "architect_no_viable_repair" for row in rows)
+        assert all(row["candidate_system_version"] is None for row in rows)
+        assert all(not row["counts_as_failed_candidate"] for row in rows)
+        assert run.journal.event(1)[0] == "escalated"
+        incident = run.journal.get("repair_incidents")[0]
+        assert incident["failed_candidate_attempts"] == 0
+        assert incident["invalid_proposal_count"] == 1
+        assert len(run.journal.get("escalation_queue")) == 1
+        assert result["adaptation"]["candidate_rejections"] == 0
+    finally:
+        run.close()
+
+
+async def test_malformed_architect_proposal_is_not_a_candidate_rejection(tmp_path, dataset):
+    class MalformedArchitect(WorkflowBackend):
+        async def architect(self, context, workspace):
+            self.architect_calls.append(copy.deepcopy(context))
+            return {"decision": "CODE_OR_SCHEMA_CHANGE", "diagnosis": "missing fields"}
+
+    run = make_runner(tmp_path, dataset, MalformedArchitect([fix_plan()]))
+    try:
+        result = await run.run()
+        rows = reports(run)
+        assert len(rows) == 3
+        assert all(row["candidate_system_version"] is None for row in rows)
+        assert all(row["phase"] == "planner_abstention" for row in rows)
+        assert result["adaptation"]["candidate_rejections"] == 0
+        assert result["adaptation"]["failed_candidate_attempts"] == 0
+        assert run.journal.get("repair_incidents")[0]["invalid_proposal_count"] == 3
+    finally:
+        run.close()
+
+
+async def test_developer_tool_parser_http_400_is_infrastructure_blocked(tmp_path, dataset):
+    class ToolParserFailure(WorkflowBackend):
+        async def develop(self, workspace, design):
+            raise InfrastructureFailure(
+                'HTTP 400: tool_choice="required" requires --tool-call-parser to be set')
+
+    run = make_runner(
+        tmp_path, dataset, ToolParserFailure([fix_plan("auth_fix")]), max_infra_retries=0)
+    try:
+        with pytest.raises(InfrastructureFailure):
+            await run.run()
+        row = reports(run)[0]
+        assert row["phase"] == "infrastructure_blocked"
+        assert "tool-call-parser" in row["infrastructure_error"]
+        assert row["counts_as_failed_candidate"] is False
+        assert run.journal.get("status") == "infrastructure_blocked"
+        assert run.summary()["adaptation"]["candidate_rejections"] == 0
+    finally:
+        run.close()
+
+
+async def test_actionable_authorization_repair_reaches_targeted_replay(tmp_path, dataset):
+    backend = WorkflowBackend([{
+        **fix_plan("authorization_fix"),
+        "failure_classification": "AUTHORIZATION",
+        "diagnosis": "The relationship scope gate denied evidence for an allowed owner request.",
+        "goal": "correct the relationship scope authorization decision",
+        "specific_hypothesis": "The relationship scope gate denies an allowed owner request.",
+        "repair_scope": {"subsystem": "authorization", "file": "memory_system/agent.py",
+                         "function": "query"},
+        "official_debug": {
+            "n_denied_scope": 1,
+            "decision_trace": [{
+                "trace_id": "authorization:owner_scope", "record_id": "record_1",
+                "status": "active", "classification": "fact", "structural_concepts": [],
+                "outcome": "denied", "decision_stage": "authorization_gate",
+                "decision_rule": "relationship_scope_denied", "permission_ids": [],
+            }],
+        },
+    }])
+    run = make_runner(tmp_path, dataset, backend)
+    try:
+        await run.run()
+        row = reports(run)[0]
+        assert row["design"]["failure_classification"] == "AUTHORIZATION"
+        assert row["candidate_system_version"] is not None
+        assert row["targeted_replay"]["status"] == "improved"
+        assert len(backend.developer_calls) == 1
+        diagnostic = backend.architect_calls[0]["architect_incident_dossier"]["targets"][0]
+        assert diagnostic["requester_role"] == "member"
+        assert diagnostic["observed_action_category"] == "answer"
+        assert diagnostic["heuristic_action_hint"] == "refuse"
+        assert diagnostic["heuristic_action_hint_confidence"] == "medium"
+        assert diagnostic["heuristic_action_hint_derivation"] == (
+            "visible_authorized_and_denied_counts")
+        assert diagnostic["authorized_evidence_count"] == 0
+        assert diagnostic["denied_evidence_count"] == 1
+        assert diagnostic["likely_problem"] == "AUTHORIZATION"
+        assert backend.architect_calls[0]["architect_incident_dossier"][
+            "trace_entry_ids"] == ["authorization:owner_scope"]
+        assert diagnostic["decision_rule_summaries"][0]["rule"] == (
+            "relationship_scope_denied")
+    finally:
+        run.close()
+
+
+async def test_later_boundary_runs_after_escalated_incident(tmp_path, dataset):
+    dataset.episodes[0]["turns"].append({
+        "turn_id": "t2", "text": "The follow-up is Tuesday.",
+        "speaker": {"principal_id": "owner", "role": "member"},
+        "turn_kind": "message", "timestamp": "2026-01-02T00:00:00Z",
+    })
+    dataset.checkpoints.append({
+        "checkpoint_id": "later_pass", "episode_id": "episode", "as_of_turn_id": "t2",
+        "asker": {"principal_id": "owner", "role": "member"},
+        "query_text": "When is the follow-up?", "query_type": "utility",
+    })
+    backend = WorkflowBackend([fix_plan()])
+
+    async def abstain(context, workspace):
+        backend.architect_calls.append(copy.deepcopy(context))
+        return {"decision": "NO_VIABLE_REPAIR", "diagnosis": "no safe hypothesis"}
+
+    backend.architect = abstain
+    run = make_runner(tmp_path, dataset, backend)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        assert run.journal.event(1)[0] == "escalated"
+        assert run.journal.event(2)[0] == "passed"
+        assert next(row for row in run.journal.official()
+                    if row["checkpoint_id"] == "later_pass")["score"]["passed"]
+    finally:
+        run.close()
+
+
+async def test_related_promotion_marks_durable_escalation_reconsiderable(
+    tmp_path, dataset,
+):
+    dataset.episodes[0]["turns"].append({
+        "turn_id": "t2", "text": "The follow-up is Tuesday.",
+        "speaker": {"principal_id": "owner", "role": "member"},
+        "turn_kind": "message", "timestamp": "2026-01-02T00:00:00Z",
+    })
+    dataset.checkpoints.append({
+        "checkpoint_id": "later_fail", "episode_id": "episode", "as_of_turn_id": "t2",
+        "asker": {"principal_id": "owner", "role": "member"},
+        "query_text": "When is the follow-up?", "query_type": "utility",
+    })
+    backend = WorkflowBackend([{
+        "marker": "related_component_fix",
+        "answers": {"later_fail": "good"},
+    }])
+    architect = backend.architect
+    predict = backend.predict
+
+    async def escalate_first_incident(context, workspace):
+        targets = context["architect_incident_dossier"]["targets"]
+        if any(item.get("checkpoint_id") == "u_fail" for item in targets):
+            backend.architect_calls.append(copy.deepcopy(context))
+            return {"decision": "NO_VIABLE_REPAIR", "diagnosis": "no safe first hypothesis"}
+        return await architect(context, workspace)
+
+    async def fail_later_only_for_parent(workspace, blob, header, checkpoint):
+        result = await predict(workspace, blob, header, checkpoint)
+        if (checkpoint["checkpoint_id"] == "later_fail" and
+                backend._marker(workspace) == "parent"):
+            result["output"]["answer"] = "bad"
+        return result
+
+    backend.architect = escalate_first_incident
+    backend.predict = fail_later_only_for_parent
+    run = make_runner(tmp_path, dataset, backend)
+    try:
+        result = await run.run()
+        assert result["status"] == "complete"
+        queue = run.journal.get("escalation_queue")
+        assert len(queue) == 1
+        assert queue[0]["reconsideration_eligible"] is True
+        assert queue[0]["reconsideration_reasons"] == ["related_component_promoted"]
+        assert queue[0]["related_promoted_version"] == run.committed
+        assert queue[0]["incident_id"] in result["adaptation"][
+            "reconsiderable_escalations"]
     finally:
         run.close()
 
@@ -953,11 +1358,13 @@ class FlakyJudge(WorkflowBackend):
 
 
 async def test_one_noisy_judgement_rejects_a_fix_without_votes(tmp_path, dataset):
-    run = make_runner(tmp_path, dataset, FlakyJudge([fix_plan()]))
+    run = make_runner(tmp_path, dataset, FlakyJudge([fix_plan()]),
+                      max_failed_candidates=1)
     try:
-        with pytest.raises(RepairBlocked):
-            await run.run()
-        assert reports(run)[0]["rejection_reason"] == "no_measurable_improvement"
+        await run.run()
+        assert reports(run)[0]["rejection_reason"] == (
+            "wrong_answer_no_targeted_improvement")
+        assert run.journal.event(1)[0] == "unrepaired_after_5_attempts"
     finally:
         run.close()
 
@@ -1017,7 +1424,9 @@ async def test_reingest_rejects_candidate_that_loses_a_tombstone(tmp_path, datas
         assert result["status"] == "complete"
         first, second = reports(run)
         assert first["rejection_reason"] == "safety_regression"
-        assert "lost tombstones" in first["structured_feedback"]["rejection_detail"]
+        feedback = first["structured_feedback"]
+        assert feedback["failure_category"] == "ingestion_or_state_reconstruction_failure"
+        assert feedback["regressions"]["preservation_signature"]
         assert second["promotion_eligible"]
     finally:
         run.close()

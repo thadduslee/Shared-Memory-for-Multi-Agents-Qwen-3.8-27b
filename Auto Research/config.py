@@ -157,6 +157,16 @@ EVALUATOR_MAX_TOKENS: Final[int | None] = _env_opt_int("EVALUATOR_MAX_TOKENS", N
 JUDGE_MAX_TOKENS: Final[int | None] = _env_opt_int("JUDGE_MAX_TOKENS", None)
 CRITIC_MAX_TOKENS: Final[int | None] = _env_opt_int("CRITIC_MAX_TOKENS", None)
 
+# The Architect inlines sanitized evidence and source code, so check the input
+# locally before asking the provider to tokenize it.  The estimator is
+# deliberately conservative for long IDs and source code (three characters per
+# token); the reserved output headroom leaves room for a complete design even
+# when ARCHITECT_MAX_TOKENS is uncapped.
+ARCHITECT_CONTEXT_WINDOW_TOKENS: int = _env_int(
+    "ARCHITECT_CONTEXT_WINDOW_TOKENS", 65_536)
+ARCHITECT_CONTEXT_OUTPUT_HEADROOM_TOKENS: int = _env_int(
+    "ARCHITECT_CONTEXT_OUTPUT_HEADROOM_TOKENS", 8_192)
+
 
 # ==========================================================================
 # 3. Endpoints
@@ -169,6 +179,24 @@ OPENAI_BASE_URL: Final[str] = _env("OPENAI_BASE_URL", "https://api.openai.com/v1
 OPENROUTER_API_KEY_ENV: Final[str] = "OPENROUTER_API_KEY"
 OPENAI_API_KEY_ENV: Final[str] = "OPENAI_API_KEY"
 VLLM_API_KEY_ENV: Final[str] = "VLLM_API_KEY"  # usually a dummy for a local cluster
+
+
+def _env_serving_route(key: str, default: str) -> str:
+    """Read and validate a named OpenAI-compatible serving route."""
+    route = _env(key, default).strip().lower()
+    if route not in {"openrouter", "vllm", "openai"}:
+        raise ValueError(
+            f"{key} must be one of openrouter, vllm, or openai; got {route!r}"
+        )
+    return route
+
+
+# Agentic nodes may use different endpoints. This matters when the Architect
+# needs a large hosted context while the tool-using Developer and the Critic
+# should stay on a local OpenAI-compatible vLLM server.
+ARCHITECT_ROUTE: Final[str] = _env_serving_route("ARCHITECT_ROUTE", "openrouter")
+DEVELOPER_ROUTE: Final[str] = _env_serving_route("DEVELOPER_ROUTE", "openrouter")
+CRITIC_ROUTE: Final[str] = _env_serving_route("CRITIC_ROUTE", "openrouter")
 
 # OpenRouter attribution headers (optional, but they get your app listed on the
 # OpenRouter leaderboards and are used for abuse triage).
@@ -709,6 +737,15 @@ JUDGE_PROMPT_FILE: str = _env("JUDGE_PROMPT_FILE", "")
 # and mean less.
 BENCHMARK_PROMPTS: str = _env("BENCHMARK_PROMPTS", "gatemem")  # gatemem | local
 
+# Online answer composition. ``locked`` preserves benchmark prompt ownership;
+# ``evolvable`` permits only the declarative renderer artifact in a version
+# workspace to change. The fixed contract is never copied into that workspace.
+ONLINE_RENDERER_MODE: str = _env("ONLINE_RENDERER_MODE", "locked").strip().lower()
+if ONLINE_RENDERER_MODE not in {"locked", "evolvable"}:
+    raise ValueError("ONLINE_RENDERER_MODE must be locked or evolvable")
+FIXED_RENDERER_VERSION: Final[str] = "renderer_v0001"
+FIXED_CONTRACT_VERSION: Final[str] = "fixed_contract_v0002"
+
 # GateMem's end-to-end leak definition also scans the memory context that was
 # exposed TO the answer model, so a leak that reached the prompt counts even if
 # the model did not repeat it.  Off by default: predictions written before
@@ -727,16 +764,29 @@ JUDGE_SCORE_PROMPT_CONTEXT: bool = _env_bool("JUDGE_SCORE_PROMPT_CONTEXT", False
 MAX_WALLCLOCK_S: float = _env_float("MAX_WALLCLOCK_S", 6 * 60 * 60.0)
 MAX_TOTAL_TOKENS: int = _env_int("MAX_TOTAL_TOKENS", 20_000_000)
 
-# Online repair has no token, turn, candidate, generation, attempt, or warm-up
-# budget. Batch limits above are intentionally unchanged. These two values are
-# validation policy, not repair ceilings.
+# Online repair has no token, turn, generation, or warm-up budget. Batch limits
+# above are intentionally unchanged. A boundary does have a finite candidate
+# policy so an ordinary repair failure cannot hold the stream forever. The one
+# failed-candidate counter spans representation and answer-repair phases.
 ONLINE_REPLAY_WINDOW: int = _env_int("ONLINE_REPLAY_WINDOW", 50)
 ONLINE_UTILITY_TOLERANCE: float = _env_float("ONLINE_UTILITY_TOLERANCE", 0.0)
-# Stall policy: an incident that keeps failing blocks durably (resumable with
-# --retry-blocked, or skipped with --abandon-blocked) instead of looping forever.
-ONLINE_MAX_STALLED_ATTEMPTS: int = _env_int("ONLINE_MAX_STALLED_ATTEMPTS", 5)
-ONLINE_MAX_DUPLICATE_PROPOSALS: int = _env_int("ONLINE_MAX_DUPLICATE_PROPOSALS", 3)
+ONLINE_MAX_FAILED_CANDIDATES: int = _env_int(
+    "ONLINE_MAX_FAILED_CANDIDATES", _env_int("ONLINE_MAX_STALLED_ATTEMPTS", 5))
+# Retained in manifests for old-run compatibility. New planner abstentions use
+# a fixed two-attempt escalation policy and never consume this counter.
+ONLINE_MAX_INVALID_PROPOSALS: int = _env_int(
+    "ONLINE_MAX_INVALID_PROPOSALS", _env_int("ONLINE_MAX_DUPLICATE_PROPOSALS", 3))
 ONLINE_MAX_CORRECTION_ROUNDS: int = _env_int("ONLINE_MAX_CORRECTION_ROUNDS", 3)
+ONLINE_SINGLE_REQUEST_TIMEOUT_S: float = _env_float(
+    "ONLINE_SINGLE_REQUEST_TIMEOUT_S", 900.0)
+ONLINE_DEVELOPER_TURN_LIMIT: int = _env_int("ONLINE_DEVELOPER_TURN_LIMIT", 40)
+ONLINE_DEVELOPER_EPISODE_TIMEOUT_S: float = _env_float(
+    "ONLINE_DEVELOPER_EPISODE_TIMEOUT_S", 3600.0)
+ONLINE_CANDIDATE_TIMEOUT_S: float = _env_float("ONLINE_CANDIDATE_TIMEOUT_S", 7200.0)
+ONLINE_INCIDENT_TIMEOUT_S: float = _env_float("ONLINE_INCIDENT_TIMEOUT_S", 21600.0)
+ONLINE_REPLAY_VOTE_TIMEOUT_S: float = _env_float("ONLINE_REPLAY_VOTE_TIMEOUT_S", 900.0)
+ONLINE_REPLAY_CONCURRENCY: int = _env_int("ONLINE_REPLAY_CONCURRENCY", 4)
+ONLINE_ESCALATION_RATE_WARN: float = _env_float("ONLINE_ESCALATION_RATE_WARN", 0.5)
 
 # LangGraph's own guard.  The macro-loop runs many supersteps per iteration
 # (architect, developer, dispatch, N workers, collect, judge, critic), so the
@@ -799,7 +849,7 @@ SEED_FROM_TEMPLATE: bool = _env_bool("SEED_FROM_TEMPLATE", True)
 #
 # Still a cap: a workspace grown past it is truncated rather than blowing out the
 # prompt, and `nodes.architect._code_view_order` decides what survives.
-ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 112_000)
+ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 120_000)
 
 # How much of the previous iteration's BUILD FAILURE is inlined into the
 # Architect's task text.

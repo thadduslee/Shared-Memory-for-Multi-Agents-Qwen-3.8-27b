@@ -81,6 +81,30 @@ def test_a_new_file_is_reported(box: DevToolbox) -> None:
     assert "memory_system/rbac.py" in box.substantive_changes()
 
 
+async def test_an_edited_renderer_json_is_a_substantive_change(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Online renderer repairs are JSON-only and must pass the no-op guard."""
+    workspace = _seeded(tmp_path)
+    renderer = workspace / "renderer" / "renderer.json"
+    renderer.parent.mkdir()
+    renderer.write_text(
+        '{"schema_version": 1, "instruction_suffix": "old"}\n', encoding="utf-8"
+    )
+    box = DevToolbox(workspace=workspace)
+    monkeypatch.setenv("ONLINE_REPAIR_COMPONENT", "renderer")
+
+    result = await box._t_apply_patch({
+        "path": "renderer/renderer.json",
+        "search": '"instruction_suffix": "old"',
+        "replace": '"instruction_suffix": "preserve every approved claim"',
+    })
+
+    assert result.ok is True
+    assert box.substantive_changes() == ["renderer/renderer.json"]
+    assert box.built_anything() is True
+
+
 def test_the_baseline_survives_a_rebuilt_toolbox(box: DevToolbox) -> None:
     """`_toolbox` rebuilds the box if migration_sql changes mid-episode.
 
@@ -207,7 +231,7 @@ async def test_finish_is_rejected_when_nothing_was_built(tmp_path: Path, monkeyp
     assert out["done"] is False
     assert out["retry_count"] == 1
     rejection = out["scratchpad"][-1]["observation"]
-    assert "has not changed any .py or .sql file" in rejection
+    assert "has not changed any source or configuration file" in rejection
     assert "scratch files and dumped text do not count" in rejection
 
 
@@ -224,6 +248,33 @@ async def test_finish_is_accepted_when_something_was_built(
 
     assert out["done"] is True
     assert out.get("retry_count", 0) == 0
+
+
+async def test_online_renderer_repair_exits_after_mandatory_gates_without_smoke(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """The online runner owns smoke/replay validation; its Developer must return."""
+    workspace = _seeded(tmp_path)
+    renderer = workspace / "renderer" / "renderer.json"
+    renderer.parent.mkdir()
+    renderer.write_text(
+        '{"schema_version": 1, "instruction_suffix": "old"}\n', encoding="utf-8"
+    )
+    box = DevToolbox(workspace=workspace)
+    monkeypatch.setitem(dev._TOOLBOXES, str(workspace), box)
+    renderer.write_text(
+        '{"schema_version": 1, "instruction_suffix": "grounded"}\n', encoding="utf-8"
+    )
+    state = _green(workspace, smoke_ok=False, online_unbounded=True)
+
+    assert dev._stop_reason(state) == "gates_green"
+
+    explicit = await dev.dev_observe({
+        **state,
+        "observation": {"tool": "finish", "ok": True},
+    })
+    assert explicit["done"] is True
+    assert explicit.get("retry_count", 0) == 0
 
 
 def test_the_guard_fails_open_when_there_is_no_toolbox_to_ask() -> None:

@@ -413,6 +413,8 @@ def main() -> int:
                 "checkpoint_id": cid,
                 "action": result.get("action"),
                 "answer": result.get("answer", ""),
+                "fallback_answer": result.get("fallback_answer", result.get("answer", "")),
+                "answer_plan": result.get("answer_plan", {}),
                 "used_record_ids": result.get("used_record_ids", []),
                 "debug": result.get("debug", {}),
                 "evidence": _evidence(result),
@@ -518,9 +520,32 @@ async def _run_retrieval_shard(shard: dict[str, Any]) -> list[dict[str, Any]]:
     )
 
 
-async def _render_answer(record: dict[str, Any], phase: str) -> tuple[dict[str, Any], dict[str, int]]:
-    """Phase 2: turn cleared evidence into the final answer, under the semaphore."""
-    evidence = [item for item in (record.get("evidence") or []) if isinstance(item, dict)]
+async def _render_answer(
+    record: dict[str, Any], phase: str, *, renderer_mode: str = "locked",
+    renderer_artifact: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, int]]:
+    """Phase 2: propose wording, then release it only through the fixed contract."""
+    from renderer_contract import TrustedRenderDecision, enforce_render_contract
+
+    supplied_evidence = [item for item in (record.get("evidence") or [])
+                         if isinstance(item, dict)]
+    supplied_had_body = any(item.get("text") for item in supplied_evidence)
+    decision = TrustedRenderDecision.from_record(record)
+    # This is the complete renderer input. Evidence is reconstructed from the
+    # selected plan so unrelated retrieved rows cannot cross the boundary.
+    evidence = [{
+        "record_id": claim.source_record_id,
+        "source_observation_id": claim.source_observation_id,
+        "text": claim.fact,
+    } for claim in decision.claims]
+    renderer_record = {
+        "checkpoint_id": record.get("checkpoint_id"),
+        "query_text": record.get("query_text", ""),
+        "asker": record.get("asker") or {},
+        "relationships": record.get("relationships") or [],
+        "answer_plan": decision.answer_plan,
+        "evidence": evidence,
+    }
     evidence_lines = "\n".join(
         f"  - [{item.get('record_id') or '?'}] {item.get('text') or '(body withheld from log)'}"
         for item in evidence
@@ -534,12 +559,12 @@ async def _render_answer(record: dict[str, Any], phase: str) -> tuple[dict[str, 
     # scored as a design failure of the memory system. If this line appears,
     # the answerer is being asked to invent the answer -- stop and fix the
     # producer (`_evidence` in `_EVAL_RUNNER`), do not tune the prompt.
-    if not any(item.get("text") for item in evidence):
+    if not supplied_had_body:
         log.warning(
             "render %s: %d cleared record(s) but NO evidence text -- the answerer "
             "cannot produce content it was never given (action=%s)",
-            record.get("checkpoint_id", "?"),
-            len(record.get("used_record_ids") or []), record.get("action"),
+            renderer_record.get("checkpoint_id", "?"),
+            len(renderer_record.get("used_record_ids") or []), decision.action,
         )
 
     asker = record.get("asker") or {}
@@ -555,12 +580,41 @@ async def _render_answer(record: dict[str, Any], phase: str) -> tuple[dict[str, 
     if config.BENCHMARK_PROMPTS == "gatemem":
         from prompts_gatemem import render_query_prompt
 
-        system_prompt, task = render_query_prompt(record)
+        system_prompt, task = render_query_prompt(renderer_record)
     else:
         system_prompt = EVALUATOR_PROFILE.system_prompt
-        task = _local_query_prompt(record, phase, evidence_lines, asker)
+        task = _local_query_prompt(renderer_record, phase, evidence_lines, asker)
 
-    return await _call_answerer(record, system_prompt, task)
+    claims_json = json.dumps(decision.answer_plan, ensure_ascii=False, sort_keys=True)
+    contract_instruction = (
+        "\n\nTRUSTED ANSWER PLAN (use only these claims):\n" + claims_json +
+        "\nReturn JSON containing only sentences=[{text,claim_ids}]. Attribute every "
+        "substantive sentence and cover every required claim. Do not choose an action or "
+        "calculate used claim/record lists; trusted code owns those decisions."
+    )
+    if renderer_mode == "evolvable":
+        suffix = str((renderer_artifact or {}).get("instruction_suffix") or "").strip()
+        contract_instruction += "\n" + suffix
+    task += contract_instruction
+
+    rendered, usage = await _call_answerer(renderer_record, system_prompt, task)
+    safe, conflict = enforce_render_contract(
+        decision, rendered, logger=log)
+    if rendered.get("degraded"):
+        safe["degraded"] = True
+    safe["renderer_contract"] = conflict
+    safe["renderer_mode"] = renderer_mode
+    safe["renderer_attempt"] = {
+        "attempted_action_category": (
+            rendered.get("action") if rendered.get("action") in {
+                "answer", "answer_redacted", "refuse", "no_memory"} else
+            "other" if rendered.get("action") is not None else None),
+        "sentences": rendered.get("sentences") or [],
+        "degraded": bool(rendered.get("degraded")),
+    }
+    if conflict["conflict"]:
+        safe["renderer_conflict"] = conflict
+    return safe, usage
 
 
 def _local_query_prompt(
@@ -570,7 +624,6 @@ def _local_query_prompt(
     return f"""CURRICULUM_PHASE: {phase}
 REQUESTER: {asker.get('principal_id', '?')} (role: {asker.get('role', '?')})
 QUERY: {record.get('query_text', '')}
-PRERESOLVED_ACTION: {record.get('action', 'refuse')}
 RETRIEVAL_RATIONALE: {(record.get('debug') or {}).get('rationale', '')}
 
 EVIDENCE -- already cleared the tombstone, RBAC and scope gates for this
@@ -629,23 +682,19 @@ async def _call_answerer(
         # DIFFERENT system: the gating layer with raw evidence pasted in as the
         # answer. The flag is what lets the collector, the Judge and the
         # scoreboard say so.
-        return {"action": record.get("action", "refuse"),
-                "answer": str(record.get("answer") or ""),
-                "degraded": True,
-                "used_record_ids": record.get("used_record_ids", [])}, usage
+        return {"degraded": True}, usage
 
     parsed = extract_json_block(text) or {}
     action = str(parsed.get("action") or record.get("action") or "refuse")
-    answer = str(parsed.get("answer") or "")
-    degraded = not parsed or (action in {"answer", "answer_redacted"} and not answer.strip())
-    if action in {"answer", "answer_redacted"} and not answer.strip():
-        # A model that picks an answering action and then writes nothing has
-        # produced a guaranteed utility miss out of a checkpoint retrieval had
-        # already cleared. The gated bodies are the honest fallback.
-        answer = str(record.get("answer") or "")
+    sentences = parsed.get("sentences")
+    if sentences is None and isinstance(parsed.get("answer_structured"), dict):
+        sentences = parsed["answer_structured"].get("sentences")
+    degraded = not parsed
     return {
         "action": action,
-        "answer": answer,
+        "answer": str(parsed.get("answer") or ""),
+        "sentences": sentences,
+        "used_claim_ids": parsed.get("used_claim_ids") or [],
         "answer_structured": parsed.get("answer_structured") or {},
         "used_record_ids": parsed.get("used_record_ids") or record.get("used_record_ids", []),
         **({"degraded": True} if degraded else {}),

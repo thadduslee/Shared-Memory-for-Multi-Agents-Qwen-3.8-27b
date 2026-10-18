@@ -65,17 +65,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-boundaries", type=int, default=None, help="online boundaries per invocation")
     parser.add_argument("--resume", action="store_true", help="resume an online run using --thread-id or --checkpointer-path")
     parser.add_argument("--retry-blocked", action="store_true",
-                        help="with --resume, retry an infrastructure-blocked or stalled online boundary")
+                        help="with --resume, retry an infrastructure-blocked or legacy-blocked boundary")
     parser.add_argument("--abandon-blocked", action="store_true",
-                        help="with --resume, record a stalled boundary's targets as unrepaired and advance")
+                        help="legacy: abandon an old repair_blocked scored boundary")
     parser.add_argument("--checkpointer-path", type=Path, default=None)
     parser.add_argument("--disable-online-redesign", action="store_true")
     parser.add_argument("--replay-window", type=int, default=config.ONLINE_REPLAY_WINDOW)
     parser.add_argument("--utility-regression-tolerance", type=float, default=config.ONLINE_UTILITY_TOLERANCE)
+    parser.add_argument("--online-max-failed-candidates", type=int,
+                        default=config.ONLINE_MAX_FAILED_CANDIDATES,
+                        help="failed complete candidates before an online boundary advances")
+    parser.add_argument("--online-max-invalid-proposals", type=int,
+                        default=config.ONLINE_MAX_INVALID_PROPOSALS,
+                        help="legacy resume-compatible setting; planner abstentions are never candidates")
     parser.add_argument("--replay-reingest", action="store_true",
                         help="rebuild replay/promotion images from turns so ingestion repairs can register")
     parser.add_argument("--replay-votes", type=int, default=1,
-                        help="odd number of predict+judge runs per replay side; majority decides")
+                        help="positive odd predict+judge count per replay side; use 3 for live runs")
+    parser.add_argument("--renderer-mode", choices=["locked", "evolvable"],
+                        default=config.ONLINE_RENDERER_MODE,
+                        help="pin benchmark renderer or version declarative renderer artifacts")
     parser.add_argument("--stream-order", default="episode-id-then-turn-position-v1",
                         choices=["episode-id-then-turn-position-v1"])
     return parser.parse_args(argv)
@@ -153,6 +162,8 @@ async def preflight() -> int:
 
     from harness.profiles import (
         ARCHITECT_PROFILE,
+        CRITIC_PROFILE,
+        DEVELOPER_PROFILE,
         EVALUATOR_PROFILE,
         JUDGE_PROFILE,
     )
@@ -177,22 +188,32 @@ async def preflight() -> int:
 
     # --- one probe per distinct (route, model) pair -------------------
     probes = [
-        ("architect/developer/critic", ARCHITECT_PROFILE.route, config.ARCHITECT_MODEL,
+        ("architect", ARCHITECT_PROFILE.route, ARCHITECT_PROFILE.model,
          ARCHITECT_PROFILE.api_key_env),
-        ("evaluator", EVALUATOR_PROFILE.route, config.EVALUATOR_MODEL,
+        ("developer", DEVELOPER_PROFILE.route, DEVELOPER_PROFILE.model,
+         DEVELOPER_PROFILE.api_key_env),
+        ("critic", CRITIC_PROFILE.route, CRITIC_PROFILE.model,
+         CRITIC_PROFILE.api_key_env),
+        ("evaluator", EVALUATOR_PROFILE.route, EVALUATOR_PROFILE.model,
          EVALUATOR_PROFILE.api_key_env),
-        ("judge", JUDGE_PROFILE.route, config.JUDGE_MODEL, JUDGE_PROFILE.api_key_env),
+        ("judge", JUDGE_PROFILE.route, JUDGE_PROFILE.model, JUDGE_PROFILE.api_key_env),
     ]
-    seen: set[tuple[str, str]] = set()
+    seen: dict[tuple[str, str], bool] = {}
     client = AsyncLLMClient()
     try:
         for label, route, model, key_env in probes:
-            if (route, model) in seen:
-                print(f"  [ ok ] {label:<28} shares the probe above ({route}/{model})")
+            probe_key = (route, model)
+            if probe_key in seen:
+                shared_ok = seen[probe_key]
+                marker = " ok " if shared_ok else "FAIL"
+                print(
+                    f"  [{marker}] {label:<28} shares the "
+                    f"{'successful' if shared_ok else 'failed'} probe above ({route}/{model})"
+                )
                 continue
-            seen.add((route, model))
             if key_env and not os.environ.get(key_env) and route != "vllm":
                 ok = False
+                seen[probe_key] = False
                 print(f"  [FAIL] {label:<28} {key_env} is not set")
                 continue
             result = await client.chat(
@@ -201,10 +222,12 @@ async def preflight() -> int:
                 temperature=0.0, max_tokens=16, role="preflight",
             )
             if result.ok:
+                seen[probe_key] = True
                 print(f"  [ ok ] {label:<28} {route}/{model}  "
                       f"({result.usage.get('total_tokens', 0)} tokens)")
             else:
                 ok = False
+                seen[probe_key] = False
                 print(f"  [FAIL] {label:<28} {route}/{model}")
                 print(f"         {str(result.error)[:200]}")
     finally:
@@ -250,6 +273,10 @@ async def run(args: argparse.Namespace) -> int:
         return 0
 
     thread_id = args.thread_id or f"run-{uuid.uuid4().hex[:12]}"
+    if not config.MOCK_MODE:
+        from nodes._transport import validate_developer_tool_calling
+        tool_smoke = await validate_developer_tool_calling()
+        log.info("Developer tool-call startup check: %s", tool_smoke)
     workspace = config.iteration_dir(1) / "workspace"
     state = initial_state(workspace=str(workspace), started_at=time.monotonic())
 

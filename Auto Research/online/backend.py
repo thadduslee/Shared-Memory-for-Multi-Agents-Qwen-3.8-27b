@@ -8,6 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import config
 from gatemem_adapter import assert_no_hidden_fields, make_prediction_row
 from online.schedule import visible_checkpoint
 from online.validation import ValidationFailure, sandbox_command
@@ -17,13 +18,19 @@ class InfrastructureFailure(RuntimeError):
     pass
 
 
+class PromptContextFailure(InfrastructureFailure):
+    """A deterministic oversized-prompt failure; retrying cannot repair it."""
+
+
 class DeveloperApproachUnworkable(RuntimeError):
     """The Developer explicitly rejected the focused design, not its tooling."""
 
 
 class Backend:
-    def __init__(self, mock=True):
+    def __init__(self, mock=True, *, renderer_mode=None):
         self.mock = mock
+        self.renderer_mode = renderer_mode or config.ONLINE_RENDERER_MODE
+        self.online_developer_timeout_s = config.ONLINE_DEVELOPER_EPISODE_TIMEOUT_S
         self.charge = lambda usage: None
         self._developer_sessions = {}
         self._developer_charged_tokens = {}
@@ -72,27 +79,99 @@ class Backend:
                 conn.close()
             return path.read_bytes(), json.loads(lines[-1].split('=', 1)[1])
 
-    async def predict(self, workspace, blob, header, checkpoint):
-        _, output = await self.memory(workspace, blob, header, checkpoint=checkpoint)
-        if not self.mock and output.get('action') in {'answer', 'answer_redacted'}:
+    async def predict(self, workspace, blob, header, checkpoint, *, memory_decision=None):
+        if memory_decision is None:
+            _, memory_decision = await self.memory(
+                workspace, blob, header, checkpoint=checkpoint)
+        else:
+            memory_decision = json.loads(json.dumps(memory_decision))
+        trusted_action = str(memory_decision.get('action') or 'refuse')
+        answer_plan = memory_decision.get('answer_plan') or {}
+        render_attempt = None
+        contract_result = None
+        if not self.mock and trusted_action in {'answer', 'answer_redacted'}:
             from nodes.medical_evaluator import _render_answer
             asker = checkpoint.get('asker') or {}
             principal = asker.get('principal_id')
             relationships = [r for r in header.get('entities', {}).get('relationships', [])
                              if any(k.endswith('_id') and v == principal for k, v in r.items())]
-            record = {**output, **visible_checkpoint(checkpoint), 'relationships': relationships}
-            rendered, usage = await _render_answer(record, 'online')
+            record = {**memory_decision, **visible_checkpoint(checkpoint),
+                      'relationships': relationships}
+            artifact = self._renderer_artifact(workspace)
+            released, usage = await _render_answer(
+                record, 'online', renderer_mode=self.renderer_mode,
+                renderer_artifact=artifact)
             self.charge(usage)
-            if rendered.get('degraded'):
+            render_attempt = released.get('renderer_attempt')
+            contract_result = released.get('renderer_contract')
+            if released.get('degraded'):
                 raise InfrastructureFailure('evaluator transport degraded')
-            output.update(rendered)
-        row = make_prediction_row(checkpoint['checkpoint_id'], output.get('action', 'refuse'),
-                                  output.get('answer', ''), output.get('answer_structured'),
-                                  output.get('used_record_ids'), output.get('debug'))
-        row['output']['retrieved_memory'] = output.get('evidence', [])
+            final_output = released
+        else:
+            from renderer_contract import TrustedRenderDecision, enforce_render_contract
+            decision = TrustedRenderDecision.from_record(memory_decision)
+            final_output, contract_result = enforce_render_contract(decision, None)
+            render_attempt = None
+
+        # The sole online final-answer assembly point. The trusted action is
+        # copied explicitly; no renderer dictionary can overwrite ownership.
+        final_prediction = {
+            'action': trusted_action,
+            'answer': str(final_output.get('answer') or ''),
+            'answer_structured': final_output.get('answer_structured') or {},
+            'used_record_ids': final_output.get('used_record_ids') or [],
+            'answer_source': final_output.get('answer_source'),
+        }
+        row = make_prediction_row(
+            checkpoint['checkpoint_id'], final_prediction['action'],
+            final_prediction['answer'], final_prediction['answer_structured'],
+            final_prediction['used_record_ids'], memory_decision.get('debug'))
+        observable = row['output']
+        observable['answer_source'] = final_prediction['answer_source']
+        observable['answer_plan'] = answer_plan
+        observable['selected_claim_ids'] = [
+            str(c.get('claim_id')) for c in answer_plan.get('claims', [])
+            if isinstance(c, dict)]
+        observable['required_claim_ids'] = [
+            str(c.get('claim_id')) for c in answer_plan.get('claims', [])
+            if isinstance(c, dict) and c.get('required')]
+        observable['fallback_answer'] = memory_decision.get('fallback_answer', '')
+        observable['renderer_attempt'] = render_attempt
+        observable['renderer_contract'] = contract_result
+        observable['renderer_mode'] = self.renderer_mode
+        observable['renderer_version'] = self._component_versions(workspace).get(
+            'renderer_version', config.FIXED_RENDERER_VERSION)
+        observable['contract_version'] = config.FIXED_CONTRACT_VERSION
+        observable['memory_version'] = self._component_versions(workspace).get('memory_version')
+        row['output']['retrieved_memory'] = memory_decision.get('evidence', [])
         row['render_degraded'] = False
         row['infrastructure_degraded'] = False
         return row
+
+    @staticmethod
+    def _renderer_artifact(workspace):
+        path = Path(workspace) / 'renderer' / 'renderer.json'
+        if not path.is_file():
+            return {'schema_version': 1,
+                    'renderer_version': config.FIXED_RENDERER_VERSION,
+                    'instruction_suffix': ''}
+        try:
+            artifact = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError) as exc:
+            raise ValidationFailure('malformed declarative renderer artifact') from exc
+        if (not isinstance(artifact, dict) or artifact.get('schema_version') != 1 or
+                not isinstance(artifact.get('instruction_suffix'), str)):
+            raise ValidationFailure('invalid declarative renderer schema')
+        return artifact
+
+    @staticmethod
+    def _component_versions(workspace):
+        path = Path(workspace).parent / 'manifest.json'
+        try:
+            value = json.loads(path.read_text(encoding='utf-8'))
+        except (OSError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
 
     async def judge(self, prediction, checkpoint):
         from nodes.judge_gatemem import merge_verdicts, rule_score
@@ -142,14 +221,22 @@ class Backend:
             # Offline path exercises a real additive schema migration, not a
             # scripted benchmark answer or a fabricated score. It has one idea;
             # once that idea was rejected it says so instead of repeating it.
-            if context.get('previous_rejected_candidate'):
-                return {'decision': 'NO_VIABLE_REPAIR',
-                        'diagnosis': 'The only mock repair (a lookup index) was already rejected.'}
+            if context.get('latest_complete_structured_feedback'):
+                return {'decision': 'ESCALATE', 'failure_classification': 'ESCALATE',
+                        'diagnosis': 'The only mock repair (a lookup index) was already rejected.',
+                        'escalation_reason': 'No second safe falsifiable hypothesis is available.'}
             if 'online_lookup' in (Path(workspace) / 'memory_system/schema.sql').read_text():
                 return {'decision': 'NO_CHANGE', 'diagnosis': 'The focused repair is already present.',
                         'focused_goal': 'avoid a duplicate change', 'work_order': []}
             return {'decision': 'CODE_OR_SCHEMA_CHANGE',
+                    'failure_classification': 'RETRIEVAL',
+                    'repair_component': 'memory',
                     'diagnosis': 'Observed retrieval lacks the general episode/turn lookup index.',
+                    'specific_hypothesis': (
+                        'Adding the episode/turn lookup index changes the cited target trace.'),
+                    'repair_scope': {'subsystem': 'storage',
+                                     'file': 'memory_system/schema.sql',
+                                     'function': 'schema initialization'},
                     'focused_goal': 'add one general lookup index',
                     'work_order': ['Add idempotent index online_lookup on observations(episode_id, turn_id).'],
                     'migration_sql': 'CREATE INDEX IF NOT EXISTS online_lookup ON observations(episode_id, turn_id);',
@@ -158,50 +245,142 @@ class Backend:
                     'predicted_replay_change': {
                         'observable': 'decision_trace',
                         'expected_change': 'the cited target trace changes at targeted replay',
-                    }}
+                    },
+                    'intended_target_ids': [
+                        str(item['checkpoint_id']) for item in dossier.get('targets') or []
+                        if isinstance(item, dict) and item.get('checkpoint_id')
+                    ],
+                    'safety_preservation_checks': [
+                        'No privacy, deletion, or previously-passing checkpoint regresses.'
+                    ]}
         from harness.profiles import ARCHITECT_PROFILE
         from nodes._transport import agent_call_json
+        allowed_component = str(context.get('allowed_repair_component') or 'memory')
+        source_root = Path(workspace) / (
+            'renderer' if allowed_component == 'renderer' else 'memory_system')
         source = {str(p.relative_to(workspace)): p.read_text() for p in
-                  sorted((Path(workspace) / 'memory_system').glob('*')) if p.suffix in {'.py', '.sql'}}
-        task = ('Analyze only this visible causal incident and implementation. Return JSON with exactly one '
-                'focused diagnosis and exactly one focused repair: decision '
-                '(DATA_MIGRATION, CODE_OR_SCHEMA_CHANGE, or NO_VIABLE_REPAIR), diagnosis (one causal statement), '
-                'focused_goal (one outcome), work_order (a one-item actionable list), and migration_sql '
+                  sorted(source_root.rglob('*'))
+                  if p.suffix in {'.py', '.sql', '.json'}}
+        reingest = bool((context.get('incident_report') or {}).get('replay_reingest'))
+        replay_note = (
+            'Targeted replay deterministically rebuilds state from authoritative visible turns, so '
+            'ingestion, parsing, authorization metadata, and state-transition repairs are measurable. '
+            if reingest else
+            'Targeted replay reuses the frozen database image. Limit this proposal to changes measurable '
+            'without re-running ingestion. '
+        )
+        task = ('Analyze only this sanitized causal incident and implementation. First classify the '
+                'failure as exactly one of INGESTION, AUTHORIZATION, RETRIEVAL, FACT_SELECTION, '
+                'RENDERING, INFRASTRUCTURE, or ESCALATE in failure_classification. An ordinary '
+                'benchmark mismatch MUST NOT be called NO_VIABLE_REPAIR. INFRASTRUCTURE and ESCALATE '
+                'must not produce a product repair. For an actionable classification return '
+                'repair_component exactly memory or renderer, decision DATA_MIGRATION or '
+                'CODE_OR_SCHEMA_CHANGE and exactly one concrete, falsifiable repair: diagnosis and '
+                'specific_hypothesis (one causal statement), repair_scope with subsystem, file, and '
+                'function, focused_goal (one outcome), work_order (a JSON array containing exactly '
+                'one actionable string, for example ["Change memory_system/store.py retrieve"]), '
+                'intended_target_ids (the unresolved targets expected to improve), and migration_sql '
                 '(idempotent SQLite SQL or an empty string), trace_citations (one or more exact trace_id '
                 'values from the dossier), addressed_decision_rule (the exact decision_rule on a cited '
-                'trace), and predicted_replay_change with observable (action, rendered_answer, '
-                'authorized_evidence, decision_trace, or pass_fail) and expected_change. '
-                'Do not bundle unrelated improvements. '
+                'trace), failure_mechanism (a short stable causal mechanism enum/phrase), change_type '
+                '(for example query_filter, ranking, parser, schema_change, or prompt_constraint), '
+                'and predicted_replay_change with observable (action, rendered_answer, '
+                'authorized_evidence, decision_trace, selected_claims, required_claims, '
+                'contract_result, fallback_usage, answer_source, or pass_fail) and expected_change. '
+                'Also return safety_preservation_checks naming privacy, deletion, and previously-passing '
+                'behavior checks. '
+                'Group failures only when the sanitized evidence supports one shared cause. Prefer small, '
+                'testable changes and preserve all previously passing and partially promoted behavior. '
                 'Preserve open_episode, ingest and query interfaces. Never specialize for checkpoint IDs, '
                 'queries, expected answers, medical terms, or benchmark phrases. Existing data and '
-                'authorization/tombstone state must be preserved. HOW YOUR REPAIR IS MEASURED: targeted '
-                'replay re-queries the memory database stored at the failing boundary, after your '
-                'migration_sql, using your candidate code. It does NOT re-run ingestion, and no existing '
-                'row may be updated or deleted. So a change to how turns are parsed, split, linked or '
-                'superseded at ingest cannot change the replay and will be rejected as '
-                'no_measurable_improvement. Only query-time logic (retrieval, ranking, authorization, '
-                'selection, action and projection) or additive derived rows that cite an existing '
-                'observation can turn a failing target into a passing one. If no focused repair within '
-                'these limits can do that, return decision NO_VIABLE_REPAIR with a diagnosis saying why; '
-                'the run then stops for an operator instead of retrying. If previous_rejected_candidate is present, '
+                'authorization/tombstone state must be preserved. The only editable component for '
+                f'this incident is {allowed_component}; adjacent components are read-only interfaces. '
+                'FACT_SELECTION owns memory claim selection and RENDERING owns renderer artifacts. '
+                'HOW YOUR REPAIR IS MEASURED: ' +
+                replay_note +
+                'Use failure_classification ESCALATE and decision ESCALATE only when the visible evidence '
+                'is insufficient to identify a safe hypothesis; include escalation_reason and do not '
+                'invent a work order. If latest_complete_structured_feedback is present, '
                 'the next diagnosis must be materially different from its diagnosis, work order, migration, '
                 'source diff, and behavior and must directly address the exact rejection reason. Relationship '
                 'or semantic similarity alone must never grant permission.\n' +
                 json.dumps({'context': context, 'implementation': source}))
         # No filesystem tools, external survey, or batch artifacts in this call.
-        profile = dataclasses.replace(ARCHITECT_PROFILE, system_prompt='You design causal online SQL memory systems. Return a JSON design.')
+        profile = dataclasses.replace(
+            ARCHITECT_PROFILE,
+            system_prompt='You design causal, grounded online memory and answer-rendering systems. Return a JSON design.')
+        estimated_input_tokens = self._estimate_prompt_tokens(
+            profile.system_prompt + "\n" + task)
+        reserved_output_tokens = max(
+            config.ARCHITECT_CONTEXT_OUTPUT_HEADROOM_TOKENS,
+            int(profile.max_tokens or 0),
+        )
+        input_limit = config.ARCHITECT_CONTEXT_WINDOW_TOKENS - reserved_output_tokens
+        if estimated_input_tokens > input_limit:
+            raise PromptContextFailure(
+                "Architect prompt exceeds configured context headroom: "
+                f"estimated_input_tokens={estimated_input_tokens}, "
+                f"input_limit={input_limit}, "
+                f"context_window={config.ARCHITECT_CONTEXT_WINDOW_TOKENS}, "
+                f"reserved_output_tokens={reserved_output_tokens}; compact the prompt or "
+                "configure a larger Architect context window"
+            )
         result, design = await agent_call_json(profile, task, Path(workspace))
         self.charge(result.usage)
         if not result.ok:
+            if self._is_context_length_error(result.error):
+                raise PromptContextFailure(
+                    "Architect provider rejected the prompt as too large: " +
+                    str(result.error or "context length exceeded")
+                )
             raise InfrastructureFailure(result.error or 'Architect transport failure')
         if not design:
             raise ValidationFailure('Architect returned no design')
+        return self._normalize_architect_design(design)
+
+    @staticmethod
+    def _normalize_architect_design(design):
+        """Normalize the sole safe schema ambiguity while retaining strict gates."""
+        if not isinstance(design, dict):
+            return design
+        if not design.get('repair_component'):
+            classification = str(design.get('failure_classification') or '')
+            if classification in {'INGESTION', 'AUTHORIZATION', 'RETRIEVAL', 'FACT_SELECTION'}:
+                design = {**design, 'repair_component': 'memory'}
+            elif classification == 'RENDERING':
+                design = {**design, 'repair_component': 'renderer'}
+        work_order = design.get('work_order')
+        if isinstance(work_order, str) and work_order.strip():
+            return {**design, 'work_order': [work_order.strip()]}
         return design
+
+    @staticmethod
+    def _estimate_prompt_tokens(text):
+        # Qwen tokenizes code, punctuation-heavy IDs, and JSON more densely than
+        # the usual four-characters-per-token prose heuristic.
+        return (len(str(text).encode('utf-8')) + 2) // 3 + 16
+
+    @staticmethod
+    def _is_context_length_error(error):
+        lowered = str(error or '').lower()
+        return any(marker in lowered for marker in (
+            'maximum context length', 'context length exceeded',
+            'prompt is too long', 'too many input tokens',
+            'input_tokens', 'max_model_len',
+        ))
 
     async def develop(self, workspace, design):
         if self.mock:
-            path = Path(workspace) / 'memory_system/schema.sql'
-            path.write_text(path.read_text() + '\n' + design.get('migration_sql', '') + '\n')
+            if design.get('repair_component') == 'renderer':
+                path = Path(workspace) / 'renderer/renderer.json'
+                artifact = json.loads(path.read_text(encoding='utf-8'))
+                artifact['instruction_suffix'] = (
+                    str(artifact.get('instruction_suffix') or '').rstrip() + '\n' +
+                    str(design.get('focused_goal') or 'preserve grounded required claims'))
+                path.write_text(json.dumps(artifact, indent=2) + '\n', encoding='utf-8')
+            else:
+                path = Path(workspace) / 'memory_system/schema.sql'
+                path.write_text(path.read_text() + '\n' + design.get('migration_sql', '') + '\n')
             return {'status': 'completed', 'turns': 0, 'tokens_used': {},
                     'gate_status': {'compile_ok': 'passed', 'tests_ok': 'passed',
                                     'migration_ok': 'passed'}}
@@ -241,10 +420,16 @@ class Backend:
                 'retry_count': 0, 'compile_ok': False, 'tests_ok': False, 'migration_ok': False,
                 'lint_ok': False, 'smoke_ok': False, 'done': False, 'pass_rate': 0.,
                 'gate_attempts': {}, 'transport_failures': 0, 'transport_errors': [],
-                'online_unbounded': True, 'unworkable': False, 'unworkable_reason': ''})
+                'online_unbounded': False, 'online_mode': True,
+                'online_max_turns': config.ONLINE_DEVELOPER_TURN_LIMIT,
+                'online_timeout_s': self.online_developer_timeout_s,
+                'unworkable': False, 'unworkable_reason': ''})
             self._developer_sessions[key] = session
         previous = os.environ.get('ONLINE_CANDIDATE_SANDBOX')
+        previous_component = os.environ.get('ONLINE_REPAIR_COMPONENT')
         os.environ['ONLINE_CANDIDATE_SANDBOX'] = '1'
+        os.environ['ONLINE_REPAIR_COMPONENT'] = str(
+            design.get('repair_component') or 'memory')
         try:
             final = await session.run()
         finally:
@@ -252,6 +437,10 @@ class Backend:
                 os.environ.pop('ONLINE_CANDIDATE_SANDBOX', None)
             else:
                 os.environ['ONLINE_CANDIDATE_SANDBOX'] = previous
+            if previous_component is None:
+                os.environ.pop('ONLINE_REPAIR_COMPONENT', None)
+            else:
+                os.environ['ONLINE_REPAIR_COMPONENT'] = previous_component
         total = int((final.get('tokens_used') or {}).get('total_tokens') or 0)
         prior = int(self._developer_charged_tokens.get(key, 0))
         self.charge({'total_tokens': max(0, total - prior)})
@@ -262,6 +451,10 @@ class Backend:
         if final.get('halt_reason') == 'transport':
             raise InfrastructureFailure(
                 str((final.get('transport_errors') or ['Developer transport failure'])[-1]))
+        if final.get('halt_reason') in {'timeout', 'turn_cap', 'exhausted'}:
+            raise InfrastructureFailure(
+                'bounded Developer episode ended before mandatory gates completed: ' +
+                str(final.get('halt_reason')))
         if not all(final.get(k) for k in ('compile_ok', 'tests_ok', 'migration_ok')):
             raise ValidationFailure('Developer returned before mandatory build gates passed',
                                     stage='developer', origin='implementation')

@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 from collections import Counter
+import hashlib
+import json
 from pathlib import Path
+import re
 from typing import Any, Callable
 
-from .store import Decision, MemoryStore
+from .store import Decision, MemoryStore, _concepts, _structural_concepts
+from .claims import critical_values
 
 HIDDEN_FIELDS = frozenset({
     "query_type", "attack_type", "expected_action", "judge_spec", "leak_targets",
@@ -13,6 +17,65 @@ HIDDEN_FIELDS = frozenset({
 })
 REFUSAL_TEXT = "I'm not able to share that information with you."
 NO_MEMORY_TEXT = "I don't have any information on that."
+
+
+def _critical_values(text: str) -> list[dict[str, str]]:
+    """Use the fixed boundary's typed, non-overlapping value extraction."""
+    return critical_values(text)
+
+
+def _answer_plan(decision: Decision, query_text: str = "") -> dict[str, Any]:
+    """Select required, authorized facts from the already-filtered result.
+
+    Retrieval and authorization deliberately remain broader than answer
+    composition. This stage keeps authorized responsive context available to
+    the renderer, but marks only facts that answer a visible query facet as
+    required. The deterministic fallback therefore cannot dump unrelated
+    authorized history.
+    """
+    claims: list[dict[str, Any]] = []
+    query_facets = set(decision.query_terms)
+    lowered_query = query_text.lower()
+    requested_time_role = (
+        "arrival_time" if re.search(r"\b(?:arriv|arrival|check[ -]?in)\b", lowered_query)
+        else "appointment_time" if re.search(
+            r"\b(?:appointment|meeting|visit|session|scheduled|start|when)\b",
+            lowered_query) else None)
+    status_requested = bool(re.search(
+        r"\b(?:status|current|still|cancel|confirm|reschedul|active|pending)\b",
+        lowered_query))
+    for item in decision.allowed:
+        fact = " ".join(str(item.body).split())
+        if not fact or item.status != "active":
+            continue
+        digest = hashlib.sha256(
+            f"{item.record_id}\0{item.source_observation_id}\0{fact}".encode("utf-8")
+        ).hexdigest()[:20]
+        concepts = _concepts(fact) | _structural_concepts(fact)
+        facets = sorted(query_facets & concepts)
+        critical = _critical_values(fact)
+        roles = {value.get("role") for value in critical}
+        meaningful = set(facets)
+        if requested_time_role and "time_expression" in meaningful:
+            if requested_time_role not in roles:
+                # A time value with a different role is useful context, not an
+                # answer to the requested role (arrival versus appointment).
+                meaningful.clear()
+        if not status_requested:
+            meaningful -= {"status_expression"}
+        claims.append({
+            "claim_id": f"claim_{digest}",
+            "fact": fact,
+            "required": bool(meaningful),
+            "source_record_id": item.record_id,
+            "source_observation_id": item.source_observation_id or None,
+            "query_facets": sorted(meaningful),
+            "critical_values": critical,
+        })
+    # If the visible query supplies no meaningful facet, do not guess. An
+    # optional-only current plan fails closed at the trusted plan/contract gate
+    # and is diagnosed as FACT_SELECTION rather than dumping retrieved history.
+    return {"schema_version": 2, "claims": claims}
 
 
 def _visible(checkpoint: Any) -> dict[str, Any]:
@@ -53,8 +116,22 @@ class GateMemAgent:
         self.episode: dict[str, Any] | None = None
         self.owner_id = ""
 
+    @staticmethod
+    def _policy_for_episode(episode: dict[str, Any]) -> dict[str, Any]:
+        domain = str(episode.get("domain") or "").lower()
+        if not domain or any(not (ch.isalnum() or ch in "-_") for ch in domain):
+            return {}
+        path = Path(__file__).with_name("policies") / f"{domain}.json"
+        if not path.is_file():
+            return {}
+        value = json.loads(path.read_text(encoding="utf-8"))
+        return value if isinstance(value, dict) else {}
+
     def open_episode(self, episode: dict[str, Any]) -> None:
         self.episode = episode
+        self.store.policy = self._policy_for_episode(episode)
+        from .policy import PolicyEvaluator
+        self.store.policy_evaluator = PolicyEvaluator(self.store.policy)
         attached = self.store.conn.execute(
             "SELECT value FROM store_meta WHERE key='online_episode'").fetchone()
         if attached and bytes(attached[0]).decode() != episode["episode_id"]:
@@ -72,7 +149,8 @@ class GateMemAgent:
     def reset(self, episode: dict[str, Any]) -> None:
         self.store.close()
         path = self._episode_db_path(episode.get("episode_id", "unknown"))
-        self.store = MemoryStore(path, interpreter=self.store.interpreter)
+        self.store = MemoryStore(path, interpreter=self.store.interpreter,
+                                 policy=self._policy_for_episode(episode))
         self.episode = episode
         self._install_header(episode)
         self.store.conn.commit()
@@ -175,23 +253,31 @@ class GateMemAgent:
         evidence = [{"record_id": item.record_id, "role": item.author_role,
                      "text": item.body, "source_observation_id": item.source_observation_id,
                      "status": item.status} for item in decision.allowed]
+        plan = _answer_plan(decision, str(cp.get("query_text") or ""))
+        # Legacy compatibility hook: older invariant suites inject a callable
+        # to inspect the already-authorized evidence. Its return value is
+        # deliberately ignored; rendering/final-answer ownership is external.
         if action in {"answer", "answer_redacted"} and self.llm is not None:
-            rendered = self.llm(str(cp.get("query_text") or ""), evidence)
-            answer = str(rendered.get("answer") or "")
-            # Rendering cannot widen the authorization decision.
-            if str(rendered.get("action") or action) in {"answer", "answer_redacted"}:
-                action = str(rendered.get("action") or action)
-        elif action in {"answer", "answer_redacted"}:
-            answer = " ".join(item.body for item in decision.allowed)
+            self.llm(str(cp.get("query_text") or ""), evidence)
+        if action in {"answer", "answer_redacted"}:
+            fallback_answer = " ".join(
+                claim["fact"] for claim in plan["claims"] if claim["required"])
         elif action == "refuse":
-            answer = REFUSAL_TEXT
+            fallback_answer = REFUSAL_TEXT
         else:
-            answer = NO_MEMORY_TEXT
+            fallback_answer = NO_MEMORY_TEXT
         denied_reasons = Counter(item["reason"] for item in decision.denied_details)
         denied_concepts = Counter(concept for item in decision.denied_details
                                   for concept in item.get("concepts", []))
         return {
-            "action": action, "answer": answer, "answer_structured": {},
+            "action": action,
+            "answer_plan": plan,
+            "fallback_answer": fallback_answer,
+            # Compatibility alias for older workers. It is never the final
+            # online answer; Backend owns the single final assembly point.
+            "answer": fallback_answer,
+            "answer_compatibility_alias": True,
+            "answer_structured": {},
             "used_record_ids": [item.record_id for item in decision.allowed],
             "evidence": evidence,
             "debug": {

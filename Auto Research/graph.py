@@ -455,12 +455,21 @@ async def run_online(args):
             run_dir = Path(manifest['run_dir'])
         finally:
             journal.close()
+    if not config.MOCK_MODE:
+        from nodes._transport import validate_developer_tool_calling
+        from online.storage import write_json
+        tool_smoke = await validate_developer_tool_calling()
+        write_json(run_dir / 'developer_tool_capability.json', tool_smoke)
+        log.info("Developer tool-call startup check: %s", tool_smoke)
     options = OnlineOptions(disable_redesign=args.disable_online_redesign,
                             replay_window=args.replay_window,
                             utility_tolerance=args.utility_regression_tolerance,
                             replay_reingest=args.replay_reingest,
                             replay_votes=args.replay_votes,
+                            renderer_mode=args.renderer_mode,
                             stream_order=args.stream_order,
+                            max_failed_candidates=args.online_max_failed_candidates,
+                            max_invalid_proposals=args.online_max_invalid_proposals,
                             max_infra_retries=config.MAX_INFRA_RETRIES)
     runner = OnlineRunner(get_dataset(), run_dir, backend=Backend(config.MOCK_MODE),
                           options=options, resume=args.resume, retry_blocked=args.retry_blocked,

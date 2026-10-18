@@ -34,6 +34,14 @@ from gatemem_adapter import failure_signature, normalize_traceback
 
 log = logging.getLogger("orchestrator.devtools")
 
+# File types that can be an actual Developer deliverable. Keep this in one
+# place: the status prompt and the no-op guard must agree about what the
+# Developer is allowed to build. In particular, online renderer and policy
+# repairs are declarative JSON artifacts rather than Python modules.
+DELIVERABLE_SUFFIXES: frozenset[str] = frozenset(
+    {".py", ".sql", ".toml", ".cfg", ".ini", ".json", ".yaml", ".yml"}
+)
+
 # ======================================================================
 # The tool schema -- what the Developer is actually handed
 # ======================================================================
@@ -506,11 +514,13 @@ class DevToolbox:
         """Changed files that are actually the deliverable.
 
         Scratch notes and dumped text do not count: the guard asks whether the
-        episode built anything, and `_store_chunk_7.txt` is not a build.
+        episode built anything, and `_store_chunk_7.txt` is not a build. Source
+        and declarative configuration formats both count because some online
+        components (notably the renderer) are intentionally JSON-only.
         """
         return [
             rel for rel in self.changed_files()
-            if not is_scratch(rel) and Path(rel).suffix in {".py", ".sql"}
+            if not is_scratch(rel) and Path(rel).suffix in DELIVERABLE_SUFFIXES
         ]
 
     def built_anything(self) -> bool:
@@ -542,6 +552,19 @@ class DevToolbox:
         if not candidate.is_relative_to(self.workspace):
             raise ValueError(f"path escapes workspace: {rel_path!r}")
         return candidate
+
+    def _developer_visible(self, candidate: Path) -> bool:
+        """Online candidates can inspect/edit only their routed component."""
+        component = os.environ.get("ONLINE_REPAIR_COMPONENT", "").strip()
+        if component not in {"memory", "renderer"}:
+            return True
+        root = (self.workspace / ("memory_system" if component == "memory" else "renderer")).resolve()
+        return candidate == self.workspace or candidate.is_relative_to(root)
+
+    def _require_developer_visible(self, candidate: Path) -> None:
+        if not self._developer_visible(candidate):
+            component = os.environ.get("ONLINE_REPAIR_COMPONENT", "unknown")
+            raise ValueError(f"path is outside the {component} candidate workspace")
 
     # ------------------------------------------------------------------
     # dispatch
@@ -586,6 +609,7 @@ class DevToolbox:
                        f'"args": {{"path": "memory_system/store.py"}}}}; got args={args!r}',
             )
         path = self._resolve(args.get("path", ""))
+        self._require_developer_visible(path)
         if not path.is_file():
             return ToolResult(False, "read_file", stderr=f"no such file: {args.get('path')}")
         rel = str(args.get("path"))
@@ -634,12 +658,14 @@ class DevToolbox:
         # Unlike read_file, "." is a sensible default here, so a missing path is
         # not an error -- it lists the workspace root.
         path = self._resolve(args.get("path") or ".")
+        self._require_developer_visible(path)
         if not path.is_dir():
             return ToolResult(False, "list_dir", stderr=f"not a directory: {args.get('path')}")
         entries = sorted(
             str(p.relative_to(self.workspace)) + ("/" if p.is_dir() else "")
             for p in path.iterdir()
             if p.name not in {"__pycache__", ".sessions", ".cordis"}
+            and self._developer_visible(p.resolve())
         )
         return ToolResult(True, "list_dir", stdout="\n".join(entries), data={"n": len(entries)})
 
@@ -680,6 +706,7 @@ class DevToolbox:
         if not rel:
             return ToolResult(False, "write_file", stderr="write_file requires `path`")
         path = self._resolve(rel)
+        self._require_developer_visible(path)
 
         # WHY A TEST MAY NOT ASSERT FALSE (runs_4iter, iteration 1). Unable to
         # see past the first slice of `store.py`, the Developer wrote pytest
@@ -758,6 +785,7 @@ class DevToolbox:
         if not rel:
             return ToolResult(False, "apply_patch", stderr="apply_patch requires `path`")
         path = self._resolve(rel)
+        self._require_developer_visible(path)
         original = path.read_text(encoding="utf-8") if path.is_file() else ""
 
         if "search" in args and "replace" in args:

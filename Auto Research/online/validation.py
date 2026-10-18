@@ -11,6 +11,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from gatemem_adapter import HIDDEN_ANNOTATION_FIELDS
 from nodes.dev_tools import _split_sql
 
 
@@ -72,7 +73,7 @@ def sandbox_command(workspace, scratch, argv, *, trusted_tests=None, worker=None
 def code_manifest(workspace):
     return {str(p.relative_to(workspace)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted(Path(workspace).rglob('*'))
-            if p.is_file() and p.suffix in {'.py', '.sql'} and '__pycache__' not in p.parts}
+            if p.is_file() and p.suffix in {'.py', '.sql', '.json'} and '__pycache__' not in p.parts}
 
 
 def copy_workspace(source, destination):
@@ -106,15 +107,36 @@ def reject_checkpoint_specialization(parent, candidate, visible_observed, migrat
     implement a general rule. This supplements paired historical replay.
     """
     def constants(root):
-        return {node.value for path in (Path(root) / 'memory_system').rglob('*.py')
+        values = {node.value for path in (Path(root) / 'memory_system').rglob('*.py')
                 for node in ast.walk(ast.parse(path.read_text()))
                 if isinstance(node, ast.Constant) and isinstance(node.value, str)}
+        def strings(value):
+            if isinstance(value, str):
+                yield value
+            elif isinstance(value, dict):
+                for key, item in value.items():
+                    yield str(key)
+                    yield from strings(item)
+            elif isinstance(value, list):
+                for item in value:
+                    yield from strings(item)
+        for path in (Path(root) / 'memory_system' / 'policies').glob('*.json'):
+            values.update(strings(json.loads(path.read_text())))
+        renderer = Path(root) / 'renderer' / 'renderer.json'
+        if renderer.is_file():
+            values.update(strings(json.loads(renderer.read_text(encoding='utf-8'))))
+        return values
     added = constants(candidate) - constants(parent)
     for path in (Path(candidate) / 'memory_system').rglob('*'):
-        if path.is_file() and path.suffix not in {'.py', '.sql'}:
+        is_policy = path.parent.name == 'policies' and path.suffix == '.json'
+        if path.is_file() and path.suffix not in {'.py', '.sql'} and not is_policy:
             raise ValidationFailure('candidate runtime contains an unverified sidecar file')
     candidate_sql = '\n'.join(p.read_text() for p in (Path(candidate) / 'memory_system').rglob('*.sql'))
     parent_sql = '\n'.join(p.read_text() for p in (Path(parent) / 'memory_system').rglob('*.sql'))
+    for hidden in HIDDEN_ANNOTATION_FIELDS:
+        if (hidden in added or hidden in migration_sql or
+                (hidden in candidate_sql and hidden not in parent_sql)):
+            raise ValidationFailure('candidate executable code references a hidden scoring field')
     for cp in visible_observed:
         for value in (cp['checkpoint_id'], cp.get('query_text', '')):
             if value and (any(value in literal for literal in added) or
@@ -249,6 +271,18 @@ def build_gates(workspace, trusted_tests):
     env = {**os.environ, 'PYTHONPATH': str(workspace), 'PYTEST_ADDOPTS': '',
            'PYTHONDONTWRITEBYTECODE': '1'}
     reports = {}
+    renderer_path = workspace / 'renderer' / 'renderer.json'
+    try:
+        renderer = json.loads(renderer_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        raise ValidationFailure('renderer artifact is missing or malformed',
+                                stage='build_validation', origin='renderer_schema') from exc
+    if (not isinstance(renderer, dict) or renderer.get('schema_version') != 1 or
+            not isinstance(renderer.get('instruction_suffix'), str) or
+            set(renderer) - {'schema_version', 'renderer_version', 'instruction_suffix'}):
+        raise ValidationFailure('renderer artifact failed the fixed declarative schema',
+                                stage='build_validation', origin='renderer_schema')
+    reports['renderer_schema'] = {'ok': True, 'output': 'declarative schema valid'}
     with tempfile.TemporaryDirectory(prefix='online-tests-') as temp:
         frozen = Path(temp) / 'tests'
         copy_workspace(trusted_tests, frozen)
