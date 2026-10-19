@@ -26,6 +26,10 @@ class Journal:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         self.db = sqlite3.connect(path)
+        # Custom checkpointer paths can live outside the private run directory.
+        # Set the database mode before WAL creation or sensitive payload writes;
+        # SQLite derives new WAL/SHM permissions from the database file.
+        path.chmod(0o600)
         self.db.row_factory = sqlite3.Row
         self.db.execute('PRAGMA journal_mode=WAL')
         self.db.execute('PRAGMA synchronous=FULL')
@@ -49,7 +53,21 @@ class Journal:
                                                tokens INTEGER NOT NULL DEFAULT 0, seconds REAL NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS replay_votes (
             cache_key TEXT PRIMARY KEY, value TEXT NOT NULL, created_at REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS unresolved_data (
+            boundary INTEGER PRIMARY KEY, episode_id TEXT NOT NULL, first_position INTEGER NOT NULL,
+            last_position INTEGER NOT NULL, payload TEXT NOT NULL, reason TEXT NOT NULL,
+            version TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'unresolved', retries INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS safe_images (
+            promotion TEXT NOT NULL, parent TEXT NOT NULL, episode_id TEXT NOT NULL,
+            cursor INTEGER NOT NULL, memory BLOB NOT NULL, PRIMARY KEY(promotion,episode_id));
+        CREATE TABLE IF NOT EXISTS safe_state (promotion TEXT PRIMARY KEY, value TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS backfill_results (
+            boundary INTEGER NOT NULL, checkpoint_id TEXT NOT NULL, version TEXT NOT NULL,
+            value TEXT NOT NULL, PRIMARY KEY(boundary,checkpoint_id,version));
         ''')
+        if 'invocations' not in {r[1] for r in self.db.execute('PRAGMA table_info(operations)')}:
+            self.db.execute('ALTER TABLE operations ADD COLUMN invocations INTEGER NOT NULL DEFAULT 0')
+            self.db.commit()
 
     def get(self, key, default=None):
         row = self.db.execute('SELECT value FROM state WHERE key=?', (key,)).fetchone()

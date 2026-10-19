@@ -2,12 +2,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from typing import Any, Iterable, Mapping
 
 
 INACTIVE_STATES = frozenset({
     "deleted", "expired", "cancelled", "canceled", "superseded", "revoked", "invalid",
 })
+
+
+def inactive_states(policy: Mapping[str, Any]) -> frozenset[str]:
+    return INACTIVE_STATES | frozenset(str(s).lower() for s in policy.get('inactive_states', ()))
 
 
 @dataclass(frozen=True)
@@ -61,7 +66,7 @@ class PolicyEvaluator:
             actual = resource.scope.get(str(boundary))
             if expected is None or actual is None or str(actual) != str(expected):
                 return AuthorizationDecision(False, "isolation_boundary")
-        invalid_states = set(self.policy.get("inactive_states") or INACTIVE_STATES)
+        invalid_states = inactive_states(self.policy)
         if resource.status.lower() in invalid_states:
             return AuthorizationDecision(False, "inactive_resource")
 
@@ -149,7 +154,23 @@ class PolicyEvaluator:
     def _relationship_matches(spec: Mapping[str, Any], request: AuthorizationRequest) -> bool:
         predicates = set(spec.get("predicates") or [])
         for relation in request.relationships:
-            if relation.get("status", "active") != "active":
+            try:
+                attrs = json.loads(relation.get('attributes_json') or '{}')
+            except (TypeError, ValueError):
+                attrs = {}
+            if not isinstance(attrs, Mapping):
+                attrs = {}
+            if relation.get("status", "active") != "active" or attrs.get('status', 'active') != 'active':
+                continue
+            at = request.context_scope.get('query_time')
+            start = relation.get('valid_from') or attrs.get('valid_from')
+            end = relation.get('valid_until') or attrs.get('valid_until')
+            if (start or end) and not at:
+                continue
+            if any(value is not None and not isinstance(value, str) for value in (start, end)):
+                continue
+            from .temporal import within
+            if not within(start,end,at):
                 continue
             if predicates and relation.get("predicate") not in predicates:
                 continue

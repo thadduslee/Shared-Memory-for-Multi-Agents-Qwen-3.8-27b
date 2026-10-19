@@ -17,10 +17,11 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from .policy import AuthorizationRequest, PolicyEvaluator, Principal, Resource
+from .policy import AuthorizationRequest, PolicyEvaluator, Principal, Resource, inactive_states
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+INSTRUCTION_VERBS = 'use|start|stop|continue|avoid|take|restart|rotate|check|keep|run|install|disable|enable|increase|decrease|reduce|hold|maintain|switch|miss'
 
 
 def _now() -> str:
@@ -42,6 +43,28 @@ def _stable_id(prefix: str, *values: Any) -> str:
     return f"{prefix}_{hashlib.sha256(_json(values).encode()).hexdigest()[:24]}"
 
 
+def structured_value(payload, path):
+    if not isinstance(path,list) or not path or len(path)>16:
+        raise ValueError('invalid source path')
+    value=payload
+    for key in path:
+        if isinstance(value,dict) and isinstance(key,str):
+            value=value[key]
+        elif isinstance(value,list) and type(key) is int and 0<=key<len(value):
+            value=value[key]
+        else:
+            raise ValueError('source path does not resolve')
+    return value
+
+
+def structured_body(path,value):
+    # Display source keys as words so ordinary questions can address typed
+    # fields such as equipment_mass. The exact path stays in value_json and
+    # the independent auditor recomputes this deterministic representation.
+    label = ' '.join(str(k).replace('_',' ') for k in path)
+    return f'{label}: {_json(value)}'
+
+
 @dataclass
 class Evidence:
     record_id: str
@@ -53,6 +76,7 @@ class Evidence:
     redacted: bool = False
     source_observation_id: str = ""
     status: str = "active"
+    context_terms: tuple[str, ...] = ()
 
 
 @dataclass
@@ -116,6 +140,25 @@ class MemoryStore:
     def close(self) -> None:
         self.conn.close()
 
+    def register_specialization(self, name, columns, *, reason, version=1):
+        from .specialized import register
+        register(self.conn, name, columns, reason=reason, version=version)
+
+    def project_fact(self, name, memory_id, values):
+        from .specialized import project
+        project(self.conn, name, memory_id, values)
+
+    def link_facts(self, from_memory_id, to_memory_id, source_memory_id, relation):
+        rows = [self.conn.execute('SELECT episode_id,text_value,status FROM memories WHERE memory_id=?',
+                                 (mid,)).fetchone() for mid in (from_memory_id,to_memory_id,source_memory_id)]
+        if (any(r is None or r[2] != 'active' for r in rows) or
+                len({r[0] for r in rows}) != 1 or not relation or relation not in rows[2][1]):
+            raise ValueError('relationship requires live same-episode facts and source support')
+        edge = _stable_id('edge',from_memory_id,to_memory_id,source_memory_id,relation)
+        self.conn.execute('INSERT OR IGNORE INTO memory_edges VALUES (?,?,?,?,?)',
+                          (edge,from_memory_id,to_memory_id,source_memory_id,relation))
+        return edge
+
     # Generic entities and relationships ---------------------------------
 
     def upsert_principal(self, principal_id: str, role: str = "", display_name: str = "",
@@ -170,6 +213,10 @@ class MemoryStore:
     # Observations and derived memory -------------------------------------
 
     def ingest_turn(self, episode_id: str, turn: dict[str, Any], owner_id: str = "") -> str:
+        if turn.get('operation', 'append') not in {'append', 'replace', 'delete'}:
+            raise ValueError('unsupported source operation')
+        if turn.get('operation') == 'delete' and (turn.get('speaker') or {}).get('principal_id') != owner_id:
+            raise ValueError('structured deletion requires authenticated owner source')
         turn_id = str(turn.get("turn_id") or f"seq-{self._seq + 1}")
         existing = self.conn.execute(
             "SELECT observation_id FROM observations WHERE episode_id=? AND turn_id=?",
@@ -191,6 +238,16 @@ class MemoryStore:
              hashlib.sha256(_json(turn).encode()).hexdigest()),
         )
         self._derive_clause_memories(episode_id, observation_id, text, owner_id, observed_at)
+        if 'data' in turn:
+            subject=str(turn.get('subject_id') or owner_id)
+            self._derive_structured_memories(episode_id,observation_id,turn,subject,observed_at)
+        if turn.get('operation') == 'delete':
+            if str(speaker.get('principal_id') or '') != owner_id:
+                raise ValueError('structured deletion requires authenticated owner source')
+            target=self.conn.execute('SELECT observation_id FROM observations WHERE episode_id=? AND turn_id=?',
+                                     (episode_id,str(turn.get('target_turn_id') or ''))).fetchone()
+            if target:
+                self.tombstone(target[0],owner_id,'explicit structured deletion')
         self._derive_explicit_permissions(episode_id, observation_id, text, owner_id,
                                           str(speaker.get("principal_id") or ""), observed_at)
         self._run_interpreter(episode_id, observation_id, turn, owner_id)
@@ -199,6 +256,45 @@ class MemoryStore:
                                          str(speaker.get("principal_id") or "unknown"))
         self.conn.commit()
         return observation_id
+
+    def add_structured_fact(self,episode_id,source_observation_id,path,subject_id,*,supersedes_id=None):
+        source=self.conn.execute('SELECT raw_payload_json,observed_at FROM observations WHERE observation_id=?',
+                                 (source_observation_id,)).fetchone()
+        if source is None:
+            raise ValueError('structured fact requires a preserved source observation')
+        value=structured_value(json.loads(source[0]),path)
+        body=structured_body(path,value)
+        if len(body)>4000:
+            raise ValueError('structured value requires smaller source-path projections')
+        return self.add_fact(episode_id,subject_id=subject_id,predicate='.'.join(map(str,path)),
+            value={'source_path':path,'source_value':value},text_value=body,
+            source_observation_id=source_observation_id,memory_type='structured_fact',
+            valid_from=source[1],supersedes_id=supersedes_id)
+
+    def _derive_structured_memories(self,episode_id,source_id,turn,subject,observed_at):
+        count=0
+        def visit(value,path):
+            nonlocal count
+            if len(path) > 16:
+                raise ValueError('structured source exceeds path depth limit')
+            if isinstance(value,dict) and not {'value','unit'}<=set(value):
+                for key,child in value.items():
+                    visit(child,path+[key])
+            elif isinstance(value,list):
+                for index,child in enumerate(value):
+                    visit(child,path+[index])
+            else:
+                count+=1
+                if count>256:
+                    raise ValueError('structured projection budget exceeded')
+                previous=None
+                if turn.get('operation')=='replace':
+                    row=self.conn.execute('SELECT memory_id FROM memories WHERE episode_id=? AND subject_id=? '
+                        'AND predicate=? AND status=\'active\' AND source_observation_id<>? ORDER BY seq DESC LIMIT 1',
+                        (episode_id,subject,'.'.join(map(str,path)),source_id)).fetchone()
+                    previous=row[0] if row else None
+                self.add_structured_fact(episode_id,source_id,path,subject,supersedes_id=previous)
+        visit(turn['data'],['data'])
 
     def add_fact(self, episode_id: str, *, subject_id: str, predicate: str, value: Any,
                  source_observation_id: str, text_value: str = "",
@@ -259,8 +355,7 @@ class MemoryStore:
         # Co-scoped concepts are a provenance-bearing semantic interpretation.
         # They improve retrieval, but authorization still requires this actual
         # permission row and exact scope membership.
-        scope_concepts = sorted(_concepts(" ".join(scopes)) |
-                                _structural_concepts(" ".join(scopes)))
+        scope_concepts = sorted(_scope_concepts(" ".join(scopes)))
         for index, left in enumerate(scope_concepts):
             for right in scope_concepts[index + 1:]:
                 link_id = _stable_id("sem", episode_id, left, right,
@@ -301,7 +396,7 @@ class MemoryStore:
         # self-access never spills onto another named principal's facts.
         # A requester introducing themselves ("This is Dr. Lee ...") names who is
         # asking, not whose records are wanted.
-        resource_owner_id = self._mentioned_principal(query, exclude=requester_id) or owner_id
+        resource_owner_id = self.resolve_query_owner(query, requester_id, owner_id)
         query_terms = _query_concepts(query)
         # Entity names identify the shard but are poor relevance signals: if a
         # query names its owner, that must not make every fact about that owner
@@ -309,6 +404,9 @@ class MemoryStore:
         for principal in self.conn.execute("SELECT principal_id,display_name FROM principals"):
             query_terms -= _concepts(f"{principal['principal_id']} {principal['display_name']}")
         decision = Decision(query_terms=sorted(query_terms))
+        if resource_owner_id is None:
+            decision.denied_rbac.append('unresolved_explicit_subject')
+            return decision
         if episode_id is None:
             row = self.conn.execute(
                 "SELECT episode_id FROM observations ORDER BY seq DESC LIMIT 1").fetchone()
@@ -320,9 +418,10 @@ class MemoryStore:
             (episode_id, requester_id),
         )]
         permission_candidates = list(self.conn.execute(
-            """SELECT * FROM permissions WHERE episode_id=? AND grantee_id=?
-               AND resource_owner_id=? ORDER BY created_at DESC""",
-            (episode_id, requester_id, resource_owner_id),
+            """SELECT p.* FROM permissions p JOIN observations o ON
+               o.observation_id=p.source_observation_id WHERE p.episode_id=? AND p.grantee_id=?
+               AND p.resource_owner_id=? AND (? IS NULL OR o.seq<=?) ORDER BY p.created_at DESC""",
+            (episode_id, requester_id, resource_owner_id, as_of_seq, as_of_seq),
         ))
         permissions = [row for row in permission_candidates
                        if row["status"] == "active" and
@@ -382,8 +481,12 @@ class MemoryStore:
             (episode_id, resource_owner_id, as_of_seq, as_of_seq),
         ).fetchall()
 
+        rows = [{**dict(row), 'status': self.record_status_at(row, as_of_seq)} for row in rows]
+
         ranked: list[tuple[float, sqlite3.Row, set[str]]] = []
         expanded = self._expand_terms(episode_id, query_terms)
+        labels = self.source_label_links(episode_id, as_of_seq)
+        expanded |= {entity for entity,topic in labels if topic & query_terms}
         prepared: list[tuple[float, bool, sqlite3.Row, set[str], set[str]]] = []
         for row in rows:
             if row["memory_type"] in {"utterance", "permission_evidence"}:
@@ -405,7 +508,8 @@ class MemoryStore:
                 continue
             score = _semantic_score(expanded, concepts)
             topic_ok = (not query_topic_terms or
-                        _semantic_score(query_topic_terms, concepts) >= 0.75)
+                        _semantic_score(query_topic_terms, concepts) >= 0.75 or
+                        any(entity in concepts and topic & query_topic_terms for entity,topic in labels))
             direct = topic_ok and (not query_terms or score >= 0.75)
             context = _compound_context_concepts(row["source_text"])
             prepared.append((score, direct, row, concepts, context))
@@ -428,7 +532,7 @@ class MemoryStore:
             decision.candidates_considered += 1
             direct_count += int(direct)
             sibling_count += int(sibling)
-            if row["status"] in {"superseded", "revoked", "deleted"}:
+            if row["status"].lower() in inactive_states(self.policy):
                 decision.obsolete.append(row["memory_id"])
                 record_trace(row, concepts | context, "obsolete", "status_gate",
                              f"record_status_{row['status']}")
@@ -450,7 +554,8 @@ class MemoryStore:
             else:
                 ok, reason = self._authorized(
                     requester_id, requester_role, resource_owner_id, episode_id,
-                    row, concepts, row["text_value"], permissions, query_terms)
+                    row, concepts, row["text_value"], permissions, query_terms,
+                    query_time=as_of_time, as_of_seq=as_of_seq)
             if not ok:
                 # A denied row that matched only the already-permitted part of
                 # the question is unrelated private context, not a partial
@@ -480,10 +585,14 @@ class MemoryStore:
                 record_trace(row, concepts, "suppressed", "projection_gate",
                              "empty_authorized_projection")
                 continue
+            inherited = set().union(*(topic & query_terms for entity,topic in labels
+                if entity in _concepts(released_text))) if labels else set()
             allowed.append((score, Evidence(
                 row["memory_id"], row["turn_id"], row["observed_role"], row["kind"],
                 "scoped", released_text, source_observation_id=row["source_observation_id"],
-                status=row["status"])))
+                status=row["status"],
+                context_terms=tuple(sorted(_compound_context_concepts(row["source_text"]) | inherited))
+                if requester_id == resource_owner_id or reason.startswith("policy:") else ())))
 
         selected = self._coverage_select(allowed, query_terms, top_k)
         decision.allowed = [item[1] for item in selected]
@@ -531,10 +640,65 @@ class MemoryStore:
         self.conn.commit()
         return decision
 
+    def record_status_at(self, row, as_of_seq):
+        """A later replacement cannot erase a fact at an earlier boundary.
+
+        Deletion is handled separately and remains effective across history.
+        A bare inactive status without a proven future replacement stays closed.
+        """
+        if row['status'] == 'superseded' and as_of_seq is not None:
+            seq = self.conn.execute('SELECT MIN(seq) FROM memories WHERE supersedes_id=?',
+                                    (row['memory_id'],)).fetchone()[0]
+            if seq is not None and seq > as_of_seq:
+                return 'active'
+        return row['status']
+
+    def source_label_links(self, episode_id, as_of_seq):
+        """Learn labels from explicit source declarations, without a domain lexicon.
+
+        Example: 'The equipment configuration is Zephyr ...' lets a later
+        Zephyr instruction retain the equipment topic. This is a retrieval hint,
+        never an authorization source or a new factual assertion.
+        """
+        links = []
+        texts = [r[0] for r in self.conn.execute('SELECT raw_text FROM observations WHERE episode_id=? '
+                'AND (? IS NULL OR seq<=?) ORDER BY seq DESC LIMIT 256', (episode_id,as_of_seq,as_of_seq))]
+        for index,text in enumerate(texts):
+            match = re.match(r'(?:the |our |my )?([^.!?:]{1,80}\b(?:plan|configuration|specification|setup|instructions?|settings?))'
+                             r'\s+(?:is|are)\s+([a-zA-Z][\w-]{3,})\b', text, re.I)
+            if match:
+                links.append((next(iter(_concepts(match[2])), ''), _concepts(match[1])))
+            # Adjacency is a tentative topic hint, not a claim that a reply is
+            # true. The answer and any inherited instructions retain their own
+            # sources and still require independent correctness assessment.
+            prompt = re.search(r'\b(?:review|summarize|describe|list)\s+(?:your|the|our)\s+([^.!?]{1,100})', text, re.I)
+            reply = re.match(r'\s*([a-zA-Z][\w-]{3,})\b', texts[index-1]) if index else None
+            if prompt and reply and _concepts(reply[1]):
+                label = re.split(r'\b(?:exactly|as|before|after|right|now)\b',prompt[1],maxsplit=1,flags=re.I)[0]
+                links.append((next(iter(_concepts(reply[1]))), _concepts(label)))
+        # A named object can connect a labelled declaration to a later source
+        # list. Infer at most two hops and a fixed number of hints, using only
+        # explicit instruction objects rather than arbitrary shared words.
+        for _ in range(2):
+            additions = []
+            for text in texts:
+                tokens = _concepts(text)
+                topics = set().union(*(topic for entity,topic in links if entity in tokens)) if links else set()
+                if not topics:
+                    continue
+                for entity in re.findall(r'\b(?:' + INSTRUCTION_VERBS + r')\s+([a-zA-Z][\w-]{3,})\b', text, re.I):
+                    normalized = _concepts(entity) - {'other','same','more','less','morn','night','daily','nightly','taking','using'}
+                    if normalized:
+                        additions.append((next(iter(normalized)),topics))
+            links = sorted({(entity,frozenset(topic)) for entity,topic in links+additions},
+                           key=lambda pair:(pair[0],tuple(sorted(pair[1]))))[:256]
+        return [(entity,set(topic)) for entity,topic in links]
+
     def _authorized(self, requester_id: str, requester_role: str, owner_id: str,
                     episode_id: str, record: sqlite3.Row, concepts: set[str], text: str,
                     permissions: list[sqlite3.Row],
-                    requested_concepts: set[str]) -> tuple[bool, str]:
+                    requested_concepts: set[str], *, query_time: str | None = None,
+                    as_of_seq: int | None = None) -> tuple[bool, str]:
         denies = [p for p in permissions if p["effect"] == "deny"]
         allows = [p for p in permissions if p["effect"] == "allow"]
         for row in denies:
@@ -546,8 +710,9 @@ class MemoryStore:
                 "SELECT attributes_json FROM principals WHERE principal_id=?", (requester_id,)
             ).fetchone()
             relationships = tuple(dict(row) for row in self.conn.execute(
-                "SELECT predicate,subject_id,object_id,status,attributes_json "
-                "FROM relationships WHERE episode_id=?", (episode_id,)))
+                "SELECT r.predicate,r.subject_id,r.object_id,r.status,r.attributes_json,r.valid_from,r.valid_until "
+                "FROM relationships r LEFT JOIN observations o ON o.observation_id=r.source_observation_id "
+                "WHERE r.episode_id=? AND (? IS NULL OR o.seq<=?)", (episode_id, as_of_seq, as_of_seq)))
             resource_type = "general_record"
             for classifier in self.policy.get("resource_classification", []):
                 expected = set(classifier.get("concepts") or [])
@@ -562,7 +727,7 @@ class MemoryStore:
                 {"episode_id": episode_id}, str(record["status"]),
                 {"concepts": sorted(concepts), "predicate": record["predicate"]})
             policy_decision = self.policy_evaluator.evaluate(AuthorizationRequest(
-                principal, "retrieve", resource, {"episode_id": episode_id}, relationships))
+                principal, "retrieve", resource, {"episode_id": episode_id, "query_time": query_time}, relationships))
             if policy_decision.reason in {"explicit_denial", "explicit_revocation",
                                           "policy_denial", "isolation_boundary",
                                           "inactive_resource"}:
@@ -594,6 +759,15 @@ class MemoryStore:
         lowered = text.lower()
         scoped_structure = (scope & concepts) & {
             "time_expression", "date_expression", "location_expression"}
+        from .claims import critical_values
+        # Purpose overlap (for example coordinating a delivery) does not grant
+        # access to a phone number in the same source sentence.
+        phone_scope = 'phone_expression' in scope or bool(scope & _concepts('phone telephone mobile contact'))
+        if requested_concepts and 'phone_expression' in requested_concepts and not phone_scope:
+            return False, 'outside_permission_field_scope'
+        if (not phone_scope and not scoped_structure and
+                any(v['type']=='phone_number' for v in critical_values(text))):
+            return False, 'outside_permission_field_scope'
         if (exclusions & concepts or
                 any(term in lowered for term in exclusions if len(term) > 3)) and not scoped_structure:
             return False, "permission_exclusion"
@@ -634,20 +808,55 @@ class MemoryStore:
             value for row in permissions if row["effect"] == "allow"
             for value in _loads(row["scope_json"], []))
         structural = _scope_concepts(scope_text)
-        if structural & {"time_expression", "date_expression", "location_expression"}:
-            match = re.search(
-                r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
-                r"january|february|march|april|may|june|july|august|september|october|november|december)\b",
-                text, re.I)
-            if match:
-                start = match.start()
-                # Keep a leading qualifier such as "prior" or "new": dropping it
-                # turns "prior Monday ... canceled" into a different statement.
-                lead = re.search(r"\b(?:" + "|".join(_TEMPORAL_QUALIFIERS) + r")\s+$",
-                                 text[:start], re.I)
-                if lead:
-                    start = lead.start()
-                return text[start:].strip()
+        if structural & _concepts('phone telephone mobile contact'):
+            structural.add('phone_expression')
+        if structural & {"time_expression", "date_expression", "location_expression",'phone_expression'}:
+            from .claims import _PATTERNS
+            spans = []
+            for kind, pattern in _PATTERNS:
+                permitted = ((kind=='date' and bool(structural & {'date_expression','time_expression'})) or
+                             (kind=='time' and 'time_expression' in structural) or
+                             (kind=='phone_number' and 'phone_expression' in structural))
+                if not permitted:
+                    continue
+                for match in pattern.finditer(text):
+                    start,end = match.span()
+                    if kind=='time':
+                        lead = re.search(r'\b(?:arrive(?: by)?|arrival)\s*:?\s*$', text[:start], re.I)
+                        tail = re.match(r'\s+(?:arrival|arrive)\b', text[end:], re.I)
+                        start = lead.start() if lead else start
+                        end += tail.end() if tail else 0
+                    qualifier = re.search(r'\b(?:'+ '|'.join((*_TEMPORAL_QUALIFIERS,'not','no','never','pending','confirmed','proposed','tentative')) +r')\s+$', text[:start], re.I)
+                    spans.append((qualifier.start() if qualifier else start,end))
+            if 'location_expression' in structural:
+                # Physical location labels are operational values. Arbitrary
+                # specialty/reason text following a date is not a location.
+                place = r"(?:[A-Z][\w']*\s+){0,4}(?i:suite|room|hall|building)(?:\s+[A-Za-z0-9-]+)?"
+                spans.extend(m.span() for m in re.finditer(place,text))
+            if not spans:
+                return ''
+            spans.sort()
+            merged = []
+            for start,end in spans:
+                if merged and start<=merged[-1][1]:
+                    merged[-1]=(merged[-1][0],max(end,merged[-1][1]))
+                else:
+                    merged.append((start,end))
+            # A projection must not turn a negative/status-qualified source
+            # into an affirmative event. If the qualifier cannot be retained
+            # in its original field relationship, withhold this mixed clause.
+            from .claims import _NEGATION, _STATUS
+            if any(not any(start<=m.start() and m.end()<=end for start,end in merged)
+                   for pattern in (_NEGATION,_STATUS) for m in pattern.finditer(text)):
+                return ''
+            out = text[merged[0][0]:merged[0][1]]
+            previous = merged[0][1]
+            for start,end in merged[1:]:
+                gap = text[previous:start]
+                safe_gap = re.fullmatch(r'[\s,;:/()\-]*(?:(?:at|in|with|on|by|and|or|to|of|the|a)[\s,;:/()\-]+)*',gap,re.I)
+                out += (gap if safe_gap else '; ') + text[start:end]
+                previous = end
+            return out.strip()
         return text
 
     # Forgetting ---------------------------------------------------------
@@ -658,9 +867,19 @@ class MemoryStore:
         target_type = "observation" if obs else "memory"
         self.conn.execute("INSERT OR REPLACE INTO tombstones VALUES (?,?,?,?,?,1)",
                           (target_id, target_type, _now(), requested_by, reason))
+        if target_type == 'memory':
+            source = self.conn.execute('SELECT source_observation_id FROM memories WHERE memory_id=?',
+                                       (target_id,)).fetchone()
+            if source:
+                # A deleted derivative must not be reconstructible under a new
+                # parser, predicate or typed projection. Shred its source too.
+                self.tombstone(source[0], requested_by, reason)
+                return
         if target_type == "observation":
             memory_ids = [r[0] for r in self.conn.execute(
                 "SELECT memory_id FROM memories WHERE source_observation_id=?", (target_id,))]
+            from .specialized import purge
+            purge(self.conn, memory_ids)
             for memory_id in memory_ids:
                 self.conn.execute("DELETE FROM memory_terms WHERE memory_id=?", (memory_id,))
             self.conn.execute(
@@ -674,6 +893,8 @@ class MemoryStore:
             self.conn.execute("UPDATE semantic_links SET status='revoked' WHERE source_observation_id=?",
                               (target_id,))
         else:
+            from .specialized import purge
+            purge(self.conn, [target_id])
             self.conn.execute("DELETE FROM memory_terms WHERE memory_id=?", (target_id,))
             self.conn.execute(
                 """UPDATE memories SET text_value='',value_json='{}',concepts_json='[]',status='deleted'
@@ -707,7 +928,9 @@ class MemoryStore:
             concepts = sorted(_concepts(clause) | _structural_concepts(clause) |
                               source_context)
             status = "cancelled" if _CANCEL.search(clause) else "active"
-            utterance = clause.rstrip().endswith("?") or bool(_REQUEST_CUE.search(clause))
+            negative_instruction = bool(re.match(r"\s*(?:do not|don't|never|must not)\b", clause, re.I))
+            utterance = clause.rstrip().endswith("?") or (
+                bool(_REQUEST_CUE.search(clause)) and not negative_instruction)
             supersedes = None
             # A question or request proposes a change; it does not make one.
             if not utterance and (status == "cancelled" or _UPDATE.search(clause)):
@@ -723,6 +946,8 @@ class MemoryStore:
 
     def _derive_explicit_permissions(self, episode_id: str, observation_id: str, text: str,
                                      owner_id: str, speaker_id: str, observed_at: str) -> None:
+        if speaker_id!=owner_id and speaker_id not in self.policy.get('permission_authority_ids',[]):
+            return  # a speaker cannot grant themselves another owner's data
         if not _AUTH_CUE.search(text) and not _PROHIBITION.search(text):
             return
         grantee = self._resolve_grantee(episode_id, text, speaker_id)
@@ -895,6 +1120,26 @@ class MemoryStore:
                 matches.append((found.start(), -len(alias), str(row["principal_id"])))
         return min(matches)[2] if matches else ""
 
+    def resolve_query_owner(self, query, requester_id, owner_id):
+        named = self._mentioned_principal(query, exclude=requester_id)
+        if named:
+            return named
+        other = re.search(r'\bother\s+([a-z][\w-]+)\b', query, re.I)
+        if other:
+            principals = list(self.conn.execute('SELECT principal_id,display_name,observed_role FROM principals'))
+            subject_reference = other[1].lower() in {'person','user','account','principal','owner','member'} or any(
+                other[1].lower() in re.findall(r'[a-z]+',r[1].lower()) or other[1].lower()==r[2].lower() for r in principals)
+            if not subject_reference:
+                return owner_id
+            requester = self.conn.execute('SELECT observed_role FROM principals WHERE principal_id=?', (requester_id,)).fetchone()
+            candidates = [r[0] for r in principals
+                if r[0]!=requester_id and other[1].lower() in re.findall(r'[a-z]+',r[1].lower())
+                and (not requester or r[2]==requester[0])]
+            # Explicitly requesting another subject must never turn into
+            # self-access because identity resolution was ambiguous.
+            return candidates[0] if len(candidates)==1 else None
+        return owner_id
+
     # Internal lookup helpers -------------------------------------------
 
     def _require_observation(self, observation_id: str) -> None:
@@ -1029,6 +1274,9 @@ def _concepts(text: str) -> set[str]:
 
 def _structural_concepts(text: str) -> set[str]:
     result: set[str] = set()
+    from .claims import _PATTERNS
+    if _PATTERNS[0][1].search(text):
+        result.add('phone_expression')
     if re.search(r"\b\d{1,2}:\d{2}\b|\b\d{1,2}\s*(?:am|pm)\b", text, re.I):
         result.add("time_expression")
     if re.search(r"\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", text, re.I):
@@ -1068,6 +1316,10 @@ def _compound_context_concepts(text: str) -> set[str]:
     neighboring sentences from inheriting one another's relevance.
     """
     prefix, marker, tail = (text or "").partition(":")
+    if not marker:
+        clauses = _CLAUSE_BREAK.split(text or '')
+        if len(clauses)>1 and re.match(r'\s*(?:they|it|this|that|these|those)\b', clauses[1], re.I):
+            return _concepts(clauses[0]) | _structural_concepts(clauses[0])
     if not marker or len(prefix) > 160:
         return set()
     if ";" not in tail and "\n-" not in tail and "\n*" not in tail:
@@ -1078,19 +1330,27 @@ def _compound_context_concepts(text: str) -> set[str]:
 def _query_concepts(text: str) -> set[str]:
     result = _concepts(text) | _structural_concepts(text)
     lowered = text.lower()
+    if re.search(r"\bwhen\b", lowered):
+        result.update({"time_expression", "date_expression"})
     if re.search(r"\b(?:time|hour|arrival)\b", lowered):
         result.add("time_expression")
     if re.search(r"\b(?:date|day|future|today|tomorrow)\b", lowered):
         result.add("date_expression")
     if re.search(r"\b(?:location|place|where)\b", lowered):
         result.add("location_expression")
+    if re.search(r'\b(?:phone|telephone|mobile)\b|\b(?:call[ -]?back|contact)\s+(?:number|line|route)\b',lowered):
+        result.add('phone_expression')
     result -= {"time", "hour", "arrival", "date", "day", "future", "today",
                "tomorrow", "location", "place", "where"}
     return result
 
 
 def _scope_concepts(text: str) -> set[str]:
-    result = _query_concepts(text)
+    # Validity/policy qualifiers are not resource topics. In particular,
+    # "until revoked" must not authorize unrelated facts containing "until".
+    scope = re.split(r'\b(?:through|until|unless|except|provided that|but not)\b',text,
+                     maxsplit=1,flags=re.I)[0]
+    result = _query_concepts(scope)
     # These words name authorization categories. Evidence must exhibit the
     # corresponding structural feature rather than merely repeat the noun.
     return result
@@ -1119,9 +1379,8 @@ def _predicate_from(concepts: list[str]) -> str:
 
 
 def _is_current(valid_from: str | None, valid_until: str | None, at: str | None) -> bool:
-    if at is None:
-        return True
-    return (not valid_from or valid_from <= at) and (not valid_until or at <= valid_until)
+    from .temporal import within
+    return within(valid_from,valid_until,at)
 
 
 def _permission_phrases(text: str) -> tuple[str, list[str]]:

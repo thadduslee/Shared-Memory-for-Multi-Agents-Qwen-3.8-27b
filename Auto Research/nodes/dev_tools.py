@@ -21,9 +21,12 @@ import logging
 import os
 import re
 import shutil
+import signal
 import sqlite3
+import subprocess
 import sys
 import tempfile
+import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -556,10 +559,13 @@ class DevToolbox:
     def _developer_visible(self, candidate: Path) -> bool:
         """Online candidates can inspect/edit only their routed component."""
         component = os.environ.get("ONLINE_REPAIR_COMPONENT", "").strip()
+        if component == 'system':
+            return candidate == self.workspace or any(candidate.is_relative_to(self.workspace / root)
+                for root in ('memory_system', 'renderer', 'tests'))
         if component not in {"memory", "renderer"}:
             return True
         root = (self.workspace / ("memory_system" if component == "memory" else "renderer")).resolve()
-        return candidate == self.workspace or candidate.is_relative_to(root)
+        return candidate == self.workspace or candidate.is_relative_to(root) or candidate.is_relative_to(self.workspace / 'tests')
 
     def _require_developer_visible(self, candidate: Path) -> None:
         if not self._developer_visible(candidate):
@@ -1058,22 +1064,50 @@ class DevToolbox:
 async def _run(
     argv: list[str], cwd: Path, timeout: int, env_extra: dict[str, str] | None = None
 ) -> tuple[int, str, str]:
-    """Async subprocess with a hard timeout.  Never blocks the event loop."""
+    """Bounded subprocess, independent of asyncio's global child watcher.
+
+    Poll a main-thread Popen with file-backed output: a child or grandchild
+    keeping a pipe open cannot hang the Developer. Cancellation and time/output
+    limits kill this process group, with a bounded reap rather than an unbounded
+    await of process.wait(). Candidate commands still use the trusted sandbox.
+    """
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1", **(env_extra or {})}
     env["PYTHONPATH"] = os.pathsep.join(
         p for p in (str(cwd), env.get("PYTHONPATH", "")) if p
     )
-    process = await asyncio.create_subprocess_exec(
-        *argv, cwd=str(cwd), env=env,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-    )
-    try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
-        process.kill()
-        await process.wait()
-        return 124, "", f"timed out after {timeout}s: {' '.join(argv[:3])}"
-    return process.returncode or 0, stdout.decode("utf-8", "replace"), stderr.decode("utf-8", "replace")
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        process = subprocess.Popen(argv, cwd=str(cwd), env=env, stdout=stdout, stderr=stderr,  # noqa: ASYNC220 -- main-thread fork, nonblocking polling below
+                                   start_new_session=True)
+        deadline = time.monotonic() + timeout
+        exceeded = None
+        try:
+            while process.poll() is None:
+                if time.monotonic() >= deadline:
+                    exceeded = f"timed out after {timeout}s: {' '.join(argv[:3])}"
+                    break
+                if os.fstat(stdout.fileno()).st_size + os.fstat(stderr.fileno()).st_size > 8*1024*1024:
+                    exceeded = 'subprocess output limit reached'
+                    break
+                await asyncio.sleep(.02)
+        finally:
+            # Also runs for cancellation. No child-watcher wait can outlive the
+            # incident budget. All descendants inherit this new process group.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
+                pass
+        if exceeded:
+            return 124, '', exceeded
+        def read_tail(stream):
+            size = stream.seek(0,2)
+            stream.seek(max(0,size-1024*1024))
+            content = stream.read().decode('utf-8','replace')
+            return (f'[omitted {size-1024*1024} output bytes]\n' if size>1024*1024 else '') + content
+        return process.returncode or 0, read_tail(stdout), read_tail(stderr)
 
 
 def _match_ignoring_whitespace(original: str, search: str) -> tuple[int, int] | None:

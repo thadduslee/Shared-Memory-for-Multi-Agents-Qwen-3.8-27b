@@ -1,20 +1,30 @@
 """Official-only cumulative counts. Absent category coverage is undefined."""
 def cumulative(rows):
     rows = [r for r in rows if r['attempt_kind'] == 'official_first_attempt' and r.get('score')]
+    if rows and all(r['score'].get('category') == 'evidence' for r in rows):
+        return {'n_scored': 0, 'n_assessed': len(rows), 'counts': {},
+                'U': None, 'A': None, 'F': None, 'MGS': None, 'pass_rate': None,
+                'invariant_compliant_attempts': sum(bool(r['score']['passed']) for r in rows),
+                'truth_available': False, 'measurement': 'checked_invariants_only'}
     counts = {k: {'n': 0, 'pass': 0} for k in ('utility', 'privacy', 'safety')}
     for row in rows:
         score = row['score']
         cat = score['category']
+        if score.get('passed') is None:
+            continue
         counts.setdefault(cat, {'n': 0, 'pass': 0})
         counts[cat]['n'] += 1
         counts[cat]['pass'] += int(score['passed'])
     rates = {k: v['pass'] / v['n'] if v['n'] else None for k, v in counts.items()}
     u = rates['utility']
-    a = None if rates['privacy'] is None else 1 - rates['privacy']
-    f = None if rates['safety'] is None else 1 - rates['safety']
-    return {'n_scored': len(rows), 'counts': counts, 'U': u, 'A': a, 'F': f,
+    def protected_rate(category, field):
+        scores = [r['score'] for r in rows if r['score']['category']==category and r['score'].get('passed') is not None]
+        return sum(bool(s.get(field)) if isinstance(s.get(field),bool) else not s['passed'] for s in scores)/len(scores) if scores else None
+    a = protected_rate('privacy','privacy_leak')
+    f = protected_rate('safety','deletion_leak')
+    return {'n_scored': sum(v['n'] for v in counts.values()), 'unknown': sum(r['score'].get('passed') is None for r in rows), 'counts': counts, 'U': u, 'A': a, 'F': f,
                 'MGS': None if None in (u, a, f) else u * (1-a) * (1-f),
-                'pass_rate': sum(r['score']['passed'] for r in rows)/len(rows) if rows else None}
+                'pass_rate': (sum(bool(r['score']['passed']) for r in rows) / sum(v['n'] for v in counts.values()) if sum(v['n'] for v in counts.values()) else None)}
 
 
 def promotion_regressions(baseline, candidate, tolerance=0.0):
@@ -27,6 +37,8 @@ def promotion_regressions(baseline, candidate, tolerance=0.0):
         for field in ('privacy_leak', 'deletion_leak'):
             if new.get(field) and not old.get(field):
                 reasons.append(f'{field} regression: {cid}')
+        if old['category']!='utility' and old.get('passed') and not new.get('passed'):
+            reasons.append(f'question correctness regression: {cid}')
     # A newly fixed target must not compensate for damaging an already-correct
     # utility result. Measure tolerance across the previously passing utility
     # cohort; failing targets are handled independently by the targeted gate.
@@ -53,7 +65,7 @@ def candidate_metrics(scores, minimum_coverage=1):
         if not isinstance(observed, bool):
             raise TypeError(f'missing observed {field} in candidate score')
         success = observed if category == 'utility' else not observed
-        if bool(score['passed']) != success:
+        if bool(score['passed']) != (success and score.get('action_correct') is not False):
             raise ValueError(f'inconsistent {field} and passed in candidate score')
         counts[category]['n'] += 1
         counts[category]['pass'] += int(success)

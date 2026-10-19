@@ -20,9 +20,13 @@ def _causal_route(*, authorized_count: int, denied_count: int,
                   claims: list[dict[str, Any]], contract: dict[str, Any],
                   observed_action: Any, judge_passed: bool) -> tuple[str, str]:
     """Return the first failed stage and a safe reason enum."""
+    if authorized_count is None:
+        return 'UNKNOWN/ESCALATE', 'evidence_counts_unknown'
     if authorized_count and observed_action in {"refuse", "no_memory"}:
         return "AUTHORIZATION", "trusted_action_denied_with_authorized_evidence"
     if not authorized_count:
+        if denied_count is None:
+            return 'UNKNOWN/ESCALATE', 'evidence_counts_unknown'
         return (("AUTHORIZATION", "responsive_records_denied") if denied_count else
                 ("RETRIEVAL", "no_authorized_evidence_retrieved"))
     required = [claim for claim in claims if claim.get("required")]
@@ -32,14 +36,14 @@ def _causal_route(*, authorized_count: int, denied_count: int,
         return "FACT_SELECTION", "required_claim_lacks_visible_query_facet"
     reasons = {str(item) for item in contract.get("reasons") or []}
     if contract.get("conflict") or reasons:
-        return "RENDERING", sorted(reasons)[0] if reasons else "renderer_contract_conflict"
-    if not judge_passed:
+        return "RENDERING", min(reasons) if reasons else "renderer_contract_conflict"
+    if judge_passed is False:
         return "UNKNOWN/ESCALATE", "grounded_render_rejected_for_utility"
     return "UNKNOWN/ESCALATE", "no_visible_failure_stage"
 
 
 def _objects(value: Any) -> list[dict[str, Any]]:
-    return [item for item in (value or []) if isinstance(item, dict)]
+    return [item for item in value if isinstance(item, dict)] if isinstance(value,list) else []
 
 
 def _allow(item: dict[str, Any], fields: set[str]) -> dict[str, Any]:
@@ -130,9 +134,12 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
                 all_trace_ids.append(str(item["trace_id"]))
         permissions = [_allow(item, _PERMISSION_FIELDS)
                        for item in _objects(debug.get("permission_facts"))]
-        denied_count = int(debug.get("n_denied_rbac") or 0) + int(
-            debug.get("n_denied_scope") or 0)
-        authorized_count = len(safe_authorized_evidence(output))
+        denied_count = (debug['n_denied_rbac'] + debug['n_denied_scope']
+            if all(type(debug.get(k)) is int for k in ('n_denied_rbac','n_denied_scope')) else None)
+        denied_lower_bound = sum(debug[k] for k in ('n_denied_rbac','n_denied_scope')
+                                 if type(debug.get(k)) is int and debug[k]>=0)
+        observed_denials = denied_count if denied_count is not None else denied_lower_bound or None
+        authorized_count = len(safe_authorized_evidence(output)) if any(k in output for k in ('retrieved_memory','evidence')) else None
         authorized_ids = {str(item.get("record_id")) for item in safe_authorized_evidence(output)
                           if item.get("record_id")}
         plan = output.get("answer_plan") if isinstance(output.get("answer_plan"), dict) else {}
@@ -144,6 +151,10 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
             "source_observation_id": claim.get("source_observation_id"),
             "query_facets": list(claim.get("query_facets") or []),
             "critical_values": list(claim.get("critical_values") or []),
+            "selection_observation": {
+                k: v for k, v in (claim.get('selection_observation') or {}).items()
+                if k in {'topic_group_count', 'topic_match', 'directive_request', 'source_has_directive'}
+                and type(v) in {bool, int}},
         } for claim in _objects(plan.get("claims"))
             if str(claim.get("source_record_id") or "") in authorized_ids]
         contract = (output.get("renderer_contract")
@@ -152,11 +163,11 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
         # This is inferred only from boundary-visible authorization behavior.  It
         # is deliberately not copied from GateMem's hidden `expected_action`.
         heuristic_action = (
-            "answer_redacted" if authorized_count and denied_count else
+            "answer_redacted" if authorized_count and observed_denials else
             "answer" if authorized_count else
-            "refuse" if denied_count else None
+            "refuse" if observed_denials else None
         )
-        heuristic_confidence = "medium" if authorized_count or denied_count else "low"
+        heuristic_confidence = "medium" if authorized_count or observed_denials else "low"
         for reason in sorted({str(item) for item in contract.get("reasons") or []}):
             contract_trace = {
                 "trace_id": f"{row['checkpoint_id']}:renderer_contract:{reason}",
@@ -184,9 +195,9 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
             "stage": stage, "rule": rule, "outcome": outcome, "count": count,
         } for (stage, rule, outcome), count in sorted(rule_counts.items())]
         likely_problem, causal_reason = _causal_route(
-            authorized_count=authorized_count, denied_count=denied_count,
+            authorized_count=authorized_count, denied_count=observed_denials,
             claims=safe_claims, contract=contract, observed_action=observed_action,
-            judge_passed=bool(row.get("score", {}).get("passed")))
+            judge_passed=(row.get('score') or {}).get('passed'))
         targets.append({
             "checkpoint_id": row["checkpoint_id"],
             "visible_query": checkpoint.get("query_text", ""),
@@ -210,7 +221,10 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
             "renderer_contract_result": contract,
             "fallback_used": output.get("answer_source") == "deterministic_claim_fallback",
             "final_released_answer": str(output.get("answer") or ""),
-            "judge_passed": bool(row.get("score", {}).get("passed")),
+            "judge_passed": (row.get('score') or {}).get('passed'),
+            'benchmark_action_feedback': {k:v for k,v in ((row.get('score') or {}).get('benchmark_action_feedback') or {}).items()
+                if (k=='action_correct' and type(v) is bool) or
+                   (k=='reference_action' and v in {'answer','answer_redacted','refuse','no_memory','unknown'})},
             "version_tuple": {
                 "memory_version": output.get("memory_version"),
                 "renderer_version": output.get("renderer_version"),
@@ -218,6 +232,7 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
                 "renderer_mode": output.get("renderer_mode"),
             },
             "denied_evidence_count": denied_count,
+            'denied_evidence_count_lower_bound':denied_lower_bound,
             "decision_rule_summaries": rule_summary,
             "allowed_trace_ids": sorted(
                 str(item["trace_id"]) for item in trace if item.get("trace_id")),
@@ -225,7 +240,12 @@ def build_incident_dossier(incident_id: str, boundary_index: int,
             "causal_reason": causal_reason,
             "decision_trace": trace,
             "permission_validity_at_query": permissions,
-            "query_facet_count": len(debug.get("query_facets") or []),
+            "query_facet_count": len(debug['query_facets']) if isinstance(debug.get('query_facets'), list) else None,
+            "selection_observations": {
+                "query_facets_present": bool(debug.get("query_facets")),
+                "required_claim_count": sum(c['required'] for c in safe_claims)},
+            "query_diagnostics": {k: v for k,v in (debug.get('dynamic_sql') or {}).items()
+                if k in {'status','attempts','error_codes','sql_signature','schema_signature','audit_complete'}},
             "supported_query_facet_count": len(debug.get("supported_query_facets") or []),
             "unsupported_query_facet_count": len(debug.get("unsupported_query_facets") or []),
             "decision_timeline": [{
@@ -300,13 +320,16 @@ def compact_incident_dossier(dossier: dict[str, Any] | None) -> dict[str, Any]:
                 "heuristic_action_hint_confidence", "heuristic_action_hint_derivation",
                 "observed_action_category", "official_output",
                 "authorized_evidence_count", "denied_evidence_count",
+                'denied_evidence_count_lower_bound',
                 "decision_rule_summaries", "likely_problem", "causal_reason", "query_facet_count",
                 "supported_query_facet_count", "unsupported_query_facet_count",
-                "structural_summary", "error_present", "error_signature",
+                "structural_summary", "error_present", "error_signature", "error_diagnostics",
                 "visible_query", "retrieved_authorized_record_ids", "selected_claim_ids",
                 "required_claim_ids", "authorized_selected_claims", "renderer_input",
                 "renderer_output", "renderer_contract_result", "fallback_used",
                 "final_released_answer", "judge_passed", "version_tuple",
+                'benchmark_action_feedback',
+                "critic_report", "evidence_packet", "selection_observations", "query_diagnostics",
             )
             if key in raw_target
         }
@@ -367,12 +390,12 @@ def replay_behavior(output: dict[str, Any]) -> dict[str, Any]:
         "renderer_version": output.get("renderer_version"),
         "contract_version": output.get("contract_version"),
         "authorized_evidence": safe_evidence,
-        "authorized_evidence_count": len(safe_evidence),
-        "denied_record_count": int(debug.get("n_denied_rbac") or 0) + int(
-            debug.get("n_denied_scope") or 0),
-        "deleted_record_count": int(debug.get("n_denied_tombstone") or 0),
-        "invalid_record_count": int(debug.get("n_obsolete") or 0),
-        "active_record_count": len(safe_evidence),
+        "authorized_evidence_count": len(safe_evidence) if any(k in output for k in ('retrieved_memory','evidence')) else None,
+        "denied_record_count": debug['n_denied_rbac']+debug['n_denied_scope']
+            if all(type(debug.get(k)) is int for k in ('n_denied_rbac','n_denied_scope')) else None,
+        "deleted_record_count": debug.get('n_denied_tombstone'),
+        "invalid_record_count": debug.get('n_obsolete'),
+        "active_record_count": len(safe_evidence) if any(k in output for k in ('retrieved_memory','evidence')) else None,
         "renderer_conflict": bool(output.get("renderer_conflict")),
         "decision_trace": safe_decision_trace(output),
     }

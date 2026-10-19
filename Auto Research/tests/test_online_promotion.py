@@ -407,7 +407,7 @@ async def test_representation_and_scored_failures_share_counter_and_keep_committ
         representation_version = attempts[1]["candidate_system_version"]
         assert all(row["safe_parent_version"] == representation_version
                    for row in attempts[2:])
-        assert run.journal.event(2)[0] == "unrepaired_after_5_attempts"
+        assert run.journal.event(2)[0] == "unrepaired_after_attempt_limit"
         terminal = run.journal.event(2)[1]
         assert terminal["ingestion_occurred"] is True
         assert terminal["representation_committed"] is True
@@ -453,7 +453,7 @@ async def test_representation_success_then_five_scored_candidates_fail(tmp_path,
             1, 2, 3, 4, 5]
         assert all(row["safe_parent_version"] == representation_version
                    for row in attempts[1:])
-        assert run.journal.event(2)[0] == "unrepaired_after_5_attempts"
+        assert run.journal.event(2)[0] == "unrepaired_after_attempt_limit"
         assert run.journal.event(2)[1]["ingestion_occurred"] is True
         assert run.committed == representation_version
     finally:
@@ -545,7 +545,7 @@ async def test_unrepresentable_delta_fails_five_and_advances_without_commit(
     try:
         result = await run.run()
         assert result["status"] == "complete"
-        assert run.journal.event(2)[0] == "unrepresented_after_5_attempts"
+        assert run.journal.event(2)[0] == "unrepresented_after_attempt_limit"
         state = run.journal.event(2)[1]
         assert state["schedule_advanced"] is True
         assert state["ingestion_occurred"] is False
@@ -570,7 +570,7 @@ async def test_unrepresentable_delta_fails_five_and_advances_without_commit(
                    for row in boundary_reports)
         artifact = json.loads((tmp_path / "run" / "events" / "boundary_0002" /
                                "boundary_outcome.json").read_text())
-        assert artifact["boundary_outcome"] == "unrepresented_after_5_attempts"
+        assert artifact["boundary_outcome"] == "unrepresented_after_attempt_limit"
         assert artifact["ingestion_occurred"] is False
     finally:
         run.close()

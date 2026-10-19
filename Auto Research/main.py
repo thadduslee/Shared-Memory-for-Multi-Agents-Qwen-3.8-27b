@@ -65,11 +65,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-boundaries", type=int, default=None, help="online boundaries per invocation")
     parser.add_argument("--resume", action="store_true", help="resume an online run using --thread-id or --checkpointer-path")
     parser.add_argument("--retry-blocked", action="store_true",
-                        help="with --resume, retry an infrastructure-blocked or legacy-blocked boundary")
+                        help="with --resume, retry a boundary blocked by infrastructure, validation, or legacy repair")
     parser.add_argument("--abandon-blocked", action="store_true",
                         help="legacy: abandon an old repair_blocked scored boundary")
     parser.add_argument("--checkpointer-path", type=Path, default=None)
     parser.add_argument("--disable-online-redesign", action="store_true")
+    parser.add_argument("--adaptation-mode", choices=["benchmark", "benchmark_feedback", "evidence_based"],
+                        default="benchmark", help="explicit repair objective; evidence_based needs no annotations")
+    parser.add_argument("--benchmark-measurement", action="store_true",
+                        help="isolated Judge measurement alongside evidence-based adaptation")
+    parser.add_argument('--dynamic-sql', action='store_true', help='enable guarded per-question SQL retrieval')
+    parser.add_argument('--online-max-planner-attempts', type=int, default=4)
+    parser.add_argument('--online-max-schema-corrections', type=int, default=2)
+    parser.add_argument('--online-max-diagnostics', type=int, default=2)
+    parser.add_argument('--online-max-context-compactions', type=int, default=3)
+    parser.add_argument('--online-max-evaluation-retries', type=int, default=2)
+    parser.add_argument('--online-max-sql-corrections', type=int, default=1)
+    parser.add_argument('--online-max-backfill-attempts', type=int, default=3)
+    parser.add_argument('--backfill-boundary', type=int, default=None,
+                        help='retry one retained range under the current safe version; requires --resume')
     parser.add_argument("--replay-window", type=int, default=config.ONLINE_REPLAY_WINDOW)
     parser.add_argument("--utility-regression-tolerance", type=float, default=config.ONLINE_UTILITY_TOLERANCE)
     parser.add_argument("--online-max-failed-candidates", type=int,
@@ -77,7 +91,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="failed complete candidates before an online boundary advances")
     parser.add_argument("--online-max-invalid-proposals", type=int,
                         default=config.ONLINE_MAX_INVALID_PROPOSALS,
-                        help="legacy resume-compatible setting; planner abstentions are never candidates")
+                        help="invalid proposal limit, separate from candidate builds")
     parser.add_argument("--replay-reingest", action="store_true",
                         help="rebuild replay/promotion images from turns so ingestion repairs can register")
     parser.add_argument("--replay-votes", type=int, default=1,
@@ -85,8 +99,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--renderer-mode", choices=["locked", "evolvable"],
                         default=config.ONLINE_RENDERER_MODE,
                         help="pin benchmark renderer or version declarative renderer artifacts")
-    parser.add_argument("--stream-order", default="episode-id-then-turn-position-v1",
-                        choices=["episode-id-then-turn-position-v1"])
+    parser.add_argument("--stream-order", default="episode-id-then-turn-position-v2-with-data-tails",
+                        choices=["episode-id-then-turn-position-v1",
+                                 "episode-id-then-turn-position-v2-with-data-tails"])
     return parser.parse_args(argv)
 
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any
 
 SAFE_FAILURE_CATEGORIES = frozenset({
@@ -86,17 +87,14 @@ def classify_failure(report: dict[str, Any]) -> tuple[str, str]:
     contract_reasons = {
         str(item) for candidate in candidates
         for item in (candidate.get("renderer_contract") or {}).get("reasons", [])}
-    attempted_mismatch = any(
-        bool((candidate.get("renderer_contract") or {}).get("attempted_action_mismatch"))
-        for candidate in candidates)
-    if "action_conflict" in contract_reasons or attempted_mismatch:
-        return "correct_evidence_but_wrong_action", "RENDERING"
     if any(candidate.get("authorized_evidence_count", 0) and (
             not candidate.get("answer_plan_valid", True) or
             not candidate.get("required_claim_count", 0) or
             candidate.get("required_without_query_facets_count", 0) > 0)
            for candidate in candidates):
         return "fact_selection_or_answer_plan_failure", "FACT_SELECTION"
+    if 'action_conflict' in contract_reasons:
+        return "correct_evidence_but_wrong_action", "RENDERING"
     if contract_reasons & {
             "malformed_renderer_output", "unknown_claim", "unsupported_sentence",
             "critical_value_changed", "value_role_changed", "negation_or_status_changed",
@@ -126,6 +124,13 @@ def categorize(report: dict[str, Any]) -> str:
 def sanitize_build_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
     """Developer correction feedback: gate names and hashes, never raw output."""
     reports = feedback.get("gate_reports") or {}
+    def diagnostics(value):
+        output = str(value.get('output') or '')
+        locations = [{'file': m.group(1), 'line': int(m.group(2))} for m in re.finditer(
+            r'((?:memory_system|renderer|tests)/[a-zA-Z0-9_/.-]+\.py)(?::|", line )(\d+)', output)]
+        kinds = sorted(set(re.findall(r'\b(?:SyntaxError|ImportError|ModuleNotFoundError|AssertionError|'
+            r'TypeError|ValueError|NameError|IndentationError|OperationalError|IntegrityError)\b', output)))
+        return {'locations': locations[:16], 'error_types': kinds}
     return {
         "format_version": 1,
         "stage": str(feedback.get("stage") or "build_validation"),
@@ -135,6 +140,7 @@ def sanitize_build_feedback(feedback: dict[str, Any]) -> dict[str, Any]:
             str(name): {
                 "passed": bool(value.get("ok")),
                 "diagnostic_signature": _hash(value),
+                "diagnostics": diagnostics(value),
             }
             for name, value in reports.items() if isinstance(value, dict)
         },
@@ -146,15 +152,14 @@ def sanitized_failure_feedback(incident: dict[str, Any], report: dict[str, Any])
     targeted = report.get("targeted_replay") or {}
     broad = report.get("broad_validation") or {}
     pairs = targeted.get("pairs") or {}
-    selected = denied = invalid = deleted = active = 0
+    def total(field):
+        values = [(pair.get('candidate') or {}).get(field) for pair in pairs.values()]
+        return sum(values) if values and all(isinstance(v, int) for v in values) else None
+    selected, denied, invalid, deleted, active = [total(field) for field in (
+        'authorized_evidence_count', 'denied_record_count', 'invalid_record_count',
+        'deleted_record_count', 'active_record_count')]
     behavior_changed = False
     for pair in pairs.values():
-        candidate = pair.get("candidate") or {}
-        selected += int(candidate.get("authorized_evidence_count") or 0)
-        denied += int(candidate.get("denied_record_count") or 0)
-        invalid += int(candidate.get("invalid_record_count") or 0)
-        deleted += int(candidate.get("deleted_record_count") or 0)
-        active += int(candidate.get("active_record_count") or 0)
         behavior_changed = behavior_changed or bool(
             pair.get("evidence_changed") or pair.get("answer_changed") or
             pair.get("decision_trace_changed") or pair.get("score_changed") or
@@ -168,6 +173,9 @@ def sanitized_failure_feedback(incident: dict[str, Any], report: dict[str, Any])
             continue
         allowed_trace_ids = target.get("allowed_trace_ids") or (
             [target["trace_id"]] if target.get("trace_id") else [])
+        if not allowed_trace_ids:
+            allowed_trace_ids = [t['trace_id'] for t in target.get('decision_trace', [])
+                                 if isinstance(t, dict) and t.get('trace_id')]
         diagnostics.append({
             "checkpoint_id": target.get("checkpoint_id"),
             "heuristic_action_hint": target.get("heuristic_action_hint"),
@@ -178,12 +186,11 @@ def sanitized_failure_feedback(incident: dict[str, Any], report: dict[str, Any])
             "observed_action_category": target.get("observed_action_category") or
                 (target.get("official_output") or {}).get("action"),
             "requester_role": target.get("requester_role"),
-            "authorized_evidence_count": int(
-                target.get("authorized_evidence_count") or 0),
-            "denied_evidence_count": int(target.get("denied_evidence_count") or 0),
+            "authorized_evidence_count": target.get("authorized_evidence_count"),
+            "denied_evidence_count": target.get("denied_evidence_count"),
             "decision_rule_summaries": target.get("decision_rule_summaries") or [],
             "allowed_trace_ids": list(allowed_trace_ids)[:_FEEDBACK_TRACE_ID_LIMIT],
-            "trace_count": len(allowed_trace_ids),
+            "trace_count": len(allowed_trace_ids) if allowed_trace_ids else None,
             "omitted_trace_id_count": max(
                 0, len(allowed_trace_ids) - _FEEDBACK_TRACE_ID_LIMIT),
             "likely_problem": target.get("likely_problem") or (
@@ -200,7 +207,10 @@ def sanitized_failure_feedback(incident: dict[str, Any], report: dict[str, Any])
         "pipeline_phase": str(report.get("phase") or "unknown"),
         "requested_action_type": "retrieve",
         "incident_diagnostics": diagnostics,
-        "authorized_evidence_existed": selected > 0,
+        "observation_scope": "candidate_replay" if pairs else "incident_only_candidate_not_run",
+        "authorized_evidence_existed": (selected > 0 if selected is not None else
+            True if any((d.get('authorized_evidence_count') or 0) > 0 for d in diagnostics) else
+            False if diagnostics and all(d.get('authorized_evidence_count') == 0 for d in diagnostics) else None),
         "suspected_subsystems": {
             "retrieval": failure_stage == "RETRIEVAL",
             "authorization": failure_stage == "AUTHORIZATION",
@@ -227,6 +237,8 @@ def sanitized_failure_feedback(incident: dict[str, Any], report: dict[str, Any])
         },
         "rejection_code": str(report.get("rejection_reason") or "unknown"),
         "rejection_reason": str(report.get("rejection_reason") or "unknown"),
+        "proposal_schema_errors": report.get("proposal_schema_errors") or [],
+        "diagnosis_review_feedback": (report.get("diagnosis_review") or {}).get("feedback") or [],
         "targeted_replay": {
             "status": targeted.get("status", "not_run"),
             "evidence_changed": targeted.get("evidence_changed"),
@@ -299,7 +311,7 @@ def compact_failure_feedback(feedback: dict[str, Any] | None) -> dict[str, Any] 
         diagnostics.append({
             **raw,
             "allowed_trace_ids": trace_ids[:_FEEDBACK_TRACE_ID_LIMIT],
-            "trace_count": int(raw.get("trace_count") or len(trace_ids)),
+            "trace_count": raw.get("trace_count") if raw.get("trace_count") is not None else (len(trace_ids) if trace_ids else None),
             "omitted_trace_id_count": max(
                 int(raw.get("omitted_trace_id_count") or 0),
                 len(trace_ids) - _FEEDBACK_TRACE_ID_LIMIT,

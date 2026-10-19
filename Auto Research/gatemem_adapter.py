@@ -34,9 +34,10 @@ import json
 import logging
 import random
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 log = logging.getLogger("orchestrator.gatemem")
 
@@ -122,6 +123,10 @@ def visible_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
     """
     result = strip_hidden_fields({k: v for k, v in checkpoint.items()
                                   if k in AGENT_VISIBLE_CHECKPOINT_FIELDS})
+    if 'asker' in result:
+        asker = result['asker'] if isinstance(result['asker'], dict) else {}
+        result['asker'] = {k: asker[k] for k in ('principal_id', 'role')
+                           if k in asker and isinstance(asker[k], str)}
     assert_no_hidden_fields(result, where="visible checkpoint")
     return result
 
@@ -133,6 +138,11 @@ def visible_checkpoint(checkpoint: dict[str, Any]) -> dict[str, Any]:
 
 @dataclass
 class MedicalDataset:
+    @staticmethod
+    def policy_for_episode(episode):
+        from templates.memory_system.gatemem_policy import benchmark_policy
+        return benchmark_policy(episode)
+
     """A loaded, domain-filtered GateMem medical split.
 
     `checkpoints` retain their hidden annotations -- this object lives on the
@@ -142,6 +152,15 @@ class MedicalDataset:
 
     episodes: list[dict[str, Any]]
     checkpoints: list[dict[str, Any]]
+    benchmark_annotations = True
+
+    @staticmethod
+    def sanitize_turns(turns):
+        return strip_hidden_fields(turns)
+
+    @staticmethod
+    def header_for_episode(episode):
+        return strip_hidden_fields({k:episode[k] for k in ('episode_id','domain','entities') if k in episode})
 
     @property
     def episodes_by_id(self) -> dict[str, dict[str, Any]]:

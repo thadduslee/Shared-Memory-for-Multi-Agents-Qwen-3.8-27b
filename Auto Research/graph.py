@@ -462,6 +462,16 @@ async def run_online(args):
         write_json(run_dir / 'developer_tool_capability.json', tool_smoke)
         log.info("Developer tool-call startup check: %s", tool_smoke)
     options = OnlineOptions(disable_redesign=args.disable_online_redesign,
+                            dynamic_sql=getattr(args, 'dynamic_sql', False),
+                            max_planner_attempts=getattr(args, 'online_max_planner_attempts', 4),
+                            max_schema_corrections=getattr(args, 'online_max_schema_corrections', 2),
+                            max_diagnostics=getattr(args, 'online_max_diagnostics', 2),
+                            max_context_compactions=getattr(args, 'online_max_context_compactions', 3),
+                            max_evaluation_retries=getattr(args, 'online_max_evaluation_retries', 2),
+                            max_sql_corrections=getattr(args, 'online_max_sql_corrections', 1),
+                            max_backfill_attempts=getattr(args, 'online_max_backfill_attempts', 3),
+                            adaptation_mode=args.adaptation_mode,
+                            benchmark_measurement=args.benchmark_measurement,
                             replay_window=args.replay_window,
                             utility_tolerance=args.utility_regression_tolerance,
                             replay_reingest=args.replay_reingest,
@@ -476,6 +486,11 @@ async def run_online(args):
                           abandon_blocked=args.abandon_blocked,
                           checkpointer_path=args.checkpointer_path)
     try:
+        if getattr(args, 'backfill_boundary', None) is not None:
+            if not args.resume:
+                raise ValueError('--backfill-boundary requires --resume')
+            print(json.dumps(await runner.backfill(args.backfill_boundary), indent=2))
+            return 0
         result = await runner.run(args.max_boundaries if args.max_boundaries is not None else (3 if args.smoke else None))
         print(json.dumps({'run_dir': str(run_dir), **result}, indent=2))
         return 0

@@ -44,7 +44,10 @@ def sandbox_command(workspace, scratch, argv, *, trusted_tests=None, worker=None
     binary = shutil.which('bwrap')
     if not binary:
         raise ValidationFailure('bubblewrap sandbox unavailable')
-    args = [binary, '--die-with-parent', '--new-session',
+    args = [binary, '--die-with-parent', '--new-session', '--unshare-pid',
+            '--clearenv', '--setenv', 'PATH', '/usr/bin:/bin',
+            '--setenv', 'PYTHONPATH', '/workspace',
+            '--setenv', 'PYTHONDONTWRITEBYTECODE', '1',
             '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib',
             '--ro-bind', '/lib64', '/lib64', '--ro-bind', '/etc', '/etc',
             '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
@@ -67,7 +70,8 @@ def sandbox_command(workspace, scratch, argv, *, trusted_tests=None, worker=None
         args += ['--ro-bind', str(Path(trusted_tests).resolve()), '/trusted_tests']
     if worker:
         args += ['--ro-bind', str(Path(worker).resolve()), '/worker.py']
-    return args + ['--'] + list(argv)
+    args += ['--ro-bind', str(Path(__file__).with_name('sandbox_entry.py').resolve()), '/sandbox_entry.py']
+    return args + ['--', sys.executable, '/sandbox_entry.py'] + list(argv)
 
 
 def code_manifest(workspace):
@@ -147,7 +151,7 @@ def reject_checkpoint_specialization(parent, candidate, visible_observed, migrat
 
 def preserve(before, after, *, origin='migration_sql'):
     """Preserve history while allowing evidence-backed derived additions."""
-    additive_derived = {'memories', 'relationships', 'permissions', 'semantic_links'}
+    additive_derived = {'memories', 'relationships', 'permissions', 'semantic_links', 'specialized_catalog', 'memory_edges'}
     for table, old in before.items():
         if table not in after:
             raise ValidationFailure('protected state removed a table', stage='data_preservation',
@@ -172,11 +176,53 @@ def preserve(before, after, *, origin='migration_sql'):
                                     stage='data_preservation', table=table,
                                     row_difference={'removed_or_changed': removed[:5]},
                                     origin=origin)
-        if added and table not in additive_derived:
+        if added and table not in additive_derived and not table.startswith('special_'):
             raise ValidationFailure('unexpected protected-state insertion',
                                     stage='data_preservation', table=table,
                                     row_difference={'added': added[:5]}, origin=origin)
     _validate_derived_additions(before, after, origin=origin)
+    _validate_specializations(after, origin=origin)
+
+
+def _validate_specializations(state, *, origin):
+    catalog = state.get('specialized_catalog')
+    if not catalog:
+        return
+    canonical = state.get('memories', {})
+    columns = canonical.get('columns', [])
+    facts = {r[columns.index('memory_id')]: r for r in canonical.get('rows', [])}
+    for row in state.get('memory_edges', {}).get('rows', []):
+        _, start, end, source, relation = row
+        if any(mid not in facts for mid in (start,end,source)) or not relation or str(relation) not in str(facts[source][columns.index('text_value')]):
+            raise ValidationFailure('relationship lacks canonical source support', stage='derived_evidence', origin=origin)
+    for row in catalog['rows']:
+        name, fields, version, reason = row
+        if not re.fullmatch(r'special_[a-z0-9_]{1,40}', str(name)) or name not in state:
+            raise ValidationFailure('invalid specialized registration', stage='derived_evidence', origin=origin)
+        fields = json.loads(fields)
+        table = state[name]
+        if not fields or set(table['columns']) != {'memory_id', *fields} or version < 1 or not reason:
+            raise ValidationFailure('specialized schema contract invalid', stage='derived_evidence', origin=origin)
+        for values in table['rows']:
+            mid = values[table['columns'].index('memory_id')]
+            fact = facts.get(mid)
+            if not fact:
+                raise ValidationFailure('specialized row lacks canonical provenance', stage='derived_evidence', origin=origin)
+            text = str(fact[columns.index('text_value')]).lower()
+            if any(v is not None and str(v).lower() not in text for k,v in zip(table['columns'],values) if k != 'memory_id'):
+                raise ValidationFailure('specialized value lacks canonical support', stage='derived_evidence', origin=origin)
+
+
+def validate_runtime_derivations(before, after, *, origin='runtime'):
+    """Reingestion/backfill may replace derivations, never fabricate grants."""
+    _validate_derived_additions(before, after, origin=origin)
+    _validate_specializations(after, origin=origin)
+    def controls(state):
+        table=state.get('store_meta',{})
+        return {tuple(r) for r in table.get('rows',[]) if str(r[0]).startswith('security_control:')}
+    if not controls(after) <= controls(before):
+        raise ValidationFailure('candidate fabricated or changed a trusted security control',
+                                stage='authorization_evidence',origin=origin)
 
 
 def _validate_derived_additions(before, after, *, origin):
@@ -191,9 +237,18 @@ def _validate_derived_additions(before, after, *, origin):
             continue
         old_rows = set(before.get(table, {}).get('rows', []))
         columns = after[table]['columns']
+        stable = [i for i,c in enumerate(columns) if c != 'created_at']
+        old_stable = {tuple(row[i] for i in stable) for row in old_rows}
+        old_permissions = {r[columns.index('permission_id')]:r for r in old_rows} if table=='permissions' else {}
         for row in after[table]['rows']:
-            if row in old_rows:
+            if row in old_rows or tuple(row[i] for i in stable) in old_stable:
                 continue
+            if table=='permissions':
+                previous=old_permissions.get(row[columns.index('permission_id')])
+                unchanged=[i for i,c in enumerate(columns) if c not in {'status','created_at'}]
+                if (previous and all(previous[i]==row[i] for i in unchanged) and
+                        row[columns.index('status')] in {'superseded','revoked','expired'}):
+                    continue  # a lifecycle transition does not invent a new allow
             if 'source_observation_id' not in columns:
                 raise ValidationFailure('derived row has no provenance column',
                     stage='derived_evidence', table=table,
@@ -268,6 +323,14 @@ def build_gates(workspace, trusted_tests):
     # Never follow a Developer-created symlink outside its workspace.
     if any(p.is_symlink() for p in workspace.rglob('*')):
         raise ValidationFailure('candidate contains symlinks')
+    authoritative = Path(trusted_tests).resolve().parent / 'memory_system' / 'policies'
+    proposed = workspace / 'memory_system' / 'policies'
+    if authoritative.is_dir():
+        old = {p.name: p.read_bytes() for p in authoritative.glob('*.json')}
+        new = {p.name: p.read_bytes() for p in proposed.glob('*.json')}
+        if old != new:
+            raise ValidationFailure('authoritative authorization specifications are protected',
+                                    stage='authorization_specification')
     env = {**os.environ, 'PYTHONPATH': str(workspace), 'PYTEST_ADDOPTS': '',
            'PYTHONDONTWRITEBYTECODE': '1'}
     reports = {}

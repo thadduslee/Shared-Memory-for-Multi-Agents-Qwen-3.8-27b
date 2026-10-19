@@ -131,6 +131,21 @@ CREATE TABLE IF NOT EXISTS access_log (
 
 CREATE TABLE IF NOT EXISTS store_meta (key TEXT PRIMARY KEY, value BLOB);
 
+-- Each optional typed projection joins an essential canonical fact. Permission,
+-- time, lifecycle and deletion remain properties of that fact and its source.
+CREATE TABLE IF NOT EXISTS specialized_catalog (
+    name TEXT PRIMARY KEY, columns_json TEXT NOT NULL,
+    version INTEGER NOT NULL, reason TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS memory_edges (
+    edge_id TEXT PRIMARY KEY,
+    from_memory_id TEXT NOT NULL REFERENCES memories(memory_id) ON DELETE CASCADE,
+    to_memory_id TEXT NOT NULL REFERENCES memories(memory_id) ON DELETE CASCADE,
+    source_memory_id TEXT NOT NULL REFERENCES memories(memory_id) ON DELETE CASCADE,
+    relation TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_observations_episode_seq ON observations(episode_id, seq);
 CREATE INDEX IF NOT EXISTS idx_memories_episode_seq ON memories(episode_id, seq);
 CREATE INDEX IF NOT EXISTS idx_memories_state ON memories(episode_id, status, valid_until);

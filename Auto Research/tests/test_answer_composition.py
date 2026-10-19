@@ -283,6 +283,9 @@ def test_component_routing_schema_and_locked_default():
               "repair_scope": {"subsystem": "selection", "file": "memory_system/agent.py",
                                "function": "query"},
               "safety_preservation_checks": ["preserve fixed runner gates"],
+              "trace_citations": ["target:selection"],
+              "addressed_decision_rule": "coverage_selected",
+              "predicted_replay_change": {"observable": "required_claims", "expected_change": "include the responsive fact"},
               "intended_target_ids": ["target"]}
     OnlineRunner._validate_focused_design(memory, require_targets=True)
     with pytest.raises(ValidationFailure, match="owned by renderer"):

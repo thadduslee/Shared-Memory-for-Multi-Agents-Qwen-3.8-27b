@@ -5,8 +5,8 @@ source "$HOME/gatemem/.venv-vllm/bin/activate"
 export HF_HOME="$HOME/.cache/huggingface"
 unset HF_HUB_CACHE TRANSFORMERS_CACHE
 
-# The two idle L40s. vLLM sees them as local ranks 0 and 1.
-export CUDA_VISIBLE_DEVICES=4,5
+# Two available L40s. vLLM sees them as local ranks 0 and 1.
+export CUDA_VISIBLE_DEVICES=1,3
 
 MODEL="Qwen/Qwen3.8-27B"
 
@@ -18,6 +18,8 @@ MODEL="Qwen/Qwen3.8-27B"
 vllm serve "$MODEL" \
   --served-model-name "$MODEL" \
   --reasoning-parser qwen3 \
+  --enable-auto-tool-choice \
+  --tool-call-parser qwen3_xml \
   --tensor-parallel-size 2 \
   --dtype bfloat16 \
   --max-model-len 65536 \
@@ -25,4 +27,4 @@ vllm serve "$MODEL" \
   --limit-mm-per-prompt '{"image": 0, "video": 0}' \
   --host 0.0.0.0 \
   --port 8000 \
-  --api-key dummy
+  --api-key sk-local-dummy-key

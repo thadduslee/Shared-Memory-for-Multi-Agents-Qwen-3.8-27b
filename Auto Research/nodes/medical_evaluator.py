@@ -605,6 +605,7 @@ async def _render_answer(
     safe["renderer_contract"] = conflict
     safe["renderer_mode"] = renderer_mode
     safe["renderer_attempt"] = {
+        "action_origin": rendered.get('action_origin', 'model' if 'action' in rendered else 'absent'),
         "attempted_action_category": (
             rendered.get("action") if rendered.get("action") in {
                 "answer", "answer_redacted", "refuse", "no_memory"} else
@@ -685,13 +686,15 @@ async def _call_answerer(
         return {"degraded": True}, usage
 
     parsed = extract_json_block(text) or {}
-    action = str(parsed.get("action") or record.get("action") or "refuse")
     sentences = parsed.get("sentences")
     if sentences is None and isinstance(parsed.get("answer_structured"), dict):
         sentences = parsed["answer_structured"].get("sentences")
     degraded = not parsed
     return {
-        "action": action,
+        # Preserve the model's omission. Trusted policy actions and parser
+        # defaults are different authorities and must never become telemetry.
+        **({"action": parsed["action"]} if "action" in parsed else {}),
+        "action_origin": "model" if "action" in parsed else "absent",
         "answer": str(parsed.get("answer") or ""),
         "sentences": sentences,
         "used_claim_ids": parsed.get("used_claim_ids") or [],

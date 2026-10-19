@@ -321,14 +321,15 @@ def test_compact_dossier_keeps_citable_rule_representatives():
     assert len(json.dumps(compact)) < len(json.dumps(dossier)) // 10
 
 
-def test_all_579_checkpoints_exactly_once_and_549_boundaries():
+def test_all_579_checkpoints_exactly_once_plus_unquestioned_data_tails():
     if not (config.GATEMEM_DATA_DIR / "checkpoints.jsonl").exists():
         pytest.skip("real medical dataset unavailable")
     data = load_medical_dataset(config.GATEMEM_DATA_DIR)
     events = build_schedule(data)
     ids = [checkpoint_id for event in events for checkpoint_id in event["checkpoint_ids"]]
     assert len(ids) == len(set(ids)) == 579
-    assert len(events) == 549
+    assert sum(bool(e['checkpoint_ids']) for e in events)==549
+    assert len(events) == 567
 
 
 def test_schedule_ignores_annotations_and_file_order(dataset):
@@ -623,31 +624,23 @@ async def test_transport_failure_blocks_same_boundary_without_design_feedback(tm
         run.close()
 
 
-async def test_prompt_context_failure_is_not_retried_and_is_classified(tmp_path, dataset):
+async def test_context_compaction_exhaustion_escalates_without_build_and_continues(tmp_path, dataset):
     class OversizedArchitect(WorkflowBackend):
         async def architect(self, context, workspace):
             self.architect_calls.append(copy.deepcopy(context))
-            raise PromptContextFailure(
-                "Architect provider rejected the prompt as too large: maximum context length")
-
+            raise PromptContextFailure('bounded compaction exhausted')
     backend = OversizedArchitect([fix_plan()])
     run = make_runner(tmp_path, dataset, backend, max_infra_retries=2)
     try:
-        with pytest.raises(PromptContextFailure, match="maximum context length"):
-            await run.run()
+        result = await run.run()
         assert len(backend.architect_calls) == 1
-        operation = run.journal.db.execute(
-            "SELECT retries FROM operations WHERE key=?",
-            ("boundary_0001/attempt_01/architect",),
-        ).fetchone()
-        assert operation["retries"] == 0
         report = reports(run)[0]
-        assert report["phase"] == "prompt_blocked"
-        assert report["prompt_failure"] is True
-        assert report["transport_failure"] is False
-        assert report["candidate_failure_category"] == "prompt_context_failure"
-        assert run.journal.get("status") == "prompt_blocked"
-        assert run.journal.get("active_repair_incident")["phase"] == "prompt_blocked"
+        assert report['phase'] == 'context_compaction_exhausted'
+        assert report['counts_as_failed_candidate'] is False
+        assert result['status'] == 'complete'
+        assert result['active_repair_incident'] is None
+        assert run.journal.event(1)[0] == 'escalated'
+        assert not backend.developer_calls
     finally:
         run.close()
 
@@ -661,7 +654,7 @@ async def test_architect_rejects_locally_when_context_headroom_is_exhausted(
     (source / "store.py").write_text("x = " + repr("large" * 100))
     monkeypatch.setattr(config, "ARCHITECT_CONTEXT_WINDOW_TOKENS", 100)
     monkeypatch.setattr(config, "ARCHITECT_CONTEXT_OUTPUT_HEADROOM_TOKENS", 10)
-    with pytest.raises(PromptContextFailure, match="configured context headroom"):
+    with pytest.raises(PromptContextFailure, match="context compaction limit"):
         await Backend(mock=False).architect({}, workspace)
 
 
@@ -804,7 +797,7 @@ async def test_resume_preserves_dossier_review_and_retry_state(tmp_path, dataset
         statuses = [row[0] for row in resumed.journal.db.execute(
             "SELECT status FROM attempts ORDER BY idx")]
         assert statuses == ["planner_abstention", "interrupted", "promoted"]
-        assert resumed.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 0
+        assert resumed.journal.get("repair_incidents")[0]["failed_candidate_attempts"] == 1
     finally:
         resumed.close()
 
@@ -828,13 +821,13 @@ async def test_candidate_deadline_is_bounded_and_journal_remains_resumable(
     )
     options = run.options
     try:
-        with pytest.raises(RepairBlocked, match="candidate wall-clock limit exhausted"):
-            await run.run()
+        result = await run.run()
         report = reports(run)[0]
         assert report["bounded_or_inconclusive"] is True
         assert report["counts_as_failed_candidate"] is False
-        assert run.journal.get("status") == "budget_exhausted"
-        assert run.journal.get("active_repair_incident")["phase"] == "budget_exhausted"
+        assert result['status'] == 'complete'
+        assert result['active_repair_incident'] is None
+        assert run.journal.event(1)[0] == 'escalated'
     finally:
         run.close()
 
@@ -844,8 +837,8 @@ async def test_candidate_deadline_is_bounded_and_journal_remains_resumable(
     )
     try:
         result = await resumed.run(max_boundaries=0)
-        assert result["status"] == "paused"
-        assert result["active_repair_incident"]["phase"] == "architect"
+        assert result["status"] == "complete"
+        assert result["active_repair_incident"] is None
         assert result["committed_system_version"] == "version_0001"
     finally:
         resumed.close()
@@ -910,8 +903,9 @@ def test_trace_separates_permission_time_from_event_date_and_cancelled_status(tm
         cancelled_trace = next(item for item in owner_view.decision_trace
                                if item["record_id"] == cancelled)
         assert cancelled_trace["status"] == "cancelled"
-        assert cancelled_trace["outcome"] == "selected"
-        assert cancelled not in owner_view.obsolete
+        assert cancelled_trace["outcome"] == "obsolete"
+        assert cancelled in owner_view.obsolete
+        assert cancelled not in owner_view.denied_scope
     finally:
         store.close()
 
@@ -1054,9 +1048,9 @@ async def test_five_failed_candidates_advance_as_unrepaired(tmp_path, dataset):
         official_before = official["u_fail"]
         assert official["u_fail"]["score"]["passed"] is False
         incident = run.journal.get("repair_incidents")[0]
-        assert incident["resolution"] == "unrepaired_after_5_attempts"
+        assert incident["resolution"] == "unrepaired_after_attempt_limit"
         assert incident["failed_candidate_attempts"] == 5
-        assert run.journal.event(1)[0] == "unrepaired_after_5_attempts"
+        assert run.journal.event(1)[0] == "unrepaired_after_attempt_limit"
         assert run.journal.get("event_boundary_index") == 2
         assert run.committed == "version_0001"
         rows = reports(run)
@@ -1250,7 +1244,8 @@ async def test_actionable_authorization_repair_reaches_targeted_replay(tmp_path,
         assert diagnostic["heuristic_action_hint_derivation"] == (
             "visible_authorized_and_denied_counts")
         assert diagnostic["authorized_evidence_count"] == 0
-        assert diagnostic["denied_evidence_count"] == 1
+        assert diagnostic["denied_evidence_count"] is None
+        assert diagnostic['denied_evidence_count_lower_bound'] == 1
         assert diagnostic["likely_problem"] == "AUTHORIZATION"
         assert backend.architect_calls[0]["architect_incident_dossier"][
             "trace_entry_ids"] == ["authorization:owner_scope"]
@@ -1364,7 +1359,7 @@ async def test_one_noisy_judgement_rejects_a_fix_without_votes(tmp_path, dataset
         await run.run()
         assert reports(run)[0]["rejection_reason"] == (
             "wrong_answer_no_targeted_improvement")
-        assert run.journal.event(1)[0] == "unrepaired_after_5_attempts"
+        assert run.journal.event(1)[0] == "unrepaired_after_attempt_limit"
     finally:
         run.close()
 

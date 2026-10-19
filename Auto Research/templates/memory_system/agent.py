@@ -3,12 +3,11 @@ from __future__ import annotations
 
 from collections import Counter
 import hashlib
-import json
 from pathlib import Path
 import re
 from typing import Any, Callable
 
-from .store import Decision, MemoryStore, _concepts, _structural_concepts
+from .store import INSTRUCTION_VERBS, Decision, MemoryStore, _concepts, _structural_concepts
 from .claims import critical_values
 
 HIDDEN_FIELDS = frozenset({
@@ -34,16 +33,60 @@ def _answer_plan(decision: Decision, query_text: str = "") -> dict[str, Any]:
     authorized history.
     """
     claims: list[dict[str, Any]] = []
-    query_facets = set(decision.query_terms)
+    # Preserve already-normalized query terms, while accepting callers that
+    # supply visible raw terms. Re-stemming a normalized word can change it.
+    raw_query_terms = _concepts(query_text)
+    query_facets = set()
+    for term in decision.query_terms:
+        query_facets |= ({term} if term in raw_query_terms or term.endswith('_expression')
+                         else _concepts(term))
     lowered_query = query_text.lower()
     requested_time_role = (
         "arrival_time" if re.search(r"\b(?:arriv|arrival|check[ -]?in)\b", lowered_query)
         else "appointment_time" if re.search(
-            r"\b(?:appointment|meeting|visit|session|scheduled|start|when)\b",
-            lowered_query) else None)
+            r"\b(?:appointment|meeting|visit|session|scheduled|when)\b",
+            lowered_query) or (re.search(r'\bstart\b', lowered_query) and
+                              re.search(r'\b(?:time|when|clock|hour)\b', lowered_query)) else None)
     status_requested = bool(re.search(
         r"\b(?:status|current|still|cancel|confirm|reschedul|active|pending)\b",
         lowered_query))
+    # Context clauses and temporal qualifiers locate the requested state; they
+    # do not require every returned fact to repeat those words or a date.
+    focus = re.split(r'\b(?:what|which|when|where|how)\b', lowered_query, maxsplit=1)[-1]
+    focus = re.split(r'\b(?:before|after|through|including)\b', focus, maxsplit=1)[0]
+    focus = re.sub(r'\b(?:we|you|they)\s+(?:reviewed|discussed|mentioned)\b.*$', '', focus)
+    focus_terms = _concepts(focus.replace('-', ' '))
+    query_facets |= _concepts(query_text.replace('-', ' ')) - _concepts(query_text)
+    structural_request = bool(re.search(r'\b(?:when|where)\b|\b(?:what|which)\s+(?:time|date|day|hour|location)\b', lowered_query))
+    # Coordinate requests express several coverage obligations. Action words
+    # describe what to return, rather than entities every fact must mention.
+    # Hyphenated nouns such as run-book/start-plan name a structure; they are
+    # not commands requiring every responsive source sentence to use a verb.
+    directive = re.compile(r'(?<![\w-])(?:' + INSTRUCTION_VERBS + r')(?![\w-])', re.I)
+    directive_request = bool(directive.search(query_text)) and not requested_time_role
+    generic = _concepts('information know need want get about all any how much many explain provide '
+                        'right should instructions instruction plan use start stop continue avoid take '
+                        'restart rotate check keep run install disable enable watch settings options configuration parameters '
+                        'current active routes methods ways items entries setup summarize recap '
+                        'am still while before after including say status')
+    count_request = re.search(r'\b(?:what|which|list|show|summarize)\b.{0,40}?\b(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b', lowered_query)
+    if count_request:
+        generic |= _concepts(count_request[1])
+    if 'phone_expression' in query_facets:
+        generic |= _concepts('phone telephone mobile contact callback number')
+    ordered_focus = [t for word in re.findall(r"[a-z0-9']+", focus) for t in _concepts(word)
+                     if t in query_facets and t not in generic and not t.endswith('_expression')]
+    focus_head = ordered_focus[-1] if ordered_focus else ''
+    topic_groups = []
+    topic_heads = []
+    if re.search(r'\b(?:and|or|for|about|regarding)\b', focus, re.I):
+        for part in re.split(r'\b(?:and|or|for|about|regarding)\b', focus, flags=re.I):
+            terms = _concepts(part.replace('-', ' ')) & query_facets - generic
+            terms = {t for t in terms if not t.endswith('_expression')}
+            if terms:
+                topic_groups.append(terms)
+                ordered = [t for word in re.findall(r"[a-z0-9']+", part) for t in _concepts(word) if t in terms]
+                topic_heads.append(ordered[-1] if ordered else '')
     for item in decision.allowed:
         fact = " ".join(str(item.body).split())
         if not fact or item.status != "active":
@@ -51,16 +94,38 @@ def _answer_plan(decision: Decision, query_text: str = "") -> dict[str, Any]:
         digest = hashlib.sha256(
             f"{item.record_id}\0{item.source_observation_id}\0{fact}".encode("utf-8")
         ).hexdigest()[:20]
-        concepts = _concepts(fact) | _structural_concepts(fact)
+        concepts = _concepts(fact) | _concepts(fact.replace('-', ' ')) | _structural_concepts(fact) | set(item.context_terms)
         facets = sorted(query_facets & concepts)
         critical = _critical_values(fact)
         roles = {value.get("role") for value in critical}
-        meaningful = set(facets)
-        if requested_time_role and "time_expression" in meaningful:
-            if requested_time_role not in roles:
-                # A time value with a different role is useful context, not an
-                # answer to the requested role (arrival versus appointment).
+        # Topic anchors identify the requested relationship, while structural
+        # facets identify its values. A shared date or generic word alone must
+        # not make an unrelated source mandatory.
+        structural = {f for f in query_facets if f.endswith("_expression")}
+        anchors = (query_facets & focus_terms) - structural - generic
+        matched_anchors = anchors & concepts
+        topic_match = (any(group <= concepts or head in concepts for group,head in zip(topic_groups,topic_heads,strict=True)) if topic_groups else
+                       not anchors or focus_head in concepts or len(matched_anchors) / len(anchors) >= 0.6)
+        if anchors == {'appoint'} and {
+                'time_expression','date_expression'} <= concepts:
+            topic_match = True
+        meaningful = set(facets) if topic_match else set()
+        if directive_request and not directive.search(fact):
+            # A source list's heading can carry instruction intent, but a
+            # neighboring symptom/history sentence cannot do so on its own.
+            instruction_context = _concepts('plan instruction checklist procedure') & set(item.context_terms)
+            if not instruction_context:
                 meaningful.clear()
+        if structural_request and structural and not (structural & concepts):
+            meaningful.clear()
+        if requested_time_role and "time_expression" in meaningful:
+            explicit_roles = roles & {"arrival_time", "appointment_time"}
+            if explicit_roles and requested_time_role not in explicit_roles:
+                # Contradiction excludes this facet only. Generic/unknown
+                # time roles remain eligible; location coverage is independent.
+                meaningful.discard("time_expression")
+                if not (meaningful & structural):
+                    meaningful.clear()
         if not status_requested:
             meaningful -= {"status_expression"}
         claims.append({
@@ -71,6 +136,16 @@ def _answer_plan(decision: Decision, query_text: str = "") -> dict[str, Any]:
             "source_observation_id": item.source_observation_id or None,
             "query_facets": sorted(meaningful),
             "critical_values": critical,
+            "selection_reason": ("source_relationship_matches_query" if meaningful
+                                 else "context_only_or_unmatched_facet"),
+            "selection_observation": {
+                "matched_topic_terms": sorted(matched_anchors),
+                "topic_group_count": len(topic_groups),
+                "topic_match": topic_match,
+                "directive_request": directive_request,
+                "source_has_directive": bool(directive.search(fact)),
+                "structural_facets_matched": sorted(structural & concepts),
+            },
         })
     # If the visible query supplies no meaningful facet, do not guess. An
     # optional-only current plan fails closed at the trusted plan/contract gate
@@ -104,11 +179,13 @@ def sanitize_and_decide(decision: Decision, requester_role: str) -> tuple[str, s
     return "no_memory", "no responsive current memory"
 
 
-class GateMemAgent:
+class MemoryAgent:
     def __init__(self, db_path: str = ":memory:",
                  llm: Callable[[str, list[dict[str, Any]]], dict[str, Any]] | None = None,
                  top_k: int = 12,
-                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None) -> None:
+                 interpreter: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+                 policy: dict[str, Any] | None = None) -> None:
+        self.trusted_policy = dict(policy or {})
         self.base_db_path = str(db_path)
         self.store = MemoryStore(db_path, interpreter=interpreter)
         self.llm = llm
@@ -116,16 +193,9 @@ class GateMemAgent:
         self.episode: dict[str, Any] | None = None
         self.owner_id = ""
 
-    @staticmethod
-    def _policy_for_episode(episode: dict[str, Any]) -> dict[str, Any]:
-        domain = str(episode.get("domain") or "").lower()
-        if not domain or any(not (ch.isalnum() or ch in "-_") for ch in domain):
-            return {}
-        path = Path(__file__).with_name("policies") / f"{domain}.json"
-        if not path.is_file():
-            return {}
-        value = json.loads(path.read_text(encoding="utf-8"))
-        return value if isinstance(value, dict) else {}
+    def _policy_for_episode(self, episode: dict[str, Any]) -> dict[str, Any]:
+        # Inferred domain labels cannot install authorization rules.
+        return self.trusted_policy
 
     def open_episode(self, episode: dict[str, Any]) -> None:
         self.episode = episode
@@ -237,7 +307,7 @@ class GateMemAgent:
         self.store.ingest_turn((self.episode or {}).get("episode_id", "unknown"),
                                turn, self.owner_id)
 
-    def query(self, checkpoint: Any) -> dict[str, Any]:
+    def query(self, checkpoint: Any, *, additional_evidence=None) -> dict[str, Any]:
         cp = _visible(checkpoint)
         asker = cp.get("asker") or {}
         requester_id = str(asker.get("principal_id") or "")
@@ -249,6 +319,16 @@ class GateMemAgent:
             owner_id=self.owner_id, episode_id=episode_id,
             query=str(cp.get("query_text") or ""), as_of_seq=as_of_seq,
             checkpoint_id=cp.get("checkpoint_id"), top_k=self.top_k)
+        if additional_evidence:
+            from .store import Evidence
+            known = {e.record_id for e in decision.allowed}
+            for row in additional_evidence:
+                if row['record_id'] not in known:
+                    decision.allowed.append(Evidence(row['record_id'], row['turn_id'], '',
+                        'dynamic_query', 'scoped', row['text'],
+                        source_observation_id=row['source_observation_id'],
+                        context_terms=tuple(row.get('context_terms') or [])))
+                    known.add(row['record_id'])
         action, rationale = sanitize_and_decide(decision, requester_role)
         evidence = [{"record_id": item.record_id, "role": item.author_role,
                      "text": item.body, "source_observation_id": item.source_observation_id,
@@ -268,7 +348,7 @@ class GateMemAgent:
             fallback_answer = NO_MEMORY_TEXT
         denied_reasons = Counter(item["reason"] for item in decision.denied_details)
         denied_concepts = Counter(concept for item in decision.denied_details
-                                  for concept in item.get("concepts", []))
+                                  for concept in item.get("concepts", []) if concept in decision.query_terms)
         return {
             "action": action,
             "answer_plan": plan,
@@ -291,6 +371,12 @@ class GateMemAgent:
                 "n_obsolete": len(decision.obsolete),
                 "n_outside_top_k": len(decision.outside_top_k),
                 "query_facets": decision.query_terms,
+                "answer_plan_observations": {
+                    "query_facets_present": bool(decision.query_terms),
+                    "query_facet_count": len(decision.query_terms),
+                    "selected_claim_count": len(plan['claims']),
+                    "required_claim_count": sum(c['required'] for c in plan['claims']),
+                    "selection_rule": 'coordinated_topics_and_source_instruction_context'},
                 "supported_query_facets": decision.supported_query_facets,
                 "unsupported_query_facets": decision.unsupported_query_facets,
                 "source_group_counts": decision.source_group_counts,
@@ -313,3 +399,15 @@ class GateMemAgent:
                 },
             },
         }
+
+
+class GateMemAgent(MemoryAgent):
+    """Compatibility adapter for the explicitly selected GateMem benchmark.
+
+    Live applications use MemoryAgent with an authenticated policy provider.
+    This adapter installs only the fixed benchmark policy, never learned roles.
+    """
+    @staticmethod
+    def _policy_for_episode(episode):
+        from .gatemem_policy import benchmark_policy
+        return benchmark_policy(episode)

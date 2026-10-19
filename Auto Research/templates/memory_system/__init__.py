@@ -2,8 +2,8 @@
 active forgetting.  This package is the ARTIFACT under evaluation."""
 
 from .store import MemoryStore, Decision, Evidence
-from .agent import GateMemAgent, sanitize_and_decide
+from .agent import GateMemAgent, MemoryAgent, sanitize_and_decide
 from .policy import AuthorizationRequest, PolicyEvaluator, Principal, Resource
 
-__all__ = ["MemoryStore", "Decision", "Evidence", "GateMemAgent", "sanitize_and_decide",
+__all__ = ["MemoryStore", "Decision", "Evidence", "GateMemAgent", "MemoryAgent", "sanitize_and_decide",
            "AuthorizationRequest", "PolicyEvaluator", "Principal", "Resource"]

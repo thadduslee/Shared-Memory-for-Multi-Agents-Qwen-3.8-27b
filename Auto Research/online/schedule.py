@@ -1,20 +1,22 @@
 """Scheduling on public identities and episode-local turn position only."""
 from collections import defaultdict
+from copy import deepcopy
 
 from gatemem_adapter import (  # noqa: F401 (public adapter export)
     strip_hidden_fields,
     visible_checkpoint,
 )
 
-POLICY = 'episode-id-then-turn-position-v1'
+LEGACY_POLICY = 'episode-id-then-turn-position-v1'
+POLICY = 'episode-id-then-turn-position-v2-with-data-tails'
 
 
 def episode_header(episode):
-    return strip_hidden_fields({k: episode[k] for k in ('episode_id', 'domain', 'entities') if k in episode})
+    return deepcopy({k: episode[k] for k in ('episode_id', 'domain', 'entities') if k in episode})
 
 
 def build_schedule(dataset, policy=POLICY):
-    if policy != POLICY:
+    if policy not in {POLICY,LEGACY_POLICY}:
         raise ValueError(f'unknown ordering policy: {policy}')
     episodes = dataset.episodes_by_id
     if len(episodes) != len(dataset.episodes):
@@ -34,6 +36,11 @@ def build_schedule(dataset, policy=POLICY):
         if eid not in positions or tid not in positions[eid]:
             raise ValueError(f'unknown event boundary: {eid}/{tid}')
         groups[eid, positions[eid][tid], tid].append(cid)
+    if policy == POLICY:
+        for eid,episode in episodes.items():
+            if episode['turns']:
+                pos=len(episode['turns'])-1
+                groups.setdefault((eid,pos,episode['turns'][pos]['turn_id']),[])
     return [{'event_boundary_index': i, 'episode_id': eid, 'as_of_turn_id': tid,
                  'turn_position': pos, 'checkpoint_ids': sorted(ids)}
             for i, ((eid, pos, tid), ids) in enumerate(sorted(groups.items()), 1)]
@@ -48,9 +55,9 @@ def structural_summary(turns):
 
 
 def compatibility(summary, manifest):
-    required = {'turn_id', 'text', 'speaker'}
+    required = {'turn_id', 'speaker'}
     supported = set(manifest['supported_turn_fields'])
-    bad = any(not required.issubset(shape) or not set(shape).issubset(supported)
+    bad = any(not required.issubset(shape) or not {'text','data','operation'} & set(shape) or not set(shape).issubset(supported)
               for shape in summary['shapes'])
     return {'decision': 'CODE_OR_SCHEMA_CHANGE' if bad else 'NO_CHANGE',
             'reason': 'unrecognized turn structure' if bad else 'supported turn structure',

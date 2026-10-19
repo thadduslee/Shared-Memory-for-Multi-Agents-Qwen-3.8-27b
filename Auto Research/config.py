@@ -849,7 +849,7 @@ SEED_FROM_TEMPLATE: bool = _env_bool("SEED_FROM_TEMPLATE", True)
 #
 # Still a cap: a workspace grown past it is truncated rather than blowing out the
 # prompt, and `nodes.architect._code_view_order` decides what survives.
-ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 120_000)
+ARCHITECT_CODE_VIEW_MAX_CHARS: int = _env_int("ARCHITECT_CODE_VIEW_MAX_CHARS", 128_000)
 
 # How much of the previous iteration's BUILD FAILURE is inlined into the
 # Architect's task text.
