@@ -106,9 +106,12 @@ class OpenAICompatibleChatClient:
             data = resp.json()
             text = _extract_chat_completion_text(data)
             if text is None:
-                raise LLMError(
-                    f"{self.provider_name} response missing text. Keys: {list(data.keys())}"
-                )
+                # A reasoning model can spend the whole budget thinking and return content=None; a fresh
+                # sample usually answers, so retry like a transient error instead of failing the episode.
+                finish = ((data.get("choices") or [{}])[0] or {}).get("finish_reason")
+                last_err = f"missing_text: finish_reason={finish} usage={data.get('usage')}"
+                backoff_sleep(attempt)
+                continue
             usage = _extract_chat_completion_usage(data)
             return LLMCallResult(
                 text=text,

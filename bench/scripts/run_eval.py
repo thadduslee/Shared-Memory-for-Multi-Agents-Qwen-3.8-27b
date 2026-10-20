@@ -275,6 +275,12 @@ def main() -> None:
     p.add_argument("--a_mem_graph_expand_per_hit", type=int, default=2)
     p.add_argument("--a_mem_rerank_role_bonus", type=float, default=0.08)
     p.add_argument("--a_mem_rerank_entity_bonus", type=float, default=0.06)
+    # A-Mem with governance (a_mem_gov): comma list of chrono,asker,evolve,gate (see bench/agents/a_mem_gov.py)
+    p.add_argument("--a_mem_gov_features", type=str, default="chrono,asker,evolve,gate")
+    p.add_argument("--a_mem_gov_tau", type=float, default=0.5, help="Gate threshold: max access penalty released.")
+    p.add_argument("--a_mem_gov_asker_k", type=int, default=6, help="Slots of top_k reserved for requester notes.")
+    p.add_argument("--a_mem_gov_write_cache", type=str, default=None, help="JSONL cache of write-time LLM replies.")
+    p.add_argument("--a_mem_gov_write_thinking", action="store_true", help="Let the write-time calls think.")
 
     # REMEM baseline (episodic hybrid graph memory)
     p.add_argument(
@@ -560,7 +566,7 @@ def main() -> None:
         embed_router = None
         if (
             args.retrieval_backend == "embedding"
-            and (args.agent in {"rag_naive", "rag_policy", "a_mem", "remem"} or (args.agent == "mem0" and args.mem0_backend == "builtin"))
+            and (args.agent in {"rag_naive", "rag_policy", "a_mem", "a_mem_gov", "remem"} or (args.agent == "mem0" and args.mem0_backend == "builtin"))
         ):
             embed_cfg = EmbeddingConfig(
                 provider=args.embed_provider,
@@ -612,7 +618,7 @@ def main() -> None:
             if embed_router is not None:
                 kwargs["embed_router"] = embed_router
 
-        if args.agent == "a_mem":
+        if args.agent in ("a_mem", "a_mem_gov"):
             kwargs["answer_protocol"] = args.answer_protocol
             kwargs.update(
                 {
@@ -629,6 +635,23 @@ def main() -> None:
             )
             if embed_router is not None:
                 kwargs["embed_router"] = embed_router
+            if args.agent == "a_mem_gov":
+                feats = {f.strip() for f in args.a_mem_gov_features.split(",") if f.strip()}
+                unknown = feats - {"chrono", "asker", "evolve", "gate"}
+                if unknown:
+                    raise SystemExit(f"--a_mem_gov_features: unknown {sorted(unknown)}")
+                kwargs.update(
+                    {
+                        "render_chrono": "chrono" in feats,
+                        "asker_channel": "asker" in feats,
+                        "evolve_gov": "evolve" in feats,
+                        "gate": "gate" in feats,
+                        "gate_tau": args.a_mem_gov_tau,
+                        "asker_k": args.a_mem_gov_asker_k,
+                        "write_cache_path": args.a_mem_gov_write_cache,
+                        "write_thinking": bool(args.a_mem_gov_write_thinking),
+                    }
+                )
 
         if args.agent == "remem":
             kwargs["answer_protocol"] = args.answer_protocol
