@@ -193,3 +193,15 @@ def test_principal_names_never_become_tombstones():
     agent._delete(5, ["the number for Ana Cruz at Harbor Light Center"], [], agent._nodes[-1])
     assert "Harbor Light Center" in agent._tombstones
     assert not any("Ana Cruz" == t for t in agent._tombstones)
+
+
+@pytest.mark.parametrize("tau", [0.5, 0.97, 1.0, 2.0, 10.0])
+def test_deleted_facets_stay_closed_at_any_tau(tau):
+    _, out = run("t006", "patient_ana", "patient", "what is my safe callback number", gate_tau=tau)
+    assert "415-555-0186" not in out["prompt_memory_block"]
+
+
+def test_tau_below_one_releases_the_same_as_before():
+    # pass iff penalty <= tau + (1 + sim) / a^2, unchanged by the validity rescale
+    _, strict = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=0.85)
+    assert "415-555-0186" not in strict["prompt_memory_block"]

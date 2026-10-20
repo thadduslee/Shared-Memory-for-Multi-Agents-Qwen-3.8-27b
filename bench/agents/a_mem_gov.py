@@ -94,9 +94,9 @@ class AMemGovAgent(AMemAgent):
        entries on notes, or standing category scopes per principal).
     4. gate: governance is part of the vector space. A facet is [content ; a*sensitive ; a*deny ; a*validity]
        and a query is [content ; -a*disallowed(requester) ; -a*onehot(requester) ; a*onehot(as_of)], so one
-       inner product is similarity + a^2 * (valid - penalty). A facet is released only if that product clears
-       a^2 * (1 - tau) - 1, i.e. it is valid at as_of and its penalty is at most ~tau. tau is the
-       utility/exposure dial.
+       inner product is similarity + b^2 * valid - a^2 * penalty, with b = 10a so validity dominates any
+       penalty. A facet is released only if that product clears b^2 - a^2 * tau - 1, i.e. it is valid at
+       as_of (always required) and its penalty is at most ~tau. tau is the utility/exposure dial.
     """
 
     def __init__(
@@ -388,7 +388,8 @@ class AMemGovAgent(AMemAgent):
                 if s in sidx:
                     M[i, sidx[s]] = w
             V[i, max(0, f.valid_from): (f.valid_to if f.valid_to is not None else horizon)] = 1.0
-        return np.hstack([E, a * K, a * M, a * V]), subjects, horizon
+        b = self._validity_scale()
+        return np.hstack([E.astype(np.float64), a * K, a * M, b * V]), subjects, horizon
 
     def _query_vector(self, qc: np.ndarray, asker: str, role: str, as_of: int, subjects: List[str],
                       horizon: int) -> np.ndarray:
@@ -404,7 +405,13 @@ class AMemGovAgent(AMemAgent):
                 e[subjects.index(key)] = 1.0
         t = np.zeros(horizon, np.float32)
         t[min(max(as_of, 0), horizon - 1)] = 1.0
-        return np.concatenate([qc.astype(np.float32), -a * d, -a * e, a * t])
+        b = self._validity_scale()
+        return np.concatenate([qc.astype(np.float64), -a * d, -a * e, b * t])
+
+    def _validity_scale(self) -> float:
+        # Validity must stay a hard constraint for every tau: b^2 = 100 a^2 exceeds any reachable penalty
+        # budget (a^2 * tau with tau < ~99), so a facet that is not valid at as_of never clears the threshold.
+        return 10.0 * self.gate_alpha
 
     def _gated_scores(self, checkpoint: Checkpoint, qc: np.ndarray) -> Tuple[Dict[str, Tuple[Facet, float]], Dict[str, Any]]:
         """Best released facet per note -> (facet, content similarity). One inner product per facet decides
@@ -418,8 +425,8 @@ class AMemGovAgent(AMemAgent):
         scores = X @ q
         d = qc.shape[0]
         sims = X[:, :d] @ qc
-        a2 = self.gate_alpha ** 2
-        threshold = a2 * (1.0 - self.gate_tau) - 1.0
+        a2, b2 = self.gate_alpha ** 2, self._validity_scale() ** 2
+        threshold = b2 - a2 * self.gate_tau - 1.0
         best: Dict[str, Tuple[Facet, float]] = {}
         for i, f in enumerate(facets):
             if self.gate:
