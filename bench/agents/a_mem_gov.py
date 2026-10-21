@@ -12,6 +12,7 @@ import numpy as np
 
 from .a_mem import AMemAgent, AMemoryNode
 from .base import Checkpoint, Turn
+from bench.domains import detect_domain_from_episode, format_relationship_fact, get_query_policy_block
 from bench.retrieval import EmbeddingRetriever
 
 
@@ -22,6 +23,11 @@ SENSITIVE_CATEGORIES = (
     "credential", "location", "schedule", "legal", "personal",
 )
 GOV_OPS = ("delete", "supersede", "restrict", "grant", "revoke")
+CALENDAR_WORDS = {
+    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "january", "february", "march", "april", "may", "june", "july", "august", "september", "october",
+    "november", "december", "today", "tomorrow", "tonight",
+}
 DELETED_MASK = "[deleted]"
 WITHHELD_MASK = "[withheld]"
 
@@ -38,6 +44,7 @@ class Facet:
     valid_to: Optional[int] = None  # exclusive; None = still valid
     deny: Dict[str, float] = field(default_factory=dict)  # principal id or "role:<role>" -> confidence
     sensitive: Set[str] = field(default_factory=set)
+    owner: str = ""  # subject the content is about (a principal id or a named case/project); "" = unknown
     embedding: Optional[np.ndarray] = None
 
 
@@ -46,6 +53,7 @@ class GovNode(AMemoryNode):
     turn_num: int = 0
     addressee: str = ""
     sensitive: List[str] = field(default_factory=list)
+    owner: str = ""
     superseded_at: Optional[str] = None
     gov_subjects: List[str] = field(default_factory=list)  # principals/roles a governance op on this turn concerned
 
@@ -97,6 +105,13 @@ class AMemGovAgent(AMemAgent):
        inner product is similarity + b^2 * valid - a^2 * penalty, with b = 10a so validity dominates any
        penalty. A facet is released only if that product clears b^2 - a^2 * tau - 1, i.e. it is valid at
        as_of (always required) and its penalty is at most ~tau. tau is the utility/exposure dial.
+    5. policy_defaults: one LLM call per episode turns the domain's access-policy text (the same text the
+       answerer is given) into default rules by role: categories each role may not see, and whether the role
+       sees sensitive content only about subjects it is linked to. Grants in the conversation lift them.
+    6. owner_gate: each note names its owner (the patient, person or project it is about). For owner-scoped
+       roles, sensitive notes about subjects the requester is not linked to are penalised; links come from
+       the episode's relationships and from grants/assignments in the conversation. The gate gains a block
+       [a*onehot(owner)*sensitive] against [-a*scoped(role)*(1 - linked(requester))].
     """
 
     def __init__(
@@ -113,6 +128,8 @@ class AMemGovAgent(AMemAgent):
         context_turns: int = 4,
         write_cache_path: Optional[str] = None,
         write_thinking: bool = False,
+        policy_defaults: bool = False,  # measured to cost utility; see scripts/a_mem_gov/README.md
+        owner_gate: bool = False,
         **kwargs: Any,
     ) -> None:
         kwargs.setdefault("metadata_mode", "llm")
@@ -129,6 +146,8 @@ class AMemGovAgent(AMemAgent):
         self.candidate_k = max(0, int(candidate_k))
         self.context_turns = max(0, int(context_turns))
         self.write_thinking = bool(write_thinking)
+        self.policy_defaults = bool(policy_defaults)
+        self.owner_gate = bool(owner_gate)
         self._write_cache = _ReplyCache(write_cache_path)
         self._reset_gov_state()
 
@@ -143,6 +162,11 @@ class AMemGovAgent(AMemAgent):
         self._roles: List[str] = []
         self._gov_log: List[Dict[str, Any]] = []
         self._tombstones: List[str] = []  # deleted values and their distinctive atoms; masked in later notes too
+        self._role_defaults: Dict[str, Dict[str, float]] = {}  # role -> category -> default disallow confidence
+        self._owner_scoped: Dict[str, float] = {}  # role -> confidence it sees sensitive content only of linked subjects
+        self._allow: Dict[str, Set[str]] = {}  # principal or "role:x" -> categories explicitly granted
+        self._links: Dict[str, Set[str]] = {}  # principal or "role:x" -> subjects it is linked to
+        self._subject_list: List[str] = []  # owner axis of the gate, in first-seen order
 
     def reset(self, episode: Dict[str, Any]) -> None:
         super().reset(episode)
@@ -152,6 +176,8 @@ class AMemGovAgent(AMemAgent):
             if pid:
                 self._principals[pid] = {"role": str(p.get("role") or ""), "name": str(p.get("display_name") or "")}
         self._roles = sorted({v["role"] for v in self._principals.values() if v["role"]})
+        if self.evolve_gov and (self.policy_defaults or self.owner_gate):
+            self._episode_policy_call(episode)
 
     # -------------------- ingest --------------------
 
@@ -176,11 +202,13 @@ class AMemGovAgent(AMemAgent):
             turn_num=self._turn_num(turn.turn_id),
             addressee=self._addressee(meta.get("addressee"), turn),
             sensitive=[c for c in self._norm_str_list(meta.get("sensitive")) if c in SENSITIVE_CATEGORIES],
+            owner=self._subject_key(meta.get("owner")) if self.owner_gate else "",
         )
         self._nodes.append(node)
         self._nodes_by_id[node.mem_id] = node
         self._adj.setdefault(node.mem_id, [])
         self._turn_log.append(turn)
+        self._ensure_subject(node.owner)
 
         index_meta = {
             "turn_id": node.turn_id, "principal_id": node.principal_id, "role": node.role,
@@ -197,7 +225,7 @@ class AMemGovAgent(AMemAgent):
             if masked != text:
                 text, emb = masked, self._embed(masked)
         self._add_facet(Facet(fid=f"{node.mem_id}#0", mem_id=node.mem_id, text=text, valid_from=node.turn_num,
-                              sensitive=set(node.sensitive), embedding=emb))
+                              sensitive=set(node.sensitive), owner=node.owner, embedding=emb))
         self._evolve_links(node)
         if self.evolve_gov:
             self._apply_ops(node, meta.get("ops") or [])
@@ -253,6 +281,8 @@ class AMemGovAgent(AMemAgent):
             "Return STRICT JSON only, with keys:\n"
             "- summary: <=30 words; keywords: [strings]; entities: [principal_ids or names]; categories: [short tags]\n"
             "- addressee: principal_id this turn is said to, or null\n"
+            "- owner: whose information this turn is mainly about: a principal_id (e.g. the patient), or the name "
+            "of the case/project/item it concerns; null if general\n"
             f"- sensitive: the categories of sensitive content this turn contains or names (a question that names a "
             f"diagnosis, value or contact counts), from {list(SENSITIVE_CATEGORIES)}\n"
             "- ops: list of changes this turn makes to memory or access. Usually []. Each op is an object:\n"
@@ -265,8 +295,9 @@ class AMemGovAgent(AMemAgent):
             '   "values": [exact strings], "notes": [mem_ids], "confidence": 0-1}\n'
             "     someone with authority limits what those principals may see. Use categories for a standing\n"
             "     rule (applies to future notes too); use values/notes for specific information.\n"
-            '  {"op": "grant", ...same keys as restrict}  consent or assignment that gives those principals access.\n'
-            '  {"op": "revoke", ...same keys as restrict}  earlier consent or access is withdrawn.\n'
+            '  {"op": "grant", ...same keys as restrict, "subjects": [owners]}  consent, assignment, coverage or\n'
+            "     delegation that gives those principals access; put the people/cases/projects it covers in subjects.\n"
+            '  {"op": "revoke", ...same keys as grant}  earlier consent, assignment or access is withdrawn.\n'
             "Only emit an op when this turn itself requests, performs, or confirms the change. Requests that are "
             "refused or not authorised make no op. Questions make no op.\n"
         )
@@ -302,16 +333,27 @@ class AMemGovAgent(AMemAgent):
                         old.superseded_at = node.turn_id
                 applied = True
             elif kind in ("restrict", "revoke") and subjects:
+                owners = [self._subject_key(o) for o in self._norm_str_list(op.get("subjects"))]
                 for s in subjects:
                     for c in cats:
                         self._scopes.setdefault(s, {})[c] = max(conf, self._scopes.get(s, {}).get(c, 0.0))
+                        self._allow.get(s, set()).discard(c)
+                    for o in owners:
+                        self._links.get(s, set()).discard(o)
                 if values or notes:
                     self._restrict(values, notes, subjects, conf)
-                applied = bool(cats or values or notes)
+                applied = bool(cats or values or notes or owners)
             elif kind == "grant" and subjects:
+                owners = [self._subject_key(o) for o in self._norm_str_list(op.get("subjects"))]
                 for s in subjects:
                     for c in (cats or list(self._scopes.get(s, {}))):
                         self._scopes.get(s, {}).pop(c, None)
+                    if cats:
+                        self._allow.setdefault(s, set()).update(cats)
+                    for o in owners:
+                        if o:
+                            self._links.setdefault(s, set()).add(o)
+                            self._ensure_subject(o)
                     for m in notes:
                         for f in self._facets_by_mem.get(m, []):
                             f.deny.pop(s, None)
@@ -323,7 +365,8 @@ class AMemGovAgent(AMemAgent):
 
     def _delete(self, t: int, values: List[str], notes: List[str], src: GovNode) -> bool:
         people = {w for pid in self._principals for w in self._name_tokens(pid)}
-        atoms = [a for v in values for a in self._atoms(v) if not (set(a.lower().split()) & people)]
+        atoms = [a for v in values for a in self._atoms(v)
+                 if not (set(a.lower().split()) & people) and self._distinctive(a)]
         values = self._dedup_keep_order(values + atoms)
         self._tombstones = self._dedup_keep_order(self._tombstones + values)
         targets = set(notes)
@@ -341,8 +384,18 @@ class AMemGovAgent(AMemAgent):
                 if masked and masked != f.text and self._has_content(masked):
                     self._add_facet(Facet(fid=f"{m}#{len(self._facets_by_mem[m])}", mem_id=m, text=masked,
                                           valid_from=t, deny=dict(f.deny), sensitive=set(f.sensitive),
-                                          embedding=self._embed(masked)))
+                                          owner=f.owner, embedding=self._embed(masked)))
         return changed
+
+    def _distinctive(self, atom: str) -> bool:
+        """An atom identifies the deleted item on its own only if it is a number/code, or a name that is rare in
+        the episode so far (a project, a weekday or a shared place name is not)."""
+        if re.search(r"\d", atom):
+            return True
+        if set(atom.lower().split()) & CALENDAR_WORDS:
+            return False
+        low = atom.lower()
+        return sum(low in self._current_text(n).lower() for n in self._nodes) <= 2
 
     def _restrict(self, values: List[str], notes: List[str], subjects: List[str], conf: float) -> None:
         targets = set(notes)
@@ -363,7 +416,8 @@ class AMemGovAgent(AMemAgent):
                     self._add_facet(Facet(fid=f"{m}#{len(self._facets_by_mem[m])}", mem_id=m, text=masked,
                                           valid_from=f.valid_from, valid_to=f.valid_to,
                                           deny={k: v for k, v in f.deny.items() if k not in subjects},
-                                          sensitive=set(f.sensitive), embedding=self._embed(masked)))
+                                          sensitive=set(f.sensitive), owner=f.owner,
+                                          embedding=self._embed(masked)))
 
     # -------------------- governance vector space (change 4) --------------------
 
@@ -373,7 +427,7 @@ class AMemGovAgent(AMemAgent):
         return subjects, horizon
 
     def _facet_matrix(self, facets: List[Facet]) -> Tuple[np.ndarray, List[str], int]:
-        """Rows are [content ; a*sensitive ; a*deny ; a*validity-thermometer]."""
+        """Rows are [content ; a*sensitive ; a*deny ; a*owner-if-sensitive ; b*validity-thermometer]."""
         subjects, horizon = self._gov_axes()
         sidx = {s: i for i, s in enumerate(subjects)}
         a = self.gate_alpha
@@ -381,7 +435,11 @@ class AMemGovAgent(AMemAgent):
         K = np.zeros((len(facets), len(SENSITIVE_CATEGORIES)), np.float32)
         M = np.zeros((len(facets), len(subjects)), np.float32)
         V = np.zeros((len(facets), horizon), np.float32)
+        oidx = {o: i for i, o in enumerate(self._subject_list)}
+        O = np.zeros((len(facets), len(self._subject_list)), np.float32)
         for i, f in enumerate(facets):
+            if f.owner in oidx and f.sensitive:
+                O[i, oidx[f.owner]] = 1.0
             for c in f.sensitive:
                 K[i, SENSITIVE_CATEGORIES.index(c)] = 1.0
             for s, w in f.deny.items():
@@ -389,24 +447,43 @@ class AMemGovAgent(AMemAgent):
                     M[i, sidx[s]] = w
             V[i, max(0, f.valid_from): (f.valid_to if f.valid_to is not None else horizon)] = 1.0
         b = self._validity_scale()
-        return np.hstack([E.astype(np.float64), a * K, a * M, b * V]), subjects, horizon
+        return np.hstack([E.astype(np.float64), a * K, a * M, a * O, b * V]), subjects, horizon
 
     def _query_vector(self, qc: np.ndarray, asker: str, role: str, as_of: int, subjects: List[str],
                       horizon: int) -> np.ndarray:
-        """[content ; -a*disallowed categories ; -a*onehot(requester and role) ; a*onehot(as_of)]."""
+        """[content ; -a*disallowed categories ; -a*onehot(requester and role) ;
+        -a*scoped(role)*(1 - linked(requester)) ; b*onehot(as_of)]."""
         a = self.gate_alpha
-        d = np.zeros(len(SENSITIVE_CATEGORIES), np.float32)
-        for key in (asker, f"role:{role}"):
-            for c, w in self._scopes.get(key, {}).items():
-                d[SENSITIVE_CATEGORIES.index(c)] = max(d[SENSITIVE_CATEGORIES.index(c)], w)
+        d = self._disallowed(asker, role)
         e = np.zeros(len(subjects), np.float32)
         for key in (asker, f"role:{role}"):
             if key in subjects:
                 e[subjects.index(key)] = 1.0
+        o = np.zeros(len(self._subject_list), np.float32)
+        scoped = self._owner_scoped.get(role, 0.0) if self.owner_gate else 0.0
+        if scoped > 0:
+            linked = self._links.get(asker, set()) | self._links.get(f"role:{role}", set()) | {asker}
+            o = np.array([0.0 if s in linked else scoped for s in self._subject_list], np.float32)
         t = np.zeros(horizon, np.float32)
         t[min(max(as_of, 0), horizon - 1)] = 1.0
         b = self._validity_scale()
-        return np.concatenate([qc.astype(np.float64), -a * d, -a * e, b * t])
+        return np.concatenate([qc.astype(np.float64), -a * d, -a * e, -a * o, b * t])
+
+    def _disallowed(self, asker: str, role: str) -> np.ndarray:
+        """Per-category disallow confidence: role defaults from the policy unless granted to this principal or
+        role, and restrictions stated in the conversation unless granted to this principal."""
+        d = np.zeros(len(SENSITIVE_CATEGORIES), np.float32)
+        rkey = f"role:{role}"
+        allowed = self._allow.get(asker, set()) | self._allow.get(rkey, set())
+        for i, c in enumerate(SENSITIVE_CATEGORIES):
+            w = 0.0
+            if self.policy_defaults and c not in allowed:
+                w = self._role_defaults.get(role, {}).get(c, 0.0)
+            w = max(w, self._scopes.get(asker, {}).get(c, 0.0))
+            if c not in self._allow.get(asker, set()):
+                w = max(w, self._scopes.get(rkey, {}).get(c, 0.0))
+            d[i] = w
+        return d
 
     def _validity_scale(self) -> float:
         # Validity must stay a hard constraint for every tau: b^2 = 100 a^2 exceeds any reachable penalty
@@ -599,8 +676,106 @@ class AMemGovAgent(AMemAgent):
         toks += [w for w in re.split(r"[\s.]+", name) if len(w) >= 4 and w not in {"nurse", "front", "desk"}]
         return self._dedup_keep_order(toks + [pid.lower()])
 
+    def _subject_key(self, raw: Any) -> str:
+        s = re.sub(r"\s+", " ", str(raw or "")).strip()
+        if not s or s.lower() in {"null", "none", "general", "n/a"}:
+            return ""
+        if s in self._principals:
+            return s
+        low = re.sub(r"^the ", "", s.lower())
+        for pid in self._principals:
+            name = re.sub(r"\(.*?\)", "", self._principals[pid]["name"]).strip().lower()
+            if name and (low == name or low == pid.lower()):
+                return pid
+        return low
+
+    def _ensure_subject(self, subject: str) -> None:
+        if subject and subject not in self._subject_list:
+            self._subject_list.append(subject)
+
+    def _episode_policy_call(self, episode: Dict[str, Any]) -> None:
+        """One call per episode: the domain policy text (as given to the answerer) plus the episode's people and
+        relationships -> default rules by role and initial subject links."""
+        for pid in self._principals:  # every person is a possible owner; named cases/projects join as seen
+            self._ensure_subject(pid)
+        if self.llm_router is None:
+            return
+        policy = get_query_policy_block(detect_domain_from_episode(episode))
+        rels = (episode.get("entities") or {}).get("relationships") or []
+        people = "\n".join(f"- {pid} | role={v['role']} | {v['name']}" for pid, v in self._principals.items())
+        rel_txt = "\n".join(format_relationship_fact(r or {}) for r in rels if isinstance(r, dict)) or "(none)"
+        prompt = (
+            f"EPISODE ACCESS DEFAULTS. You configure the access gate of a shared {self._domain_label} assistant "
+            "memory before any conversation. Turn the policy below into default rules by role. Conversation turns "
+            "may later grant or restrict access; you only set the starting point.\n\n"
+            f"POLICY:\n{policy}\n\nPEOPLE (principal_id | role | name):\n{people}\n\n"
+            f"RELATIONSHIPS:\n{rel_txt}\n\n"
+            "Return STRICT JSON only:\n"
+            '{"roles": {"<role>": {"disallow": [categories], "owner_scoped": true|false, "confidence": 0-1}},\n'
+            ' "links": {"<principal_id>": ["<subject>", ...]}}\n'
+            f"- disallow: categories, from {list(SENSITIVE_CATEGORIES)}, this role may NOT see EVEN about the "
+            "subjects it is linked to, because the policy names them as off-limits for this role (e.g. a "
+            "summary-only family member and exact lab values; a service helper and credentials). Never list what "
+            "the role needs for its job (schedules for a scheduler, pickup times for a pickup contact, logistics "
+            "for service staff, health details for an assigned clinician). \"Requires assignment\" or "
+            "\"need-to-know\" is owner_scoped, not disallow. [] when unsure.\n"
+            "- owner_scoped: true if the role may see sensitive content only about the subjects it is linked to "
+            "(its own records, assigned patients, its own projects or cases).\n"
+            "- links: for each principal, the subjects whose sensitive content they may see by default: "
+            "principal_ids of people (an owner is linked to itself) or names of cases/projects, from the "
+            "relationships.\n- confidence: how clearly the policy states the rule.\n"
+        )
+        k = _ReplyCache.key(prompt)
+        text = self._write_cache.get(k)
+        if text is None:
+            opts = None if self.write_thinking else {"chat_template_kwargs": {"enable_thinking": False}}
+            try:
+                res = self.llm_router.complete_result(system_prompt="", user_prompt=prompt, provider_options=opts)
+                self._accum_usage(self._meta_llm_usage_accum, getattr(res, "usage", {}) or {})
+                text = getattr(res, "text", "") or ""
+            except Exception as e:
+                self.logger.warning("a_mem_gov episode policy call failed: %s", e)
+                return
+            if isinstance(self._parse_json_loose(text), dict):
+                self._write_cache.put(k, text)
+        parsed = self._parse_json_loose(text)
+        if not isinstance(parsed, dict):
+            self.logger.warning("a_mem_gov episode policy parse failed; no defaults")
+            return
+        for role, rule in (parsed.get("roles") or {}).items():
+            role = str(role).replace("role:", "")
+            if role not in self._roles or not isinstance(rule, dict):
+                continue
+            conf = self._conf(rule.get("confidence"))
+            cats = [c for c in self._norm_str_list(rule.get("disallow")) if c in SENSITIVE_CATEGORIES]
+            if cats:
+                self._role_defaults[role] = {c: conf for c in cats}
+            if rule.get("owner_scoped") is True:
+                self._owner_scoped[role] = conf
+        for pid, subs in (parsed.get("links") or {}).items():
+            key = pid if pid in self._principals else (f"role:{pid}" if pid in self._roles else "")
+            if not key:
+                continue
+            for o in self._norm_str_list(subs):
+                o = self._subject_key(o)
+                if o:
+                    self._links.setdefault(key, set()).add(o)
+                    self._ensure_subject(o)
+
     def _describe_scopes(self) -> str:
         rows = []
+        if self.policy_defaults:
+            for role, cats in sorted(self._role_defaults.items()):
+                rows.append(f"- by default role:{role} may NOT see: {', '.join(sorted(cats))}")
+        if self.owner_gate:
+            for role in sorted(self._owner_scoped):
+                rows.append(f"- role:{role} sees sensitive content only about subjects it is linked to")
+            for k2, subs in sorted(self._links.items()):
+                if subs:
+                    rows.append(f"- {k2} is linked to: {', '.join(sorted(subs))}")
+        for k2, cats in sorted(self._allow.items()):
+            if cats:
+                rows.append(f"- {k2} was granted: {', '.join(sorted(cats))}")
         for s, cats in self._scopes.items():
             live = sorted(c for c, w in cats.items() if w > 0)
             if live:

@@ -275,7 +275,7 @@ def main() -> None:
     p.add_argument("--a_mem_graph_expand_per_hit", type=int, default=2)
     p.add_argument("--a_mem_rerank_role_bonus", type=float, default=0.08)
     p.add_argument("--a_mem_rerank_entity_bonus", type=float, default=0.06)
-    # A-Mem with governance (a_mem_gov): comma list of chrono,asker,evolve,gate (see bench/agents/a_mem_gov.py)
+    # A-Mem with governance (a_mem_gov): comma list of chrono,asker,evolve,gate[,policy,owner] (see bench/agents/a_mem_gov.py)
     p.add_argument("--a_mem_gov_features", type=str, default="chrono,asker,evolve,gate")
     p.add_argument("--a_mem_gov_tau", type=float, default=0.5, help="Gate threshold: max access penalty released.")
     p.add_argument("--a_mem_gov_asker_k", type=int, default=6, help="Slots of top_k reserved for requester notes.")
@@ -637,7 +637,7 @@ def main() -> None:
                 kwargs["embed_router"] = embed_router
             if args.agent == "a_mem_gov":
                 feats = {f.strip() for f in args.a_mem_gov_features.split(",") if f.strip()}
-                unknown = feats - {"chrono", "asker", "evolve", "gate"}
+                unknown = feats - {"chrono", "asker", "evolve", "gate", "policy", "owner"}
                 if unknown:
                     raise SystemExit(f"--a_mem_gov_features: unknown {sorted(unknown)}")
                 kwargs.update(
@@ -646,6 +646,8 @@ def main() -> None:
                         "asker_channel": "asker" in feats,
                         "evolve_gov": "evolve" in feats,
                         "gate": "gate" in feats,
+                        "policy_defaults": "policy" in feats,
+                        "owner_gate": "owner" in feats,
                         "gate_tau": args.a_mem_gov_tau,
                         "asker_k": args.a_mem_gov_asker_k,
                         "write_cache_path": args.a_mem_gov_write_cache,

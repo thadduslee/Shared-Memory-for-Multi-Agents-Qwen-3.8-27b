@@ -20,6 +20,7 @@ EPISODE = {
             {"principal_id": "patient_ana", "role": "patient", "display_name": "Ana Cruz"},
             {"principal_id": "family_bea", "role": "family_member", "display_name": "Bea Cruz (sister)"},
             {"principal_id": "nurse_paul", "role": "nurse", "display_name": "Nurse Paul Reyes"},
+            {"principal_id": "nurse_zoe", "role": "nurse", "display_name": "Nurse Zoe Park"},
             {"principal_id": "reception_kim", "role": "reception", "display_name": "Kim (front desk)"},
         ],
         "relationships": [],
@@ -39,12 +40,19 @@ TURNS = [
 WRITES = {
     "t002": {"addressee": "reception_kim", "sensitive": [], "ops": [
         {"op": "restrict", "principals": ["family_bea"], "categories": ["diagnosis", "contact"], "confidence": 0.9}]},
-    "t003": {"sensitive": ["contact"], "ops": []},
-    "t004": {"addressee": "patient_ana", "sensitive": [], "ops": []},
+    "t003": {"sensitive": ["contact"], "owner": "patient_ana", "ops": []},
+    "t004": {"addressee": "patient_ana", "sensitive": [], "ops": [
+        {"op": "grant", "principals": ["nurse_paul"], "subjects": ["patient_ana"], "confidence": 0.9}]},
     "t005": {"sensitive": ["contact"], "ops": [
         {"op": "delete", "values": ["415-555-0186"], "notes": ["mem_t003"], "confidence": 0.95}]},
-    "t006": {"sensitive": ["contact"], "ops": [{"op": "supersede", "notes": ["mem_t003"], "confidence": 0.9}]},
+    "t006": {"sensitive": ["contact"], "owner": "Ana Cruz",
+             "ops": [{"op": "supersede", "notes": ["mem_t003"], "confidence": 0.9}]},
 }
+
+POLICY = {"roles": {"nurse": {"disallow": [], "owner_scoped": True, "confidence": 0.9},
+                    "family_member": {"disallow": ["lab_result"], "owner_scoped": True, "confidence": 0.9},
+                    "patient": {"disallow": [], "owner_scoped": True, "confidence": 0.9}},
+          "links": {"patient_ana": ["patient_ana"]}}
 
 
 class FakeEmbed:
@@ -69,6 +77,8 @@ class FakeLLM:
         self.answer_prompts = []
 
     def complete_result(self, *, system_prompt, user_prompt, provider_options=None, **_):
+        if user_prompt.startswith("EPISODE ACCESS DEFAULTS"):
+            return SimpleNamespace(text=json.dumps(POLICY), usage={}, latency_s=0.0, provider="fake", model="fake")
         m = re.search(r"NEW TURN (t\d+)", user_prompt)
         if m:
             assert provider_options == {"chat_template_kwargs": {"enable_thinking": False}}
@@ -114,8 +124,10 @@ def test_standing_scope_blocks_restricted_categories_for_that_principal_only():
 
 
 def test_tau_is_the_dial():
-    _, strict = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=0.5)
-    _, loose = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=1.0)
+    _, strict = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=0.5,
+                   owner_gate=False)
+    _, loose = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=1.0,
+                  owner_gate=False)
     assert "415-555-0186" not in strict["prompt_memory_block"]
     assert "415-555-0186" in loose["prompt_memory_block"]
 
@@ -151,11 +163,11 @@ def test_write_cache_replays_without_llm(tmp_path):
     cache = tmp_path / "w.jsonl"
     run("t006", "patient_ana", "patient", "callback", write_cache_path=str(cache))
     n = len(cache.read_text().splitlines())
-    assert n == len(TURNS)
+    assert n == len(TURNS)  # one write call per turn (policy/owner off: no episode call)
 
     class NoWrites(FakeLLM):
         def complete_result(self, *, user_prompt, **kw):
-            assert "NEW TURN" not in user_prompt, "write call should come from the cache"
+            assert "NEW TURN" not in user_prompt and "EPISODE ACCESS" not in user_prompt, "should come from cache"
             return super().complete_result(user_prompt=user_prompt, **kw)
 
     agent = AMemGovAgent(llm_router=NoWrites(), embed_router=FakeEmbed(), retrieval_backend="embedding",
@@ -205,3 +217,35 @@ def test_tau_below_one_releases_the_same_as_before():
     # pass iff penalty <= tau + (1 + sim) / a^2, unchanged by the validity rescale
     _, strict = run("t004", "family_bea", "family_member", "what is the safe callback number", gate_tau=0.85)
     assert "415-555-0186" not in strict["prompt_memory_block"]
+
+
+def test_owner_gate_needs_a_link_and_a_grant_in_conversation_supplies_it():
+    on = {"owner_gate": True, "policy_defaults": True}
+    _, before = run("t003", "nurse_paul", "nurse", "what is the safe callback number", **on)
+    assert "415-555-0186" not in before["prompt_memory_block"]  # nurses are owner-scoped, Paul not yet linked
+    _, after = run("t004", "nurse_paul", "nurse", "what is the safe callback number", **on)
+    assert "415-555-0186" in after["prompt_memory_block"]  # t004 grant links Paul to Ana
+    _, other = run("t004", "nurse_zoe", "nurse", "what is the safe callback number", **on)
+    assert "415-555-0186" not in other["prompt_memory_block"]  # Zoe was never linked
+    _, owner = run("t004", "patient_ana", "patient", "what is my safe callback number", **on)
+    assert "415-555-0186" in owner["prompt_memory_block"]  # an owner always sees their own notes
+
+
+def test_owner_names_resolve_to_principals():
+    agent, _ = run("t006", "patient_ana", "patient", "callback", owner_gate=True)
+    assert agent._nodes_by_id["mem_t006"].owner == "patient_ana"  # "Ana Cruz" -> patient_ana
+
+
+def test_policy_defaults_switch_off_cleanly():
+    _, out = run("t003", "nurse_paul", "nurse", "what is the safe callback number", owner_gate=False,
+                 policy_defaults=False)
+    assert "415-555-0186" in out["prompt_memory_block"]
+
+
+def test_common_names_and_calendar_words_are_not_tombstoned():
+    agent, _ = run("t004", "patient_ana", "patient", "callback")
+    for i, text in enumerate(["Project Harbor kickoff", "Project Harbor budget", "Project Harbor review"]):
+        agent.ingest(Turn(turn_id=f"t1{i}0", speaker_principal_id="reception_kim", speaker_role="reception", text=text))
+    agent._delete(200, ["the Project Harbor backup line 415-555-0199 on Sunday at Blue Lodge"], [], agent._nodes[-1])
+    assert "415-555-0199" in agent._tombstones and "Blue Lodge" in agent._tombstones
+    assert "Project Harbor" not in agent._tombstones and "Sunday" not in agent._tombstones
