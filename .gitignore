@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Private canonical memory, evaluator journals, source payloads and credentials.
+/runs/
+/evaluation/gatemem_medical/reference_logs/
+.env
+.env.*
+!.env.example

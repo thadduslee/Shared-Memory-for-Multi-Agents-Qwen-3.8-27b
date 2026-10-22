@@ -191,3 +191,23 @@ If you use this code in your research, please cite our work:
 ## License 📄
 
 This project is licensed under the MIT License. See LICENSE for details.
+# Standalone privacy-aware runtime
+
+The new implementation is available as
+`agentic_memory.privacy.PrivacyMemorySystem`. It includes canonical policies,
+compartment-scoped authorized vector search, protected directed edges,
+full-input provenance, restricted enrichment overlays, processor approvals,
+revocation/deletion handling, and a standalone incremental GateMem evaluator.
+The legacy `AgenticMemorySystem` API remains unguarded; select the new API explicitly.
+
+See [the standalone runbook](evaluation/gatemem_medical/RUNBOOK.md) for the full
+579-query / 567-boundary medical experiment, model-service startup, tmux,
+resuming, artifacts, and deployment limits. The new evaluator does not execute
+the old Auto Research online system.
+
+```bash
+cd /home/thaddus/a-mem
+python3 -m unittest discover -s security_tests -v
+python3 -m evaluation.gatemem_medical --plan
+bash scripts/run_gatemem.sh --run-dir runs/gatemem-medical-full
+```
