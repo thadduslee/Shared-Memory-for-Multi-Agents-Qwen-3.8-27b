@@ -158,7 +158,7 @@ class PrivacyContracts(unittest.TestCase):
 
     def test_evolution_overlay_inherits_all_inputs(self):
         before=self.core.read(self.p0,self.public)
-        self.proposal([self.public,self.private],{'updates':[{'id':self.public,'context':'private clue','tags':['secret']}],'edges':[]})
+        self.proposal([self.public,self.private],{'updates':[{'id':self.public,'context':'Public API information.','tags':['API']}],'edges':[]})
         overlay='enrichment:job:0'
         with self.assertRaises(AccessDenied):self.core.read(self.p0,overlay)
         self.core.read(self.p1,overlay)
@@ -166,7 +166,7 @@ class PrivacyContracts(unittest.TestCase):
         self.assertNotIn(overlay,[r['id'] for r in self.core.search(self.p0,'private clue')])
 
     def test_uncited_input_revocation_blocks_overlay_and_release(self):
-        self.proposal([self.public,self.private],{'updates':[{'id':self.public,'context':'derived'}],'edges':[]})
+        self.proposal([self.public,self.private],{'updates':[{'id':self.public,'context':'Public API information.'}],'edges':[]})
         self.policy('private',['issuer'])
         with self.assertRaises(AccessDenied):self.core.read(self.p1,'enrichment:job:0')
         with self.assertRaises(AccessDenied):self.core.release(self.p1,[self.public,self.private],{'used':[self.public]})
@@ -199,7 +199,7 @@ class PrivacyContracts(unittest.TestCase):
         with self.assertRaises(AccessDenied):self.core.process(self.p1,model,[self.private],'x',{})
 
     def test_delete_fans_out_and_cannot_resurrect(self):
-        self.proposal([self.private,self.public],{'updates':[{'id':self.public,'context':'derived'}],'edges':[]})
+        self.proposal([self.private,self.public],{'updates':[{'id':self.public,'context':'Public API information.'}],'edges':[]})
         self.core.delete(self.admin,'sec')
         for rid in [self.private,'enrichment:job:0']:
             with self.assertRaises(AccessDenied):self.core.read(self.p1,rid)

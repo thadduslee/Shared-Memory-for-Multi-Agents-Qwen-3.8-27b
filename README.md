@@ -200,6 +200,14 @@ full-input provenance, restricted enrichment overlays, processor approvals,
 revocation/deletion handling, and a standalone incremental GateMem evaluator.
 The legacy `AgenticMemorySystem` API remains unguarded; select the new API explicitly.
 
+The runtime now uses separate persistent memory and privacy SQLite vector stores,
+with exact conditional access bindings and task-scoped assignments. See
+[the implemented architecture and migration guide](PRIVACY_TWO_STORE.md) and
+[the medical authority policy](evaluation/gatemem_medical/AUTHORITY_POLICY.md).
+The original experiment directories are preserved; new local audits use new paths.
+See [the source assessment](analysis/two-store-implementation/ASSESSMENT.md) and
+[the local validation and all 118 dispositions](analysis/two-store-implementation/VALIDATION.md).
+
 See [the standalone runbook](evaluation/gatemem_medical/RUNBOOK.md) for the full
 579-query / 567-boundary medical experiment, model-service startup, tmux,
 resuming, artifacts, and deployment limits. The new evaluator does not execute

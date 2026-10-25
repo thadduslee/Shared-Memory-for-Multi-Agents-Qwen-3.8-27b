@@ -1,0 +1,41 @@
+{
+  "query_count": 118,
+  "role_counts": {
+    "nurse": 33,
+    "pharmacist": 23,
+    "reception": 5,
+    "scheduler": 42,
+    "social_worker": 14,
+    "lab_tech": 1
+  },
+  "episode_count": 20,
+  "unique_requester_episode_pairs": 81,
+  "explicit_relationship_count": 0,
+  "requester_prior_participation_count": 118,
+  "requester_at_boundary_count": 54,
+  "zero_authorized_base_memory_queries": 118,
+  "scope_counts_analyst_labels": {
+    "current contact routing": 19,
+    "active medication/home-care instructions and stopped medicines": 25,
+    "current contact routing and sharing/revocation status": 6,
+    "appointments, changes, arrival and applicable preparation instructions": 42,
+    "current return/call precautions": 12,
+    "transportation assistance and backup ride arrangements": 1,
+    "current clinical/laboratory summary for the involved care task": 2,
+    "monitoring tests and follow-up timing": 1,
+    "appointments, arrival/preparation": 3,
+    "procedure preparation or after-care instructions": 3,
+    "current care/follow-up instructions for the involved task": 2,
+    "appointments, arrival/preparation and current contact routing": 1,
+    "repeat-lab scheduling date (not unrestricted lab-result access)": 1
+  },
+  "source_run_code_matches_excluding_later_rejudge_script": true,
+  "input_sha256": {
+    "/home/thaddus/GateMem/bench/data/medical/episodes.jsonl": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+    "/home/thaddus/GateMem/bench/data/medical/checkpoints.jsonl": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+    "/home/thaddus/a-mem/runs/gatemem-medical-full-20261020-v3/official_predictions.jsonl": "324c7d837496726e194b5a8bb059a3846de542067b57854ffc033d9f9dc4ad2d",
+    "/home/thaddus/a-mem/runs/gatemem-medical-full-20261020-v3-gpt-4.1-openrouter/scores.jsonl": "7053b9365e75fd14ead47f570ab68be00306aae7b513b50cb4a4b6dccefc0d68"
+  },
+  "method": "Saved predictions plus chronological policy-only replay with HashEmbedder and evolution disabled in a temporary DB. No model calls, changed grants, or benchmark rerun. Authorization checks apply to base memories. No claims about counterfactual answer accuracy.",
+  "annotation_handling": "Utility labels select the failed cohort for retrospective audit only. No grading annotations enter the replay adapter, permissions, or memory."
+}

@@ -72,6 +72,7 @@ def export(output_dir, journal, scorer, manifest, expected_ids):
         'mode': 'independent-rejudge',
         'source': manifest['source'],
         'judge': manifest['judge'],
+        'scoring_sha256': manifest['scoring_sha256'],
         'coverage': {
             'expected_checkpoints': len(expected_ids),
             'rejudged_checkpoints': len(rows),
@@ -139,6 +140,7 @@ def main(argv=None):
             'official_predictions_sha256': digest_file(predictions_path),
         },
         'judge': {'provider': 'openrouter', 'base_url': base_url, 'model': model},
+        'scoring_sha256': digest_file(Path(__file__).with_name('scoring.py')),
     }
     journal = sqlite3.connect(output_dir / 'rejudge.sqlite')
     try:
@@ -151,7 +153,7 @@ def main(argv=None):
             if not args.resume:
                 raise ValueError('Rejudge output exists; use --resume or choose a new --output-dir')
             if json.loads(stored[0]) != manifest:
-                raise ValueError('Source predictions or judge configuration changed; choose a new --output-dir')
+                raise ValueError('Source predictions, judge configuration, or scoring changed; choose a new --output-dir')
         elif args.resume:
             raise ValueError('No saved rejudge state; omit --resume')
         else:

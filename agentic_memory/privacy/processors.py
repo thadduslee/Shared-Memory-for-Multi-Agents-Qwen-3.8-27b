@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import os
+from pathlib import Path
 import re
 import time
 import urllib.error
@@ -29,7 +30,8 @@ def parse_object(text):
 class HashEmbedder:
     """Deterministic test double, explicitly excluded from real evaluation."""
     processor_id = 'test:hash'
-    space_id = 'test-hash-v1'
+    space_id = 'test-hash-v1:sha256-word-lower:128:l2'
+    fingerprint = {'model': 'test-hash', 'revision': 'v1', 'dimensions': 128, 'preprocessing': 'unicode-word-lower:l2'}
 
     def encode(self, texts):
         result = []
@@ -52,8 +54,30 @@ class LocalEmbedder:
         os.environ.setdefault('HF_HUB_OFFLINE', '1')
         os.environ.setdefault('TOKENIZERS_PARALLELISM', 'false')
         from sentence_transformers import SentenceTransformer
-        self.model = SentenceTransformer(model_path or self.space_id,
-                                         device='cpu', local_files_only=True)
+        from huggingface_hub import snapshot_download
+        candidate = Path(model_path or '')
+        snapshot = candidate.resolve() if model_path and candidate.is_dir() else Path(
+            snapshot_download(model_path or self.space_id, local_files_only=True)).resolve()
+        # Fingerprint actual weights/tokenizer/config bytes, not just dimensions
+        # or a mutable model name. This is intentionally paid once at startup.
+        files = {}
+        for file in sorted(snapshot.rglob('*')):
+            if file.is_file() and file.suffix in {'.json', '.txt', '.safetensors', '.bin', '.model'}:
+                checksum = hashlib.sha256()
+                with file.open('rb') as handle:
+                    for chunk in iter(lambda: handle.read(1024*1024), b''):
+                        checksum.update(chunk)
+                files[str(file.relative_to(snapshot))] = checksum.hexdigest()
+        if not files: raise ValueError('No local embedding model files')
+        self.model = SentenceTransformer(str(snapshot), device='cpu', local_files_only=True)
+        import importlib.metadata
+        self.fingerprint = {'model': 'sentence-transformers/all-MiniLM-L6-v2',
+            'revision': snapshot.name, 'files': files,
+            'dimensions': self.model.get_sentence_embedding_dimension(),
+            'preprocessing': {'normalize_embeddings': True, 'max_seq_length': self.model.max_seq_length},
+            'implementation': {p: importlib.metadata.version(p) for p in
+                               ('sentence-transformers', 'transformers', 'tokenizers', 'torch')}}
+        self.space_id = 'embedding:' + hashlib.sha256(json.dumps(self.fingerprint, sort_keys=True).encode()).hexdigest()
 
     def encode(self, texts):
         return self.model.encode(list(texts), normalize_embeddings=True,
@@ -113,6 +137,6 @@ class ScriptedProcessor:
         self.response = response or {'updates': [], 'edges': []}
         self.calls = []
 
-    def complete(self, system, payload):
+    def complete(self, system, payload, *, schema=None):
         self.calls.append(payload)
         return self.response
