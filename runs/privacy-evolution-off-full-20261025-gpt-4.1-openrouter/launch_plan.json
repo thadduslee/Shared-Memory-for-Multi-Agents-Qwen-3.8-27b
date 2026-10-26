@@ -1,0 +1,16 @@
+{
+  "source_run": "/home/thaddus/a-mem/runs/privacy-evolution-off-full-20261025",
+  "source_sha256": {
+    "manifest.json": "605b3e4b403f90002a894b73d5587a892deb7909b2764fb7308ba9bfbb384cf5",
+    "official_predictions.jsonl": "9bce183c86e7f2c6f66c24d7237ded3d6ab6cb9083cca924a1a13192d1930c0a",
+    "scores.jsonl": "8f8b902323bddb54538042767b473813adc4f0ca708eab492127d838e569cfa2",
+    "summary.json": "7ad737fb2dca8e6748b8250ad234f03c9794cb6ed392d1170864e1b09a74b842"
+  },
+  "judge_model": "openai/gpt-4.1",
+  "judge_endpoint": "https://openrouter.ai/api/v1",
+  "expected_checkpoints": 579,
+  "payload": "Per-checkpoint question, requester identity and role, saved action, prose answer, all structured answer fields, judge rubric and restricted/deleted target patterns. Retrieval memory text is not included in the judge prompt.",
+  "status": "Approved by user; launched in tmux amem-gpt41-rejudge:scoring.",
+  "approval_recorded_at_utc": "2026-10-25T06:57:48.650620+00:00",
+  "approval": "yes i approve sending the answers to openrouter for gpt 4.1 scoring"
+}

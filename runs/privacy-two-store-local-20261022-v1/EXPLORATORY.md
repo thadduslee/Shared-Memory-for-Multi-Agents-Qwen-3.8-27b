@@ -1,0 +1,1 @@
+Exploratory development replay before searchable field notes inherited information scope. All 118 remain blocked in this version. Code changed during this run; the end-of-run hashes do not identify its loaded implementation. Do not use this run as a final implementation comparison. Preserved for transparency.

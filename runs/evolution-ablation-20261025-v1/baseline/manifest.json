@@ -1,0 +1,39 @@
+{
+  "dataset_digest": "d6a7cbce087851081bc8c4ccbe328329481aed15d256cb9b064e3ef6e5a31078",
+  "code_digest": "7318f24b286f1049bcc0dbdbb6df930b0c217c3d7a4f6e8a37908ac2bf6cee12",
+  "embedding_fingerprint": {
+    "model": "sentence-transformers/all-MiniLM-L6-v2",
+    "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+    "files": {
+      "1_Pooling/config.json": "4be450dde3b0273bb9787637cfbd28fe04a7ba6ab9d36ac48e92b11e350ffc23",
+      "config.json": "953f9c0d463486b10a6871cc2fd59f223b2c70184f49815e7efbcab5d8908b41",
+      "config_sentence_transformers.json": "061ca9d39661d6c6d6de5ba27f79a1cd5770ea247f8d46412a68a498dc5ac9f3",
+      "model.safetensors": "53aa51172d142c89d9012cce15ae4d6cc0ca6895895114379cacb4fab128d9db",
+      "modules.json": "84e40c8e006c9b1d6c122e02cba9b02458120b5fb0c87b746c41e0207cf642cf",
+      "sentence_bert_config.json": "fc1993fde0a95c24ec6c022539d41cf6e2f7c9721e5415d6fb6897472a9cd4b7",
+      "special_tokens_map.json": "303df45a03609e4ead04bc3dc1536d0ab19b5358db685b6f3da123d05ec200e3",
+      "tokenizer.json": "be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037",
+      "tokenizer_config.json": "acb92769e8195aabd29b7b2137a9e6d6e25c476a4f15aa4355c233426c61576b",
+      "vocab.txt": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3"
+    },
+    "dimensions": 384,
+    "preprocessing": {
+      "normalize_embeddings": true,
+      "max_seq_length": 256
+    },
+    "implementation": {
+      "sentence-transformers": "5.7.0",
+      "transformers": "5.14.1",
+      "tokenizers": "0.22.2",
+      "torch": "2.13.0"
+    }
+  },
+  "models": {
+    "embedding": "embedding:70fea8fd9a5e8d38b2e92a2c8c1be7bd30d6f12c8e1eb9e3b7c22fcdeb3126df",
+    "memory": "Qwen/Qwen3.8-27B",
+    "judge": "Qwen/Qwen3-14B"
+  },
+  "offline": false,
+  "evolution": false,
+  "schedule": "episode-id-then-turn-position-v2-with-data-tails"
+}

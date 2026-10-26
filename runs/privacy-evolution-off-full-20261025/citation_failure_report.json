@@ -1,0 +1,15 @@
+{
+  "boundary": 83,
+  "completed_boundaries": 82,
+  "scored_checkpoints": 90,
+  "reproduced_citation_error": {
+    "supplied_id": "note:obs:7694f8d9701b6155a7ad104e:t086:contact",
+    "generated_id": "note:obs:7694f8d9701b6155a7ad104e:t086"
+  },
+  "cause": "Model dropped the field projection suffix; runtime rejected a citation outside the supplied evidence.",
+  "fix": "Dynamic schema enum constrains used_record_ids to exact evidence IDs; independent validation and full-input release checks remain.",
+  "isolated_failed_boundary_probe": "passed",
+  "tests_passed": 99,
+  "replacement_run": "/home/thaddus/a-mem/runs/privacy-evolution-off-full-20261025-v2",
+  "replacement_policy": "Fresh full schedule; no scores merged across code versions."
+}

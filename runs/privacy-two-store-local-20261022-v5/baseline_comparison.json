@@ -1,0 +1,32 @@
+{
+  "baseline_utility_dispositions": {
+    "correct": 70,
+    "answer": 14,
+    "no_memory": 5,
+    "empty_retrieval": 120,
+    "refuse": 1
+  },
+  "baseline_utility_nonempty_retrieval": 90,
+  "local_utility_nonempty_retrieval": 209,
+  "local_cohort_dispositions": {
+    "access_blocker_fixed": 117,
+    "still_unresolved": 1
+  },
+  "local_literal_retrieval_patterns": {
+    "baseline": {
+      "literal_include_hits": 223,
+      "literal_include_total": 604,
+      "queries_with_all_literal_patterns": 70,
+      "meaning": "Retrospective regex matches on concatenated retrieved evidence, not semantic completeness or answer quality."
+    },
+    "local": {
+      "literal_include_hits": 505,
+      "literal_include_total": 604,
+      "queries_with_all_literal_patterns": 163,
+      "meaning": "Retrospective regex matches on concatenated retrieved evidence, not semantic completeness or answer quality."
+    }
+  },
+  "baseline_real_model_accuracy": 0.3333333333333333,
+  "local_real_model_accuracy": null,
+  "comparability": "The original run used MiniLM, Qwen and evolution; the local replay uses HashEmbedder and no evolution or answer generation. Access and literal retrieval coverage are reported without claims of improved semantic retrieval, utility accuracy or independently measured privacy."
+}

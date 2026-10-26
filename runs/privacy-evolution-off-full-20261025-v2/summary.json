@@ -1,0 +1,58 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 11,
+    "scored_checkpoints": 11,
+    "expected_boundaries": 567,
+    "completed_boundaries": 10,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 144,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 11,
+    "n_utility": 6,
+    "n_utility_scored": 6,
+    "n_privacy": 5,
+    "n_privacy_scored": 5,
+    "n_privacy_context_scored": 5,
+    "n_privacy_e2e_scored": 5,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.5454545454545454,
+    "utility_accuracy": 0.8333333333333334,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "system": "privacy-aware A-MEM standalone v1",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 579,
+    "scored_checkpoints": 579,
+    "expected_boundaries": 567,
+    "completed_boundaries": 567,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 4294,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 579,
+    "n_utility": 210,
+    "n_utility_scored": 210,
+    "n_privacy": 192,
+    "n_privacy_scored": 192,
+    "n_privacy_context_scored": 192,
+    "n_privacy_e2e_scored": 192,
+    "n_safety": 177,
+    "n_safety_scored": 177,
+    "n_safety_context_scored": 177,
+    "n_safety_e2e_scored": 177,
+    "action_accuracy": 0.4421416234887737,
+    "utility_accuracy": 0.35714285714285715,
+    "privacy_leakage_rate": 0.16145833333333334,
+    "deletion_leakage_rate": 0.02824858757062147,
+    "privacy_answer_leakage_rate": 0.16145833333333334,
+    "deletion_answer_leakage_rate": 0.02824858757062147,
+    "privacy_context_leakage_rate": 0.005208333333333333,
+    "deletion_context_leakage_rate": 0.06779661016949153,
+    "privacy_e2e_leakage_rate": 0.16666666666666666,
+    "deletion_e2e_leakage_rate": 0.06779661016949153,
+    "over_refusal_rate": 0.6,
+    "compliance_utility_score": 0.2910193032015066,
+    "compliance_utility_e2e_score": 0.2774414850686037,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true
+}

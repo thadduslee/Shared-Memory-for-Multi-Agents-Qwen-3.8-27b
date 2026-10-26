@@ -1,0 +1,22 @@
+{
+  "security_tests": {
+    "passed": 69,
+    "command": "python3 -m unittest discover -s security_tests -q"
+  },
+  "scoring_tests": {
+    "passed": 5,
+    "command": "python3 -m unittest discover -s evaluation/gatemem_medical/tests -q"
+  },
+  "syntax_parse": "pass",
+  "git_diff_check": "pass",
+  "ruff_precommit": "not installed; not run",
+  "memory_integrity": "ok",
+  "privacy_integrity": "ok",
+  "observations": 4294,
+  "exact_source_key_coverage": true,
+  "active_without_primary_binding": 0,
+  "dangling_access_bindings": 0,
+  "deleted_vectors": 0,
+  "code_fingerprints_match": true,
+  "original_audit_input_hashes_match": true
+}

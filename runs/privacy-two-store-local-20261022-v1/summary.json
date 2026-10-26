@@ -1,0 +1,57 @@
+{
+  "mode": "local-policy-and-retrieval-audit",
+  "embedding": "deterministic HashEmbedder test double",
+  "evolution": false,
+  "model_calls": 0,
+  "queries": 579,
+  "boundaries": 567,
+  "source_turns": 4294,
+  "cohort_118_dispositions": {
+    "still_unresolved": 118
+  },
+  "categories": {
+    "utility": {
+      "queries": 210,
+      "nonempty_retrieval": 90,
+      "context_privacy_flags_auxiliary": 0,
+      "context_deletion_flags_auxiliary": 0
+    },
+    "privacy": {
+      "queries": 192,
+      "nonempty_retrieval": 29,
+      "context_privacy_flags_auxiliary": 4,
+      "context_deletion_flags_auxiliary": 0
+    },
+    "safety": {
+      "queries": 177,
+      "nonempty_retrieval": 30,
+      "context_privacy_flags_auxiliary": 0,
+      "context_deletion_flags_auxiliary": 12
+    }
+  },
+  "answer_quality": "not_measured",
+  "real_model_utility_accuracy": null,
+  "seconds": 197.46866321610287,
+  "limitations": "Access coverage is not answer correctness. Auxiliary literal context checks are neither an independent privacy judgment nor semantic retrieval validation.",
+  "input_hashes": {
+    "/home/thaddus/GateMem/bench/data/medical/episodes.jsonl": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+    "/home/thaddus/GateMem/bench/data/medical/checkpoints.jsonl": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+    "analysis/staff-permission-audit/queries.jsonl": "083f24dcf50c8f1ea9348cfa4d6c6b1ffec104f7718706f89964f2853db9847c"
+  },
+  "code_hashes": {
+    "agentic_memory/privacy/__init__.py": "9edea07f98765111840b8406da81d97955335e89cf67db50b645d850d07c5ef4",
+    "agentic_memory/privacy/ingestion.py": "ddd0616c5418c7119dd83b8fe1b474e068c2318ae5dab56546b2054c32f04567",
+    "agentic_memory/privacy/migrate.py": "8e3216021432d32f22361d35e85f54e695be7a4b76e7b0014bb7e1cb652d7833",
+    "agentic_memory/privacy/processors.py": "550c811d23ec7e4e95f9a38793d0070558133d63cb4d42396142e40e3fff392b",
+    "agentic_memory/privacy/storage.py": "28e8177e8f5cfcb68405b38ce19356db6cbd142f9bd59178b350c943b6f027e7",
+    "agentic_memory/privacy/system.py": "075eeb4469fd6315e4b623369a9769730630bba9bae5fa75d55a7b8fa29d04f4",
+    "evaluation/gatemem_medical/__init__.py": "58062afff86fdbe25a0df36a3948cd42bcf2776914a7f530c070422d3bbf5b22",
+    "evaluation/gatemem_medical/__main__.py": "74fff10eb2bd330c92909b27a5a9ae84f41b3f268a5c04f51f849276919f19c6",
+    "evaluation/gatemem_medical/access_audit.py": "a17d76090fb52b4d4c1c5e6cc878f4fed3c8c69734bd41de04ae4198f593503b",
+    "evaluation/gatemem_medical/adapter.py": "1c33d3740e306941b29a772881011313113f9a40ed47c11654989debb6582ac1",
+    "evaluation/gatemem_medical/operational.py": "e22959480191c2858073b862ceb367b8c74f6d68d61889f93c3b479a582df049",
+    "evaluation/gatemem_medical/rejudge.py": "96f47b4dc62211b48e4542dfd44eb1a9025d52ee8d907c9cdb00995b78090d0e",
+    "evaluation/gatemem_medical/runner.py": "a8303cf44d5eadf4ccbd6596284601a1eb71045f6ed442d4c37b7d416ba6f0f7",
+    "evaluation/gatemem_medical/scoring.py": "06e428c9da6ab449e66e20f38e533b1d2ac0e76d6077cbc0143e7b1ead3a85e4"
+  }
+}

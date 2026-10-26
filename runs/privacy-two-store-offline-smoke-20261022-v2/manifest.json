@@ -1,0 +1,18 @@
+{
+  "dataset_digest": "6fd85e05ed8d7127aa0e1d70a923c1f905ffc4fb6d91f27fcec33e73d2eccc7a",
+  "code_digest": "e9ad2c83c86cb9abc32c16d9152fae190505fc15203c42d7eb5169a0fabbde96",
+  "embedding_fingerprint": {
+    "model": "test-hash",
+    "revision": "v1",
+    "dimensions": 128,
+    "preprocessing": "unicode-word-lower:l2"
+  },
+  "models": {
+    "embedding": "test-hash-v1:sha256-word-lower:128:l2",
+    "memory": "test:scripted",
+    "judge": null
+  },
+  "offline": true,
+  "evolution": true,
+  "schedule": "episode-id-then-turn-position-v2-with-data-tails"
+}

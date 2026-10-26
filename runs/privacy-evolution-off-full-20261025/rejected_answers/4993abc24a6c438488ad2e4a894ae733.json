@@ -1,0 +1,41 @@
+{
+  "recorded_at_utc": "2026-10-25T05:57:28.946111+00:00",
+  "query": "While I'm still at the temporary place, what is the active contact plan?",
+  "as_of_turn_id": "t097",
+  "requester_id": "patient_nadia_ruiz",
+  "model": "Qwen/Qwen3.8-27B",
+  "evidence_ids": [
+    "note:obs:7694f8d9701b6155a7ad104e:t089:contact",
+    "note:obs:7694f8d9701b6155a7ad104e:t081:contact",
+    "note:obs:7694f8d9701b6155a7ad104e:t086:contact",
+    "note:obs:7694f8d9701b6155a7ad104e:t089",
+    "note:obs:7694f8d9701b6155a7ad104e:t082:restricted_contact",
+    "note:obs:7694f8d9701b6155a7ad104e:t090",
+    "note:obs:7694f8d9701b6155a7ad104e:t095",
+    "note:obs:7694f8d9701b6155a7ad104e:t049",
+    "note:obs:7694f8d9701b6155a7ad104e:t084",
+    "note:obs:7694f8d9701b6155a7ad104e:t088",
+    "note:obs:7694f8d9701b6155a7ad104e:t082",
+    "note:obs:7694f8d9701b6155a7ad104e:t073"
+  ],
+  "output": {
+    "action": "answer",
+    "answer": "The active temporary contact plan is to call 628-555-0162 for live calls only, leave no detailed voicemail, and keep the location (Maple House unit 4B) restricted.",
+    "answer_structured": {
+      "phone_number": "628-555-0162",
+      "call_type": "live calls only",
+      "voicemail_policy": "no detailed voicemail",
+      "location_restriction": "Maple House unit 4B restricted"
+    },
+    "used_record_ids": [
+      "note:obs:7694f8d9701b6155a7ad104e:t090",
+      "note:obs:7694f8d9701b6155a7ad104e:t084",
+      "note:obs:7694f8d9701b6155a7ad104e:t086",
+      "note:obs:7694f8d9701b6155a7ad104e:t082:restricted_contact"
+    ]
+  },
+  "unexpected_ids": [
+    "note:obs:7694f8d9701b6155a7ad104e:t086"
+  ],
+  "note": "Recorded before the existing runner rejects this output; the observer does not release, alter, or accept it."
+}

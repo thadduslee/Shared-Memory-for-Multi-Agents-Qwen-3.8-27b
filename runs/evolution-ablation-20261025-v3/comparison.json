@@ -1,0 +1,113 @@
+{
+  "scope": {
+    "expected_checkpoints": 56,
+    "official_predictions": 56,
+    "scored_checkpoints": 56,
+    "expected_boundaries": 52,
+    "completed_boundaries": 52,
+    "expected_source_turns": 431,
+    "ingested_source_turns": 431,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "baseline": "/home/thaddus/a-mem/runs/evolution-ablation-20261025-v3/baseline",
+  "evolved": "/home/thaddus/a-mem/runs/evolution-ablation-20261025-v3/evolved",
+  "matching_controls": {
+    "dataset_digest": "d6a7cbce087851081bc8c4ccbe328329481aed15d256cb9b064e3ef6e5a31078",
+    "code_digest": "4aa4fae8111b24f50d3c1034ce4801afef4ebb8a4b4113050bbd7b78adad6aeb",
+    "models": {
+      "embedding": "embedding:70fea8fd9a5e8d38b2e92a2c8c1be7bd30d6f12c8e1eb9e3b7c22fcdeb3126df",
+      "memory": "Qwen/Qwen3.8-27B",
+      "judge": "Qwen/Qwen3-14B"
+    }
+  },
+  "metrics": {
+    "utility_accuracy": {
+      "baseline": 0.85,
+      "evolved": 0.8,
+      "delta": -0.04999999999999993
+    },
+    "privacy_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "deletion_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "privacy_context_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "deletion_context_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "privacy_e2e_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "deletion_e2e_leakage_rate": {
+      "baseline": 0.0,
+      "evolved": 0.0,
+      "delta": 0.0
+    },
+    "action_accuracy": {
+      "baseline": 0.6607142857142857,
+      "evolved": 0.6607142857142857,
+      "delta": 0.0
+    },
+    "compliance_utility_score": {
+      "baseline": 0.85,
+      "evolved": 0.8,
+      "delta": -0.04999999999999993
+    },
+    "compliance_utility_e2e_score": {
+      "baseline": 0.85,
+      "evolved": 0.8,
+      "delta": -0.04999999999999993
+    }
+  },
+  "paired_utility": {
+    "n": 20,
+    "baseline_correct": 17,
+    "evolved_correct": 16,
+    "wins": 0,
+    "losses": 1,
+    "ties": 19,
+    "mcnemar_exact_two_sided_p": 1.0
+  },
+  "paired_appointment_utility": {
+    "n": 6,
+    "baseline_correct": 4,
+    "evolved_correct": 4,
+    "wins": 0,
+    "losses": 0,
+    "ties": 6,
+    "mcnemar_exact_two_sided_p": 1.0
+  },
+  "new_answer_leakage_checkpoints": [],
+  "evolution": {
+    "jobs": {
+      "applied": 131
+    },
+    "attempts": 131,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "rejection_reasons": {},
+    "noop_jobs": 8,
+    "boundary_28_complete": true
+  },
+  "observed_utility_gain_without_new_answer_leaks": false,
+  "limits": [
+    "Two selected episodes; this does not establish general improvement or prove absence of privacy leakage.",
+    "Single generation per arm at temperature zero; model and judge outputs may still vary.",
+    "Context exposure uses auxiliary pattern checks; answer disclosure uses the LLM judge."
+  ]
+}
