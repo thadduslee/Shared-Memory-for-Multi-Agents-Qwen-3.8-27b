@@ -1,0 +1,232 @@
+{
+  "at": "2026-10-30T06:17:06.988036+00:00",
+  "state": "skipped",
+  "stage": "permission permission-job:c211c4c8c4439ae1f77a2b0650457c1e8c9776b38f9200b2808e899158f21aec",
+  "error_type": "PermissionRepairExhausted",
+  "error": "Permission update paused after 3 rejected proposals: Focused semantic decision exhausted: Authorization gap review must diagnose every enumerated candidate",
+  "details": {
+    "job_id": "permission-job:c211c4c8c4439ae1f77a2b0650457c1e8c9776b38f9200b2808e899158f21aec",
+    "rejections": 3,
+    "limit": 3,
+    "last_validation": {
+      "authorization_deferrals": [],
+      "authorization_gap_reviews": [],
+      "binding_omissions": [],
+      "candidate_binding_decisions": [
+        {
+          "candidate_id": "fact:f44f62f5fd9842e6bd7f6b7e16c0a28af815f28b17d84fe2b6dab5628bd5d4bb",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:8905e79a54619a9e86c1a753fef268ba01c51ba269f24c1ac21934cb517be1cb",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact describes symptoms (spotting and cramping) and a referral to the early pregnancy clinic. The committed assignment's information_scope is strictly 'appointment_logistics'. While the referral is related to an appointment, '"
+        },
+        {
+          "candidate_id": "fact:e37b30c3697a293adb3cdb8416b780e3d1f86f9111468b7559ee3e1a5756268c",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:06bf7473191e26f12bf7aec2e46b82775c847eb19b09e21c5ad8c5f39277847d",
+          "outcome": "bound",
+          "reason": "The candidate quote 'Only logistics.' is a direct, explicit instruction from patient_elena_park (the authority) limiting the scope of information sharing to logistics. The committed assignment (grant:daba94985f282d31f1469eec) correctly maps"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:b67c0918b6da4cfb50a1caf1f541d9cd9f643d66fe77ad45b9064ccd0223a603",
+          "outcome": "bound",
+          "reason": "The candidate quote explicitly authorizes the recipient (family_linda_park, referred to as 'She') to receive 'appointment times and parking details' (appointment_logistics) while explicitly denying access to 'results, medications, or notes'"
+        },
+        {
+          "candidate_id": "fact:982137ef44d1121f36b156ece0b39bd9f4f0f87c85567189576d02c405cb74eb",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:66328ab8a26eaa313c1f0c9068e8e530f12bc8c06692f7748236b4e48f584742",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:75233b678c939b2ea6f484cd376846864dec65378b8bd57e39311866635aac9e",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact is a date of birth (demographics), which falls outside the assigned information_scope of 'appointment_logistics'."
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:9b7b1ea5f8e928f770a5bb097f5a1624d48971f8b84a436ce76fb27679ea93e9",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact concerns contact information and communication preferences (specifically a phone number and a restriction on its use for pregnancy-related callbacks). The committed assignment's information_scope is strictly 'appointment_"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:bb52becedd20095150d5c93197cec61d690bab77a66951c1813141aeaece9bff",
+          "outcome": "restricted",
+          "reason": "The candidate fact is an instruction regarding a confidential callback number and a prohibition on voicemail content mentioning pregnancy. The committed assignment scope is 'appointment_logistics'. While a callback number could be part of '"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:74ec07d0b5188dcf62dc1826c0b2527a20346332d4695ebb21c078eba9603059",
+          "outcome": "restricted",
+          "reason": "The candidate fact is an instruction regarding voicemail content (specifically, not to mention pregnancy). The committed assignment scope is 'appointment_logistics'. Voicemail content is not appointment logistics. Furthermore, restriction:3"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:7aff6996dd71d27b3a795e2033df406c1ae1c480250eef231d675508ae6acedb",
+          "outcome": "restricted",
+          "reason": "The candidate quote explicitly restricts voicemail content (no pregnancy, ultrasound, or lab details). The assignment grants family_linda_park access to appointment_logistics, but restriction:34ccd3319e1d2a942e1460f9 denies family_linda_pak"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:e103a9270b5a9a40be3f156600bf7289629b80a97b18ba758be3ec80936094d5",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact concerns insurance and billing preferences (BlueCross Silver HMO, electronic statements), which falls under the 'billing' or 'insurance' topic. The committed assignment for family_linda_park has an information_scope of '1"
+        },
+        {
+          "candidate_id": "fact:dbab26048ea81fb80b8a6f4eab9288c17313411a853382e06ee3bab1b8e463bd",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:b69fd53755f97b6c9efb030710b789e3e025c448b82bdd42aab32aa9de564c01",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:db8daaa2d5a2be1a26e6ec62872a0bde2bda090de45734cce07935d41c997181",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact describes symptoms (spotting/bleeding), which falls under clinical information. The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. Therefore, the fact is outside the permitted '"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:24f09f904511df7f4d80100b41e7fe7eee99e93e18cf7da84bcd47062f59cd0a",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact describes hygiene and bleeding symptoms (changing liners), which falls under clinical or symptom information. The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. The fact does p "
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:7107be0ddb7cc0cd31cabd730b123db0e60d996afaeaad4826bba467541f830d",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact describes bleeding symptoms ('No soaking through pads'), which falls under clinical or symptom information. The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. Since the fact's '"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:f5609e6d31b2eb9bcbfff73ed7d8014fc6a74996db8ac60b9ce4032e61b7a1ed",
+          "outcome": "restricted",
+          "reason": "The candidate fact 'No shoulder pain or fever' is a clinical symptom observation. The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. Furthermore, active restrictions explicitly deny family_linda_p"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:6f8678f7c47dadc08064aa6e10fa2b3130d4766228df8c63e84e67222377e7b5",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact describes symptoms (cramping, pain), which falls under clinical information. The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. Therefore, the candidate fact is outside the in-s"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:7dabd7f70c32d488e48c2b87ae24ecdb1915c64aaff5d713e1adde03e20fba17",
+          "outcome": "scope_or_subject_excluded",
+          "reason": "The candidate fact is a pain assessment ('About four out of ten'), which falls under clinical information (e.g., clinical_notes or clinical_results). The active assignment for family_linda_park is strictly limited to 'appointment_logistics'"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:f6d80538c176243f1716cf6022d0b0b3a248cce28a3b64e14803cf2542f8a0f2",
+          "outcome": "restricted",
+          "reason": "The candidate fact concerns the patient's medications (prenatal vitamin, levothyroxine, ibuprofen). The committed assignment for family_linda_park is strictly limited to 'appointment_logistics'. Furthermore, restriction:26862ab902d29cb83963"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:382bcb2ff8cbfb930e3a590b8df8b1d05d107ce87857da0eeda704f02e8fe07f",
+          "outcome": "restricted",
+          "reason": "The candidate fact concerns patient_elena_park's medication use (ibuprofen), which falls under the 'medications' information scope. The active assignment for family_linda_park is strictly limited to 'appointment_logistics'. Furthermore, an "
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:21597616530bca40a9113459614caafa7890b029f5bddd2c3a715c360c07d2be",
+          "outcome": "restricted",
+          "reason": "The candidate fact concerns a sulfa antibiotic allergy (medications/allergies). The committed assignment scope is strictly 'appointment_logistics'. Furthermore, an active restriction explicitly denies family_linda_park access to 'medication"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:e64317323f583828d75a1dd1e3d5b3001dbd2820b9b119f94941f365157e18ca",
+          "outcome": "restricted",
+          "reason": "The candidate quote is a broad privacy instruction to keep 'clinical parts' between the patient and the care team. The proposed assignment grants family_linda_park access to 'appointment_logistics'. While appointment logistics are not 'meds"
+        },
+        {
+          "candidate_id": "fact:23d6112dfb74a3e26f9d963014ca0037e7947f1701ca0461cc18a0b2e1967206",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:5993370ce7e2625e89b2358a7478f5f96801ac1c2298866f355e106bba221d2c",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:2a1c02204e7d72b7b4a184b7dcb8a1d8003fa9abb2aef3ca5cb2ebbcb3bd214b",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:363b8be6a56f09cdff678274a6af092d479102786b59cec4f012c686a49e1d6c",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "candidate_id": "fact:becb8032c34c3416a4000895e48d9bcc51b3e1a8873bf604ddf6ec3aedfbf863",
+          "outcome": "no_applicable_assignment"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:0c0277495aaea906b9d34fbfa28d049746202a6ce9ba810a6d84e8d4a96978af",
+          "outcome": "restricted",
+          "reason": "The candidate fact is a general front-desk caution about verifying identifiers for same-surname patients. It does not contain or derive any specific appointment logistics for patient_elena_park. Furthermore, the candidate's source context ("
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:6f3e98b916c73f5f44490add2e93da5426c371a56c133ff8233c15a642d3b72d",
+          "outcome": "restricted",
+          "reason": "The candidate fact is a clinical confidentiality and communication instruction (callback number, portal messaging for detailed updates) added by social work. The committed assignment scope is strictly 'appointment_logistics'. The candidate,"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:ef5dbdd2ef5bb53dea1129fe6e8ee386b1c313a59c9358cfadbb211ebd0b491d",
+          "outcome": "restricted",
+          "reason": "The candidate fact describes clinical symptoms (bleeding, cramping) and ultrasound findings, which fall under clinical_notes and clinical_results. The active assignment for family_linda_park is strictly limited to 'appointment_logistics'. A"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:c7c1f3a294ba796f3762628ca68fdc5daa501643e1d5fefc761c8a13f4c90df9",
+          "outcome": "restricted",
+          "reason": "The candidate fact is a diagnostic result (ED ultrasound showing a gestational sac). The committed assignment to family_linda_park is strictly limited to 'appointment_logistics'. Diagnostic results fall under 'clinical_results', which is an"
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:e3a1592df682abf6f36a0d0ceb8e4241d98cb5663c8c48caedc9434cf60a6a28",
+          "outcome": "bound",
+          "reason": "The candidate quote 'Please keep the clinical details private. She can help me get to the appointments, but that's all.' is attributed to patient_elena_park. The assignment grants family_linda_park access to 'appointment_logistics' for the "
+        },
+        {
+          "assignment_id": "grant:daba94985f282d31f1469eec",
+          "candidate_id": "fact:cc4b661c7cb956ed0df7e832f255906a0dd8a2cee91708e26ad668a66d3b5b64",
+          "outcome": "bound",
+          "reason": "The candidate quote explicitly authorizes the recipient (family_linda_park) to assist with appointment logistics ('get to the appointments') and explicitly limits the scope to that activity ('but that's all'). This matches the assigned 'in_"
+        }
+      ],
+      "details": {
+        "key": "authorization-gaps",
+        "stage": "authorization_gap_review"
+      },
+      "elapsed_s": 0.017,
+      "error": "PermissionProposalRejected",
+      "extraction": {
+        "attempts": 1,
+        "body": "{\"accepted_segments\":{\"0\":{\"index\":0,\"kind\":\"instruction\",\"reason\":\"The segment is a direct request from the patient to maintain confidentiality of clinical details. It is an instruction to the care team. It replaces the earlier instruction 'Please keep the clinical parts between me and the care team' as it is a more specific and recent directive in the same context.\",\"relationships\":[{\"evidence_quote\":\"Please keep the clinical details private.\",\"kind\":\"replaces\",\"target_id\":\"fact:e64317323f583828d75a1dd1e3d5b3001dbd2820b9b119f94941f365157e18ca\"}],\"subject\":\"patient_elena_park\",\"subject_quote\":\"Please keep the clinical details private.\",\"subject_source\":\"permission-source:8523c0d46e5cd333507a09bb57ced576726139de96ee81dd34721b18c9e274a5\",\"topics\":[\"privacy\",\"clinical_information\"]},\"1\":{\"index\":1,\"kind\":\"instruction\",\"reason\":\"The segment is an instruction defining the scope of access for a family member (Linda Park). It limits her role to logistical help with appointments. It replaces the earlier, more detailed instruction 'She can hear appointment times and parking details for now, but not my results, medications, or notes' as it is a subsequent, summarizing directive in the same conversation.\",\"relationships\":[{\"evidence_quote\":\"She can help me get to the appointments, but that's all.\",\"kind\":\"replaces\",\"target_id\":\"fact:b67c0918b6da4cfb50a1caf1f541d9cd9f643d66fe77ad45b9064ccd0223a603\"}],\"subject\":\"patient_elena_park\",\"subject_quote\":\"She can help me get to the appointments, but that's all.\",\"subject_source\":\"permission-source:8523c0d46e5cd333507a09bb57ced576726139de96ee81dd34721b18c9e274a5\",\"topics\":[\"privacy\",\"family_access\",\"logistics\"]}},\"candidate_count\":2,\"errors\":[],\"segment_count\":2}",
+        "status": "complete"
+      },
+      "model_elapsed_s": 0,
+      "new_facts": [],
+      "reason": "Focused semantic decision exhausted: Authorization gap review must diagnose every enumerated candidate",
+      "task_access_assessments": [],
+      "usage": null
+    },
+    "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+  },
+  "unresolved_access_hold": true,
+  "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+}

@@ -1,0 +1,427 @@
+{
+  "mode": "isolated causal-prefix scripted semantic decisions",
+  "limitations": [
+    "Not real-model extraction/grant accuracy.",
+    "Retrieval coverage uses explicit test assertions, not benchmark gold labels.",
+    "Stage times are local scripted test overhead, not model latency.",
+    "Final answer accuracy is unmeasured; only evidence release is exercised.",
+    "Deletion intentionally queues a protected reassessment; that hold is retained."
+  ],
+  "original_run": {
+    "job_status_counts": {
+      "complete": 781,
+      "skipped": 6
+    },
+    "skipped_jobs": [
+      {
+        "job_id": "permission-job:e0ae67db4cb6edc0a63383e8f942695addac1e130d43fa29ac51f5627f6c489e",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "reason": "New task facts require independent scope and restriction checks for every allowed task recipient"
+      },
+      {
+        "job_id": "permission-job:5f7ac16e520808505e004b1bf0b3ea9bf9642f5420de992afbb24ec00b0f51b4",
+        "compartment": "encounter:77db0d6ff0a60ff346097305",
+        "reason": "Task recipient binding status must match their own available facts"
+      },
+      {
+        "job_id": "permission-job:f1687fd6ef6d7edb7507b71a410439b0ad44c5c53c1fc725a300ee3dd496ce65",
+        "compartment": "encounter:77db0d6ff0a60ff346097305",
+        "reason": "Fact recipient assessment names an unknown assignment"
+      },
+      {
+        "job_id": "permission-job:e8f0db9a04d199dd358f71aeea4ed668a23aa3b125297ff6a8dce6a802f32b9b",
+        "compartment": "encounter:2b4b3452ed79a374dee4b6b9",
+        "reason": "Restrictions are immutable; supersede with a new ID"
+      },
+      {
+        "job_id": "permission-job:6813865421c97aa3361519b789c8338e5092a5c55a4320949d1c5d5b9b4c0f66",
+        "compartment": "encounter:2b4b3452ed79a374dee4b6b9",
+        "reason": "Task recipient binding status must match their own available facts"
+      },
+      {
+        "job_id": "permission-job:dba1675db4cc9ce1132a383eb7991b8edcc057f9fd238f5f1295ec83c03e5b62",
+        "compartment": "encounter:2b4b3452ed79a374dee4b6b9",
+        "reason": "Task assignment requires matching established involvement"
+      }
+    ],
+    "held_compartments": 3,
+    "skip_reason_counts": {
+      "New task facts require independent scope and restriction checks for every allowed task recipient": 1,
+      "Task recipient binding status must match their own available facts": 2,
+      "Fact recipient assessment names an unknown assignment": 1,
+      "Restrictions are immutable; supersede with a new ID": 1,
+      "Task assignment requires matching established involvement": 1
+    }
+  },
+  "probes": {
+    "omitted_medication_plan": {
+      "source_events": 2,
+      "extraction_receipts": 2,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 2,
+      "bound_candidates": 2,
+      "active_assignments": 1,
+      "failure_holds": 0,
+      "binding_decisions": 3,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 1,
+          "elapsed_s": 0.0717883687466383
+        },
+        "extract_candidates": {
+          "calls": 2,
+          "elapsed_s": 0.05732257664203644
+        },
+        "candidate_binding": {
+          "calls": 2,
+          "elapsed_s": 0.011747308075428009
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 1
+      },
+      "no_assignment_decisions": 1,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 2,
+      "expected_evidence_items": 6,
+      "retrieved_expected_items": 6,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "late_grant_after_window": {
+      "source_events": 9,
+      "extraction_receipts": 9,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 3,
+      "bound_candidates": 3,
+      "active_assignments": 1,
+      "failure_holds": 0,
+      "binding_decisions": 27,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 8,
+          "elapsed_s": 0.5951747437939048
+        },
+        "extract_candidates": {
+          "calls": 9,
+          "elapsed_s": 0.1231672577559948
+        },
+        "candidate_binding": {
+          "calls": 3,
+          "elapsed_s": 0.01986074075102806
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 24
+      },
+      "no_assignment_decisions": 24,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 3,
+      "expected_evidence_items": 3,
+      "retrieved_expected_items": 3,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "appointment_and_contact_updates": {
+      "source_events": 3,
+      "extraction_receipts": 3,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 6,
+      "bound_candidates": 6,
+      "active_assignments": 1,
+      "failure_holds": 0,
+      "binding_decisions": 12,
+      "semantic_stages": {
+        "candidate_binding": {
+          "calls": 7,
+          "elapsed_s": 0.04038170073181391
+        },
+        "extract_candidates": {
+          "calls": 3,
+          "elapsed_s": 0.0499406922608614
+        }
+      },
+      "authorization_diagnoses": {},
+      "no_assignment_decisions": 0,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 5,
+      "expected_evidence_items": 4,
+      "retrieved_expected_items": 4,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "multi_recipient_scope": {
+      "source_events": 2,
+      "extraction_receipts": 2,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 3,
+      "bound_candidates": 2,
+      "active_assignments": 2,
+      "failure_holds": 0,
+      "binding_decisions": 10,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 2,
+          "elapsed_s": 0.14347522612661123
+        },
+        "candidate_binding": {
+          "calls": 10,
+          "elapsed_s": 0.08784379903227091
+        },
+        "extract_candidates": {
+          "calls": 2,
+          "elapsed_s": 0.025774662382900715
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 2
+      },
+      "no_assignment_decisions": 0,
+      "excluded_binding_decisions": 4,
+      "retrieved_authorized_records": 2,
+      "expected_evidence_items": 2,
+      "retrieved_expected_items": 2,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "restriction_replacement": {
+      "source_events": 3,
+      "extraction_receipts": 3,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 3,
+      "bound_candidates": 3,
+      "active_assignments": 1,
+      "failure_holds": 0,
+      "binding_decisions": 6,
+      "semantic_stages": {
+        "candidate_binding": {
+          "calls": 4,
+          "elapsed_s": 0.023915506899356842
+        },
+        "extract_candidates": {
+          "calls": 3,
+          "elapsed_s": 0.07378926314413548
+        },
+        "authorization_gap_review": {
+          "calls": 1,
+          "elapsed_s": 0.07184595707803965
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 2
+      },
+      "no_assignment_decisions": 2,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 3,
+      "expected_evidence_items": 1,
+      "retrieved_expected_items": 1,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "revocation": {
+      "source_events": 3,
+      "extraction_receipts": 3,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 3,
+      "bound_candidates": 0,
+      "active_assignments": 0,
+      "failure_holds": 0,
+      "binding_decisions": 6,
+      "semantic_stages": {
+        "candidate_binding": {
+          "calls": 1,
+          "elapsed_s": 0.005477302707731724
+        },
+        "extract_candidates": {
+          "calls": 3,
+          "elapsed_s": 0.039485094137489796
+        },
+        "authorization_gap_review": {
+          "calls": 2,
+          "elapsed_s": 0.15816919784992933
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 5
+      },
+      "no_assignment_decisions": 5,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 0,
+      "expected_evidence_items": 0,
+      "retrieved_expected_items": 0,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "source_deletion": {
+      "source_events": 0,
+      "extraction_receipts": 0,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 0,
+      "bound_candidates": 0,
+      "active_assignments": 1,
+      "failure_holds": 1,
+      "binding_decisions": 1,
+      "semantic_stages": {
+        "candidate_binding": {
+          "calls": 1,
+          "elapsed_s": 0.0
+        },
+        "extract_candidates": {
+          "calls": 1,
+          "elapsed_s": 0.0
+        }
+      },
+      "authorization_diagnoses": {},
+      "no_assignment_decisions": 0,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 0,
+      "expected_evidence_items": 0,
+      "retrieved_expected_items": 0,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "candidate_erasure": {
+      "source_events": 9,
+      "extraction_receipts": 9,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 8,
+      "bound_candidates": 0,
+      "active_assignments": 0,
+      "failure_holds": 0,
+      "binding_decisions": 45,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 9,
+          "elapsed_s": 0.0
+        },
+        "extract_candidates": {
+          "calls": 9,
+          "elapsed_s": 0.0
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 45
+      },
+      "no_assignment_decisions": 45,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 0,
+      "expected_evidence_items": 0,
+      "retrieved_expected_items": 0,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "same_event_self_use": {
+      "source_events": 2,
+      "extraction_receipts": 2,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 1,
+      "bound_candidates": 1,
+      "active_assignments": 2,
+      "failure_holds": 0,
+      "binding_decisions": 2,
+      "semantic_stages": {
+        "extract_candidates": {
+          "calls": 2,
+          "elapsed_s": 0.02751055918633938
+        },
+        "candidate_binding": {
+          "calls": 2,
+          "elapsed_s": 0.01237993873655796
+        },
+        "task_recipient": {
+          "calls": 3,
+          "elapsed_s": 0.017610184848308563
+        }
+      },
+      "authorization_diagnoses": {},
+      "no_assignment_decisions": 0,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 1,
+      "expected_evidence_items": 1,
+      "retrieved_expected_items": 1,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "live_missed_grant_correction": {
+      "source_events": 2,
+      "extraction_receipts": 2,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 2,
+      "bound_candidates": 2,
+      "active_assignments": 1,
+      "failure_holds": 0,
+      "binding_decisions": 3,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 2,
+          "elapsed_s": 0.1583999302238226
+        },
+        "extract_candidates": {
+          "calls": 2,
+          "elapsed_s": 0.09977108519524336
+        },
+        "candidate_binding": {
+          "calls": 2,
+          "elapsed_s": 0.012707964517176151
+        }
+      },
+      "authorization_diagnoses": {
+        "missed_supported_authorization": 2,
+        "no_supported_authorization": 1
+      },
+      "no_assignment_decisions": 1,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 2,
+      "expected_evidence_items": 1,
+      "retrieved_expected_items": 1,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    },
+    "partial_extraction_correction": {
+      "source_events": 1,
+      "extraction_receipts": 1,
+      "extraction_complete": true,
+      "incomplete_extractions": 0,
+      "live_candidates": 2,
+      "bound_candidates": 0,
+      "active_assignments": 0,
+      "failure_holds": 0,
+      "binding_decisions": 2,
+      "semantic_stages": {
+        "authorization_gap_review": {
+          "calls": 1,
+          "elapsed_s": 0.0835186243057251
+        },
+        "extract_candidates": {
+          "calls": 2,
+          "elapsed_s": 0.04448761232197285
+        }
+      },
+      "authorization_diagnoses": {
+        "no_supported_authorization": 2
+      },
+      "no_assignment_decisions": 2,
+      "excluded_binding_decisions": 0,
+      "retrieved_authorized_records": 0,
+      "expected_evidence_items": 0,
+      "retrieved_expected_items": 0,
+      "final_release_validated": true,
+      "final_answer_accuracy": null
+    }
+  },
+  "real_model_services": {
+    "8000": "connection refused",
+    "8001": "connection refused"
+  },
+  "new_full_benchmark_score": null
+}

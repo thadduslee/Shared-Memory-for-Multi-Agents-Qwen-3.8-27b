@@ -1,0 +1,62 @@
+{
+  "case": "delayed",
+  "method": "Isolated real local model with HashEmbedder; no official scores.",
+  "after_acceptance": {
+    "policy": {
+      "activity": {
+        "pickup-tomorrow": {
+          "id": "pickup-tomorrow",
+          "participant": "owner",
+          "subject": "owner",
+          "activity": "Pickup tomorrow at 4 PM outside the library",
+          "status": "tentative",
+          "validity": {},
+          "unresolved": [
+            {
+              "question": "Missing acceptance from helper or configured authority"
+            }
+          ]
+        }
+      },
+      "assignment": {},
+      "restriction": {
+        "r-diagnosis-private": {
+          "id": "r-diagnosis-private",
+          "issuer": "owner",
+          "participants": [
+            "owner"
+          ],
+          "subject": "owner",
+          "information_scope": "diagnosis",
+          "actions": [
+            "search",
+            "read",
+            "derive"
+          ],
+          "effect": "deny",
+          "validity": {}
+        }
+      }
+    },
+    "retrieved": []
+  },
+  "completed_turns": [
+    "t001",
+    "t002",
+    "t003",
+    "t004",
+    "t005",
+    "t006",
+    "t007",
+    "t008",
+    "t009",
+    "t010",
+    "t011"
+  ],
+  "model_calls": 11,
+  "prompt_tokens": 17681,
+  "completion_tokens": 324,
+  "model_seconds": 15.089,
+  "pending_jobs": [],
+  "after_revocation": []
+}

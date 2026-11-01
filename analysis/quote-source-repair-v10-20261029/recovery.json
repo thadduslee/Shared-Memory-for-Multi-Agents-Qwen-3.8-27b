@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-29T03:11:26.423906+00:00",
+  "state": "blocked",
+  "stage": "permission permission-job:e822eb520bbf11b792abe6364cb9fb820f000c806bdca02e80a0d2f0a63f235c",
+  "failures": 1,
+  "error_type": "PermissionRepairExhausted",
+  "error": "Permission update paused after 3 rejected proposals: Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases",
+  "contract_failure": false,
+  "details": {
+    "job_id": "permission-job:e822eb520bbf11b792abe6364cb9fb820f000c806bdca02e80a0d2f0a63f235c",
+    "rejections": 3,
+    "limit": 3,
+    "last_validation": {
+      "accepted": false,
+      "details": {},
+      "elapsed_s": 21.859,
+      "error": "PermissionProposalRejected",
+      "model_elapsed_s": 21.84807296190411,
+      "reason": "Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases",
+      "usage": {
+        "completion_tokens": 560,
+        "prompt_tokens": 12458,
+        "prompt_tokens_details": null,
+        "total_tokens": 13018
+      }
+    },
+    "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+  },
+  "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+}

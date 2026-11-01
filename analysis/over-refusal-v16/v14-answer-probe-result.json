@@ -1,0 +1,52 @@
+{
+  "query": "What are Elena's currently authorized appointment details through Friday?",
+  "output": {
+    "evidence_roles": {
+      "0": "current",
+      "1": "current",
+      "2": "current",
+      "3": "continuing",
+      "4": "unrelated",
+      "5": "condition",
+      "6": "condition",
+      "7": "current"
+    },
+    "answer_structured": {
+      "current_items": [
+        "Friday, March 6: Ultrasound at 11:20 AM in Women's Imaging Suite 2 with 11:00 AM arrival",
+        "Thursday: Appointment at 8:10 AM"
+      ],
+      "continuing_items": [
+        "Wednesday, March 11: Clinic follow-up with Dr. Shah at 3:10 PM"
+      ],
+      "retired_items": [
+        "Monday, March 9: 9:00 AM slot (canceled)"
+      ],
+      "conditions_and_exceptions": [
+        "Access is limited to appointment times and parking details; results, medications, and notes are not authorized"
+      ]
+    },
+    "request_parts": [
+      {
+        "request": "Elena's currently authorized appointment details through Friday",
+        "status": "supported",
+        "evidence_ids": [
+          "note:permission-view:38d126d881cd96e99134a837b5f0af433d91dbf4fa2d6f0c146b83e4acbfceea",
+          "note:permission-view:1eb716be32a196d7300995264ff507b10da17e4c6bf223c841fdf1c85e3dc580",
+          "note:permission-view:f59f7b2dd7352714caceeec017cefb23350e93a9e51f044ae016f921aade5afd",
+          "note:permission-view:1be126b8704792e9269a3dee5690a9ebbfcd1f68a815abf68ce09fca33d2fe7e"
+        ]
+      }
+    ],
+    "action": "answer",
+    "answer": "Elena's currently authorized appointment details through Friday are: Thursday at 8:10 AM, and Friday, March 6 at 11:20 AM for an ultrasound in Women's Imaging Suite 2 (with 11:00 AM arrival). The previous Monday, March 9, 9:00 AM slot was canceled. Access is limited to scheduling details; results, medications, and notes are not authorized.",
+    "used_record_ids": [
+      "note:permission-view:38d126d881cd96e99134a837b5f0af433d91dbf4fa2d6f0c146b83e4acbfceea",
+      "note:permission-view:1eb716be32a196d7300995264ff507b10da17e4c6bf223c841fdf1c85e3dc580",
+      "note:permission-view:f59f7b2dd7352714caceeec017cefb23350e93a9e51f044ae016f921aade5afd",
+      "note:permission-view:1be126b8704792e9269a3dee5690a9ebbfcd1f68a815abf68ce09fca33d2fe7e"
+    ]
+  },
+  "seconds": 2.648096370510757,
+  "evidence_kind": "answer-only regression over a previously authorized packet; no policy update or gold input"
+}

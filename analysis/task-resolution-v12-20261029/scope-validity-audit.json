@@ -1,0 +1,248 @@
+{
+  "live-smoke-01": {
+    "outreach": [],
+    "counseling": []
+  },
+  "live-smoke-02": {
+    "outreach": [],
+    "counseling": []
+  },
+  "live-smoke-03": {
+    "counseling": [
+      {
+        "id": "asg:9f0c7f86ec39e23aa6edf0b8",
+        "participant": "pharmacist_owens",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Nausea plan adherence (doxylamine/pyridoxine initiation) and current symptom status (nausea/vomiting) for follow-up.",
+        "validity": {
+          "end_activity": "task:9f0c7f86ec39e23aa6edf0b8"
+        },
+        "activity_id": "task:9f0c7f86ec39e23aa6edf0b8",
+        "bindings": [
+          {
+            "source_turn": "t117",
+            "text": "Yes. I started them. Nausea is better and I haven't vomited.",
+            "necessity": "Confirms doxylamine/pyridoxine initiation and current nausea/vomiting status for the established follow-up task."
+          }
+        ]
+      }
+    ]
+  },
+  "live-smoke-04": {
+    "outreach": [],
+    "counseling": []
+  },
+  "live-smoke-05": {
+    "outreach": [
+      {
+        "id": "grant:00c83a59cd4de2e890825c6b",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+        "validity": {
+          "end_activity": "task:3d86ece43310f1f1bc1c3196"
+        },
+        "activity_id": "task:3d86ece43310f1f1bc1c3196",
+        "bindings": [
+          {
+            "source_turn": "t101",
+            "text": "About every four to five hours. Cramps are still around a four out of ten.",
+            "necessity": "Answers the nurse's specific assessment questions in s5."
+          }
+        ]
+      },
+      {
+        "id": "task-grant:ec16f29f72b26bc2f6c19555",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+        "validity": {
+          "end_activity": "task:3d86ece43310f1f1bc1c3196"
+        },
+        "activity_id": "task:3d86ece43310f1f1bc1c3196",
+        "bindings": [
+          {
+            "source_turn": "t101",
+            "text": "About every four to five hours. Cramps are still around a four out of ten.",
+            "necessity": "Supplies the factual basis for the nurse's assessment task."
+          }
+        ]
+      },
+      {
+        "id": "task-grant:4d99a4414eb1b694c91d7d00",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+        "validity": {
+          "end_activity": "task:3d86ece43310f1f1bc1c3196"
+        },
+        "activity_id": "task:3d86ece43310f1f1bc1c3196",
+        "bindings": [
+          {
+            "source_turn": "t101",
+            "text": "About every four to five hours. Cramps are still around a four out of ten.",
+            "necessity": "Answers the nurse's specific assessment questions in s5."
+          }
+        ]
+      },
+      {
+        "id": "grant:fe92d7245746337313a741e7",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Safe phone number 415-555-0174 for contact starting Sunday evening, replacing 415-555-0186",
+        "validity": {
+          "effective_from": "2026-03-08T00:00:00+00:00"
+        },
+        "activity_id": null,
+        "bindings": [
+          {
+            "source_turn": "t111",
+            "text": "Please keep the same rule on the new number: generic callback only and no voicemail mentioning pregnancy.",
+            "necessity": "Defines the specific voicemail content restriction for the new contact number"
+          },
+          {
+            "source_turn": "t112",
+            "text": "Safe-contact update entered: temporary callback number changes from 415-555-0186 to 415-555-0174 effective Sunday evening; generic voicemail only; do not mention pregnancy in voicemail.",
+            "necessity": "confirms the new number and effective timing for the existing grant"
+          }
+        ]
+      }
+    ],
+    "counseling": [
+      {
+        "id": "task-grant:158d51f126c43d262f101172",
+        "participant": "pharmacist_owens",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Doxylamine and pyridoxine dosage, timing, and side-effect management facts necessary to clarify the new nausea plan for the patient.",
+        "validity": {
+          "end_activity": "task:0dd33869c12eaf2289b51d01"
+        },
+        "activity_id": "task:0dd33869c12eaf2289b51d01",
+        "bindings": [
+          {
+            "source_turn": "t091",
+            "text": "One more clarification: if the bedtime doxylamine makes you too sleepy the next morning, keep it at bedtime only and continue the pyridoxine twice daily.",
+            "necessity": "Contains the specific clarification regarding doxylamine side effects and pyridoxine continuation."
+          },
+          {
+            "source_turn": "t117",
+            "text": "Yes. I started them. Nausea is better and I haven't vomited.",
+            "necessity": "Confirms patient started doxylamine and pyridoxine and reports symptom improvement, necessary to assess the nausea plan follow-up."
+          }
+        ]
+      },
+      {
+        "id": "task-grant:041cd49d89db6726f3218e9c",
+        "participant": "pharmacist_owens",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Doxylamine and pyridoxine initiation and nausea symptom status necessary to assess the follow-up on the new nausea plan.",
+        "validity": {
+          "end_activity": "task:9f0c7f86ec39e23aa6edf0b8"
+        },
+        "activity_id": "task:9f0c7f86ec39e23aa6edf0b8",
+        "bindings": [
+          {
+            "source_turn": "t117",
+            "text": "Yes. I started them. Nausea is better and I haven't vomited.",
+            "necessity": "Confirms doxylamine and pyridoxine initiation and current nausea status for the follow-up check-in."
+          },
+          {
+            "source_turn": "t144",
+            "text": "Current active medication list reviewed: prenatal vitamin, levothyroxine 75 mcg daily, acetaminophen 650 mg q6h PRN with 3,000 mg/day max, doxylamine 12.5 mg nightly, pyridoxine 25 mg BID. Ibuprofen remains stopped.",
+            "necessity": "Documents the current active medication list including doxylamine and pyridoxine dosages for the nausea plan follow-up."
+          }
+        ]
+      }
+    ]
+  },
+  "live-smoke-06": {
+    "outreach": [],
+    "counseling": [
+      {
+        "id": "task-grant:64e312684f42bb97d124e8df",
+        "participant": "pharmacist_owens",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Patient's confirmation of starting doxylamine and pyridoxine and current nausea/vomiting status for the nausea plan medication check",
+        "validity": {
+          "end_activity": "task:9f0c7f86ec39e23aa6edf0b8"
+        },
+        "activity_id": "task:9f0c7f86ec39e23aa6edf0b8",
+        "bindings": [
+          {
+            "source_turn": "t117",
+            "text": "Yes. I started them. Nausea is better and I haven't vomited.",
+            "necessity": "confirms doxylamine/pyridoxine start and current nausea/vomiting status for the established medication check"
+          }
+        ]
+      }
+    ]
+  },
+  "live-smoke-07": {
+    "outreach": [
+      {
+        "id": "task-grant:faea41032bb030500b370932",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Postpartum symptom assessment: pad change frequency and cramp intensity reported by patient_elena_park",
+        "validity": {
+          "end_activity": "task:3d86ece43310f1f1bc1c3196"
+        },
+        "activity_id": "task:3d86ece43310f1f1bc1c3196",
+        "bindings": [
+          {
+            "source_turn": "t101",
+            "text": "About every four to five hours. Cramps are still around a four out of ten.",
+            "necessity": "Specific symptom data requested by worker for assessment"
+          }
+        ]
+      },
+      {
+        "id": "task-grant:df11f6caf8c0ed356ab9ab9a",
+        "participant": "nurse_casey_liu",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Postpartum symptom assessment: pad change frequency and cramp intensity reported by patient_elena_park",
+        "validity": {
+          "end_activity": "task:3d86ece43310f1f1bc1c3196"
+        },
+        "activity_id": "task:3d86ece43310f1f1bc1c3196",
+        "bindings": [
+          {
+            "source_turn": "t101",
+            "text": "About every four to five hours. Cramps are still around a four out of ten.",
+            "necessity": "patient reports pad change frequency and cramp intensity for postpartum assessment"
+          }
+        ]
+      }
+    ],
+    "counseling": [
+      {
+        "id": "task-grant:a9862dbbe253b724a47e006b",
+        "participant": "pharmacist_owens",
+        "subject": "patient_elena_park",
+        "status": "active",
+        "information_scope": "Patient's confirmation of starting doxylamine and pyridoxine and current nausea/vomiting status for the nausea plan follow-up.",
+        "validity": {
+          "end_activity": "task:9f0c7f86ec39e23aa6edf0b8"
+        },
+        "activity_id": "task:9f0c7f86ec39e23aa6edf0b8",
+        "bindings": [
+          {
+            "source_turn": "t117",
+            "text": "Yes. I started them. Nausea is better and I haven't vomited.",
+            "necessity": "confirms adherence and symptom status for the established nausea plan follow-up"
+          }
+        ]
+      }
+    ]
+  }
+}

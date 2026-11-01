@@ -1,0 +1,67 @@
+{
+  "activity": {
+    "pickup-tomorrow": {
+      "id": "pickup-tomorrow",
+      "participant": "helper",
+      "subject": "owner",
+      "activity": "Pickup tomorrow at 4 PM outside the library",
+      "status": "ended",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "pickup-tomorrow-assign": {
+      "id": "pickup-tomorrow-assign",
+      "participant": "helper",
+      "subject": "owner",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "Pickup logistics: time (4 PM), location (outside the library), and date (tomorrow). Excludes medical diagnosis.",
+      "status": "revoked",
+      "basis": "task",
+      "activity_id": "pickup-tomorrow",
+      "validity": {
+        "end_activity": "pickup-tomorrow"
+      }
+    },
+    "self-use:a47c25a5f06f1d5c088a6dfc": {
+      "id": "self-use:a47c25a5f06f1d5c088a6dfc",
+      "participant": "owner",
+      "subject": "owner",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "self-use: Pickup tomorrow at 4 PM outside the library",
+      "status": "revoked",
+      "basis": "explicit",
+      "authority": "owner",
+      "self_use_activity": "pickup-tomorrow",
+      "validity": {
+        "end_activity": "pickup-tomorrow"
+      }
+    }
+  },
+  "restriction": {
+    "no-medical-info": {
+      "id": "no-medical-info",
+      "issuer": "owner",
+      "participants": [
+        "helper"
+      ],
+      "subject": "owner",
+      "information_scope": "Medical diagnosis and health records",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

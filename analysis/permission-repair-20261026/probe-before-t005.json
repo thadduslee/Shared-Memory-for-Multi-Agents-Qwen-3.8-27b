@@ -1,0 +1,202 @@
+{
+  "before": true,
+  "turn": "t005",
+  "seconds": 132.13640275597572,
+  "usage": {
+    "prompt_tokens": 5749,
+    "total_tokens": 9067,
+    "completion_tokens": 3318,
+    "prompt_tokens_details": null
+  },
+  "payload_chars": 13857,
+  "proposal": {
+    "revision": 4,
+    "considered_restrictions": [],
+    "operations": [
+      {
+        "activity": "reception_check_in_verification",
+        "basis": "observation",
+        "corroboration": [
+          "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+        ],
+        "id": "act-003",
+        "information_needs": [
+          {
+            "description": "Patient's consent or refusal regarding information sharing with family member",
+            "evidence": [
+              "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a"
+            ]
+          }
+        ],
+        "participant": "reception_marta",
+        "status": "tentative",
+        "subject": "patient_elena_park",
+        "unresolved": [],
+        "op": "observe_participation",
+        "explanation": "Patient Elena Park responded to the consent question, resolving the previously unresolved status of information sharing consent. The activity remains tentative as it is based on observation of the dialogue.",
+        "evidence": {
+          "activity": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a",
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "basis": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a"
+          ],
+          "participant": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a"
+          ],
+          "status": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a",
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "corroboration": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "actions": [
+          "read"
+        ],
+        "id": "res-001",
+        "information_scope": "logistical_details",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Patient explicitly authorized family member to receive logistical details such as appointment times and parking details.",
+        "subject": "patient_elena_park",
+        "op": "record_restriction",
+        "explanation": "This restriction defines the scope of information the family member is allowed to access, limiting it to logistical details as per the patient's explicit instruction.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "issuer": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participants": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "reason": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "actions": [
+          "read"
+        ],
+        "id": "res-002",
+        "information_scope": "medical_results",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Patient explicitly prohibited family member from accessing medical results.",
+        "subject": "patient_elena_park",
+        "op": "record_restriction",
+        "explanation": "This restriction prohibits the family member from accessing medical results, as explicitly stated by the patient.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "issuer": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participants": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "reason": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "actions": [
+          "read"
+        ],
+        "id": "res-003",
+        "information_scope": "medications",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Patient explicitly prohibited family member from accessing medication information.",
+        "subject": "patient_elena_park",
+        "op": "record_restriction",
+        "explanation": "This restriction prohibits the family member from accessing medication information, as explicitly stated by the patient.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "issuer": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participants": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "reason": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "actions": [
+          "read"
+        ],
+        "id": "res-004",
+        "information_scope": "clinical_notes",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Patient explicitly prohibited family member from accessing clinical notes.",
+        "subject": "patient_elena_park",
+        "op": "record_restriction",
+        "explanation": "This restriction prohibits the family member from accessing clinical notes, as explicitly stated by the patient.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "issuer": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participants": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "reason": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      }
+    ]
+  }
+}

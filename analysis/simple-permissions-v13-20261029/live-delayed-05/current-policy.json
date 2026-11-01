@@ -1,0 +1,50 @@
+{
+  "activity": {
+    "pickup-tomorrow": {
+      "id": "pickup-tomorrow",
+      "participant": "helper",
+      "subject": "owner",
+      "activity": "Pickup tomorrow at 4 PM outside the library",
+      "status": "ended",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "pickup-tomorrow-assign": {
+      "id": "pickup-tomorrow-assign",
+      "participant": "helper",
+      "subject": "owner",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "Pickup logistics: time, location, and owner's presence for the scheduled pickup.",
+      "status": "expired",
+      "basis": "task",
+      "activity_id": "pickup-tomorrow",
+      "validity": {
+        "end_activity": "pickup-tomorrow"
+      }
+    },
+    "self-use:a47c25a5f06f1d5c088a6dfc": {
+      "id": "self-use:a47c25a5f06f1d5c088a6dfc",
+      "participant": "owner",
+      "subject": "owner",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "self-use: Pickup tomorrow at 4 PM outside the library",
+      "status": "expired",
+      "basis": "explicit",
+      "authority": "owner",
+      "self_use_activity": "pickup-tomorrow",
+      "validity": {
+        "end_activity": "pickup-tomorrow"
+      }
+    }
+  },
+  "restriction": {}
+}

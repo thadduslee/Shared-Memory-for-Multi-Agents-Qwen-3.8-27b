@@ -1,0 +1,50 @@
+--- before/permissions.py
++++ after/permissions.py
+@@ -143,6 +143,10 @@
+ it is the state you read, not the next revision. Never increment it. Only the host
+ increments the revision after publication. On retry, use the current input revision,
+ not the previous proposal's revision.
++considered_restrictions must include every restriction already in permission_state.
++It may also include IDs created by valid record_restriction operations in this
++response. This acknowledgment is separate from each binding's restriction_decisions:
++those must assess every restriction in the FINAL state, including newly created ones.
+ Use participant and subject IDs from bootstrap, never display names or invented IDs.
+ If a named subject is not yet identified in bootstrap, observe_participation may use
+ subject: null and an unresolved question; do not establish an activity or grant access.
+@@ -874,9 +878,19 @@
+         if type(result['revision']) is not int or result['revision']!=revision:
+             fail(f'Stale permission revision: expected integer {revision}, received {result["revision"]!r}. '
+                  'Copy the current input revision exactly; do not increment it.')
+-        if (not isinstance(result['considered_restrictions'],list) or
+-                set(result['considered_restrictions'])!=set(state['restriction'])):
+-            fail('All existing restrictions must be considered')
++        considered=result['considered_restrictions']
++        required=set(state['restriction'])
++        if (not isinstance(considered,list) or any(not isinstance(r,str) for r in considered)
++                or len(set(considered))!=len(considered)):
++            fail('Restriction review must contain distinct restriction IDs',
++                 {'path':'considered_restrictions','required_existing_restriction_ids':sorted(required)})
++        missing=required-set(considered)
++        if missing:
++            fail('All existing restrictions must be considered',
++                 {'path':'considered_restrictions','required_existing_restriction_ids':sorted(required),
++                  'missing_restriction_ids':sorted(missing),
++                  'repair':'Include every stored restriction ID. Newly proposed restriction IDs are optional '
++                           'here, but mandatory in every binding restriction_decisions list.'})
+         if not isinstance(result['operations'],list) or len(result['operations'])>128: fail('Operation budget exceeded')
+         new=deepcopy(state)
+         erasures=[]
+@@ -1134,6 +1148,13 @@
+                     values.append(quote)
+                 erasures.append({'issuer':op['issuer'],'subject':op['subject'],'values':values,
+                                   'evidence':op['evidence']})
++        unknown=set(considered)-set(new['restriction'])
++        if unknown:
++            fail('Restriction review contains unknown restriction IDs',
++                 {'path':'considered_restrictions','unknown_restriction_ids':sorted(unknown),
++                  'allowed_restriction_ids':sorted(new['restriction']),
++                  'repair':'Remove IDs that are neither stored nor created by a valid restriction operation. '
++                           'Keep all stored restriction IDs and the binding final-state assessments.'})
+         # Compile the explicit bootstrap self-use convention after task
+         # interpretation. Subject acceptance is evidence; identity alone never
+         # creates a grant. No worker binding is copied to the subject: each field

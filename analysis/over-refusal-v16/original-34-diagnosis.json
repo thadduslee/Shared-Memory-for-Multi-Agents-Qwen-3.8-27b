@@ -1,0 +1,36 @@
+{
+  "checkpoints": 34,
+  "checkpoints_with_evidence": 0,
+  "actions": {
+    "refuse": 31,
+    "no_memory": 3
+  },
+  "utility_accuracy": 0.0,
+  "over_refusal_rate": 1.0,
+  "permission_jobs": {
+    "complete": 281,
+    "quarantined": 43,
+    "running": 1
+  },
+  "active_control_holds": 62,
+  "runtime_assignments": 0,
+  "quarantine_reasons": {
+    "vllm:qwen: structured response exceeded token budget": 7,
+    "Pending task requires its authenticated worker receipt": 13,
+    "Every control operation needs current-event support": 3,
+    "A new accepted task needs its worker and task meaning": 2,
+    "Unresolved source control retains an access hold": 1,
+    "Issuer lacks configured authority: agent_memcare cannot permission for patient_elena_park. Use an actual configured authority statement or omit the unsupported operation.": 1,
+    "Control review names an unknown operation": 1,
+    "Task assignment crosses pending participant/resource boundary": 2,
+    "Value after * must be an iterable, not NoneType": 3,
+    "Empty validity interval": 1,
+    "Allowed task recipient needs their own active assignment": 1,
+    "Issuer lacks configured authority: nurse_casey_liu cannot permission for patient_elena_park. Use an actual configured authority statement or omit the unsupported operation.": 1,
+    "Unknown event-based end activity": 1,
+    "An unfocused repair cannot discard prior independent control proposals": 2,
+    "Focused control repair must replace the failed operation and its dependencies": 1,
+    "Declared control effect needs its corresponding operation": 2,
+    "Restrictions are immutable; supersede with a new ID": 1
+  }
+}

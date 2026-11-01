@@ -1,0 +1,23 @@
+--- before/agentic_memory/privacy/permission_wire.py
++++ after/agentic_memory/privacy/permission_wire.py
+@@ -5,6 +5,11 @@
+ def delta_contract(payload, schema):
+     payload=deepcopy(payload)
+     schema=deepcopy(schema)
++    # These lists are snapshot acknowledgments, not semantic authority. Their
++    # exact known values should not be another free-form copying task.
++    if 'considered_restrictions' in schema['properties']:
++        schema['properties']['considered_restrictions']={
++            'type':'array','enum':[sorted(payload['permission_state']['restriction'])]}
+     payload['contract_notes']={**payload['contract_notes'], 'wire':'compact-delta-v1',
+         'binding':'Reuse assignment_id; select source_id and exact quote. Return necessity, '
+                   'scope_supported, context_preserved, metadata_safe; evidence for necessity, '
+@@ -30,7 +35,7 @@
+         schema['properties']['coverage']={
+             'type':'object','additionalProperties':False,
+             'properties':{
+-                'reviewed':{'type':'array','items':original['principal']},
++                'reviewed':{'type':'array','enum':[sorted(payload['coverage_required'])]},
+                 'evidence':{**original['evidence'],'minItems':1},
+                 'unresolved':{'type':'array','items':{
+                     'type':'object','additionalProperties':False,

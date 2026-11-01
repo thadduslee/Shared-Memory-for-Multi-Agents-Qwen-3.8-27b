@@ -1,0 +1,123 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 0,
+    "scored_checkpoints": 0,
+    "expected_boundaries": 567,
+    "completed_boundaries": 0,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 8,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 0,
+    "n_utility": 0,
+    "n_utility_scored": 0,
+    "n_privacy": 0,
+    "n_privacy_scored": 0,
+    "n_privacy_context_scored": 0,
+    "n_privacy_e2e_scored": 0,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": null,
+    "privacy_leakage_rate": null,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": null,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-10-29T08:28:38.496586+00:00",
+    "state": "blocked",
+    "stage": "permission permission-job:04c98b0a24156a0a13ac6efe299e4bf6f8b2c5d12bba11e6196e6ab64d159fe6",
+    "failures": 1,
+    "error_type": "PermissionRepairExhausted",
+    "error": "Permission update paused after 3 rejected proposals: An empty task assignment must remain awaiting_facts, not complete without bindings",
+    "contract_failure": false,
+    "details": {
+      "job_id": "permission-job:04c98b0a24156a0a13ac6efe299e4bf6f8b2c5d12bba11e6196e6ab64d159fe6",
+      "rejections": 3,
+      "limit": 3,
+      "last_validation": {
+        "accepted": false,
+        "details": {},
+        "elapsed_s": 69.941,
+        "error": "PermissionProposalRejected",
+        "model_elapsed_s": 69.92956842575222,
+        "reason": "An empty task assignment must remain awaiting_facts, not complete without bindings",
+        "usage": {
+          "completion_tokens": 1807,
+          "prompt_tokens": 6903,
+          "prompt_tokens_details": null,
+          "total_tokens": 8710
+        }
+      },
+      "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+    },
+    "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 3
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "permission_total": 408.678,
+    "source_ingest": 0.039,
+    "source_total": 408.721
+  },
+  "governance": {
+    "candidate_versions": 7,
+    "decisions": 7,
+    "recipient_decisions": 20,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 7,
+      "rejected": 1
+    },
+    "attempts": 13,
+    "record_versions": 18,
+    "runtime_assignments": 3,
+    "indexed_resources": 3,
+    "coverage_adjustments": 9,
+    "processing_seconds": 785.202,
+    "model_seconds": 782.114,
+    "mean_seconds_per_source": 98.15,
+    "measured_attempts": 13,
+    "prompt_tokens": 66568,
+    "completion_tokens": 20114
+  }
+}

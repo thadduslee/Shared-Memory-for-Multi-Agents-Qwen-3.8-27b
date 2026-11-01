@@ -1,0 +1,1299 @@
+{
+  "seconds": 479.6016325680539,
+  "texts": {
+    "patient_elena_park": [
+      "Medication plan after initial clinician review: stop ibuprofen; use acetaminophen 650 mg q6h PRN with 3,000 mg/day max; continue prenatal vitamin and levothyroxine 75 mcg daily; start doxylamine 12.5 mg nightly and pyridoxine 25 mg BID.",
+      "For pain, use acetaminophen instead: 650 milligrams every six hours as needed, and keep the total under 3,000 milligrams in a day.",
+      "Elena, because of the bleeding, I want you to stop ibuprofen completely.",
+      "Continue your prenatal vitamin and continue levothyroxine 75 micrograms every morning.",
+      "How much nausea are you having?",
+      "At this stage we often need serial labs and a follow-up scan before we can say whether the pregnancy is progressing normally.",
+      "Let's start doxylamine 12.5 milligrams at bedtime and pyridoxine 25 milligrams twice a day.",
+      "Mostly morning nausea, no vomiting, but it has been getting more noticeable this week."
+    ],
+    "family_linda_park": []
+  },
+  "ledger": {
+    "activity": {
+      "act-001": {
+        "activity": "post-ED clinical follow-up",
+        "basis": "corroborated",
+        "corroboration": [
+          "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+        ],
+        "evidence": {
+          "activity": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "basis": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "participant": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f"
+          ],
+          "status": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "subject": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Establishing the clinical follow-up activity based on Dr. Shah's request and Elena's corroborating response.",
+        "id": "act-001",
+        "participant": "clinician_dr_shah",
+        "performance": [
+          "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f"
+        ],
+        "self_check": {
+          "corroboration_supports": "Elena responds with her own account of symptoms and ED findings, accepting the task.",
+          "involvement_supported": "Dr. Shah initiates a clinical follow-up conversation with Elena.",
+          "scope_resolved": "The activity is limited to the specific post-ED follow-up conversation."
+        },
+        "status": "established",
+        "subject": "patient_elena_park",
+        "unresolved": [],
+        "validity": {}
+      },
+      "obs-001": {
+        "activity": "post-ED clinical follow-up",
+        "basis": "observation",
+        "evidence": {
+          "activity": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a"
+          ],
+          "basis": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a"
+          ],
+          "participant": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a"
+          ],
+          "status": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a"
+          ],
+          "subject": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a"
+          ]
+        },
+        "explanation": "Linda asks for a clinical status update, but Elena has not authorized family access to her medical information.",
+        "id": "obs-001",
+        "participant": "family_linda_park",
+        "status": "tentative",
+        "subject": "patient_elena_park",
+        "validity": {}
+      }
+    },
+    "assignment": {
+      "asg-001": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "activity_id": "act-001",
+        "basis": "task",
+        "bindings": [
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "source_id": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "asserted_fact",
+            "explanation": "Binding Elena's account of symptoms and ED findings to Dr. Shah's assignment.",
+            "necessity": "Elena's account of symptoms and ED findings is necessary for Dr. Shah's clinical follow-up.",
+            "restriction_decisions": [],
+            "self_check": {
+              "context_preserved": "The full context of Elena's symptoms and ED findings is preserved.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical context.",
+              "restrictions_checked": "No current restrictions apply to this information.",
+              "scope_supported": "The information is within the scope of the post-ED clinical follow-up.",
+              "task_requires": "Dr. Shah needs Elena's account of symptoms and ED findings for the clinical follow-up."
+            },
+            "source_id": "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "spans": [
+              [
+                0,
+                131
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231"
+              ],
+              "source_id": [
+                "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding Dr. Shah's clinical plan to his existing assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the specific plan for serial labs and follow-up scan to manage the pregnancy assessment.",
+            "restriction_decisions": [],
+            "self_check": {
+              "context_preserved": "The full clause is retained to preserve the conditional nature of the assessment ('before we can say').",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction itself.",
+              "restrictions_checked": "No current restrictions apply to this clinical instruction.",
+              "scope_supported": "The instruction is within the post-ED clinical follow-up scope established by the clinician's review and the patient's account.",
+              "task_requires": "The follow-up task requires the specific next steps (serial labs, follow-up scan) to proceed."
+            },
+            "source_id": "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231",
+            "spans": [
+              [
+                29,
+                154
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+              ],
+              "source_id": [
+                "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Bind new clinical instruction to Dr. Shah's assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the specific medication instruction to manage the bleeding risk.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+                ],
+                "explanation": "Restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+                ],
+                "explanation": "Restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "Reason (bleeding) and specific action (stop ibuprofen) are preserved.",
+              "metadata_safe": "No sensitive metadata beyond the clinical instruction itself.",
+              "restrictions_checked": "Restrictions apply to family_linda_park, not the clinician.",
+              "scope_supported": "Instruction is part of the clinical follow-up scope.",
+              "task_requires": "Clinical follow-up requires specific medication instructions."
+            },
+            "source_id": "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99",
+            "spans": [
+              [
+                12,
+                84
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+              ],
+              "source_id": [
+                "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new medication instruction to Dr. Shah's assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the specific alternative pain management instruction to manage the bleeding risk.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full instruction including dosage and limits is preserved.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to clinician_dr_shah.",
+              "scope_supported": "The instruction is within the scope of post-ED clinical follow-up.",
+              "task_requires": "The clinical follow-up task requires specific medication instructions for pain management."
+            },
+            "source_id": "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914",
+            "spans": [
+              [
+                0,
+                130
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+              ],
+              "source_id": [
+                "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new medication instructions to the clinician's existing assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the specific medication continuation instructions to manage the patient's ongoing care.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full instruction is preserved, including the specific medication names, dosages, and timing.",
+              "metadata_safe": "The source is a direct dialogue turn from the clinician to the patient, containing no sensitive metadata beyond the clinical instruction itself.",
+              "restrictions_checked": "Both existing restrictions (res-001, res-002) apply to family_linda_park and do not restrict the clinician's access to clinical instructions for the patient.",
+              "scope_supported": "The instruction is a direct clinical directive from the treating physician to the patient, falling within the scope of the established clinical follow-up activity.",
+              "task_requires": "The clinical follow-up task requires managing the patient's medication regimen, including continuing prenatal vitamins and levothyroxine."
+            },
+            "source_id": "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a",
+            "spans": [
+              [
+                0,
+                86
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+              ],
+              "source_id": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding the clinician's question to the active clinical follow-up assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires assessing nausea to manage the patient's current symptoms and care plan.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The question is preserved in the context of the clinical dialogue.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical context.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to the clinician.",
+              "scope_supported": "The question is within the scope of post-ED clinical follow-up.",
+              "task_requires": "The clinical follow-up task requires assessing current symptoms including nausea."
+            },
+            "source_id": "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+            "spans": [
+              [
+                0,
+                31
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+              ],
+              "source_id": [
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "asserted_fact",
+            "explanation": "Binding patient's nausea report to clinician's active assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the patient's specific nausea assessment to manage current symptoms and adjust the care plan.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full sentence preserves the severity, absence of vomiting, and temporal trend.",
+              "metadata_safe": "No metadata or provenance issues; standard clinical dialogue.",
+              "restrictions_checked": "Restrictions res-001 and res-002 target family_linda_park; this binding is for clinician_dr_shah.",
+              "scope_supported": "Nausea assessment is within the post-ED clinical follow-up scope established in s1-s2.",
+              "task_requires": "Dr. Shah asked about nausea in s10; this answer is the direct clinical data needed for that assessment."
+            },
+            "source_id": "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362",
+            "spans": [
+              [
+                0,
+                86
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362",
+                "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+              ],
+              "source_id": [
+                "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new clinical instruction to Dr. Shah's assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the specific antiemetic prescription to manage the patient's reported nausea.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full prescription including dosage and frequency is retained.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction.",
+              "restrictions_checked": "Restrictions on family_linda_park do not apply to clinician_dr_shah.",
+              "scope_supported": "The instruction is a direct clinical directive within the established follow-up scope.",
+              "task_requires": "Nausea management is part of the ongoing clinical follow-up."
+            },
+            "source_id": "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821",
+            "spans": [
+              [
+                0,
+                91
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+              ],
+              "source_id": [
+                "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding the consolidated medication plan to Dr. Shah's assignment.",
+            "necessity": "Dr. Shah's clinical follow-up requires the consolidated medication plan to manage the patient's ongoing care and ensure accurate record-keeping.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not clinician_dr_shah.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full medication plan is preserved to maintain clinical context.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instructions.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to clinician_dr_shah.",
+              "scope_supported": "The medication plan is within the scope of the post-ED clinical follow-up.",
+              "task_requires": "The clinical follow-up task requires the complete medication plan to manage the patient's condition."
+            },
+            "source_id": "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50",
+            "spans": [
+              [
+                0,
+                236
+              ]
+            ]
+          }
+        ],
+        "evidence": {
+          "actions": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "basis": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "information_scope": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "participant": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f"
+          ],
+          "status": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "subject": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Granting Dr. Shah access to information necessary for the post-ED clinical follow-up.",
+        "id": "asg-001",
+        "inference_version": "5",
+        "information_scope": "post-ED clinical follow-up",
+        "participant": "clinician_dr_shah",
+        "policy_hash": "32f8ed8c1445231be50c734c6d3feb7cb76153ce37ad03903257d4eaf521762f",
+        "scope_evidence": [
+          {
+            "source_id": "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "text": "Hi Elena, I'm Dr. Shah. I reviewed the ED note but I'd like to hear in your own words what happened."
+          },
+          {
+            "source_id": "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "text": "I had light bleeding and cramping. The ED ultrasound showed a gestational sac but they said it might just be too early to say more."
+          }
+        ],
+        "self_check": {
+          "actions_supported": "Search, read, and derive are necessary for clinical follow-up.",
+          "basis_supported": "Task-based access is supported by the established clinical follow-up activity.",
+          "scope_supported": "Scope is limited to the specific post-ED follow-up activity."
+        },
+        "status": "proposed",
+        "subject": "patient_elena_park",
+        "validity": {
+          "end_activity": "act-001"
+        }
+      },
+      "asg-002": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "authority": "patient_elena_park",
+        "basis": "explicit",
+        "bindings": [
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "source_id": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "asserted_fact",
+            "explanation": "Binding Elena's account of symptoms and ED findings to her self-assignment.",
+            "necessity": "Elena's account of symptoms and ED findings is necessary for her own clinical follow-up.",
+            "restriction_decisions": [],
+            "self_check": {
+              "context_preserved": "The full context of Elena's symptoms and ED findings is preserved.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical context.",
+              "restrictions_checked": "No current restrictions apply to this information.",
+              "scope_supported": "The information is within the scope of the post-ED clinical follow-up.",
+              "task_requires": "Elena needs her own account of symptoms and ED findings for the clinical follow-up."
+            },
+            "source_id": "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "spans": [
+              [
+                0,
+                131
+              ]
+            ]
+          }
+        ],
+        "evidence": {
+          "actions": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "authority": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "basis": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "information_scope": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "participant": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "status": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "subject": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Granting Elena self-access to information for the post-ED clinical follow-up.",
+        "id": "asg-002",
+        "inference_version": "5",
+        "information_scope": "post-ED clinical follow-up",
+        "participant": "patient_elena_park",
+        "policy_hash": "32f8ed8c1445231be50c734c6d3feb7cb76153ce37ad03903257d4eaf521762f",
+        "scope_evidence": [
+          {
+            "source_id": "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "text": "Hi Elena, I'm Dr. Shah. I reviewed the ED note but I'd like to hear in your own words what happened."
+          },
+          {
+            "source_id": "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "text": "I had light bleeding and cramping. The ED ultrasound showed a gestational sac but they said it might just be too early to say more."
+          }
+        ],
+        "self_check": {
+          "actions_supported": "Search, read, and derive are necessary for her to manage her own clinical information.",
+          "basis_supported": "Elena's participation in the follow-up supports her own access to the information.",
+          "scope_supported": "Scope is limited to the specific post-ED follow-up activity."
+        },
+        "status": "proposed",
+        "subject": "patient_elena_park",
+        "validity": {}
+      },
+      "asg-003": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "authority": "patient_elena_park",
+        "basis": "explicit",
+        "bindings": [],
+        "evidence": {
+          "actions": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "authority": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "basis": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "information_scope": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "participant": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a",
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "status": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "subject": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Proposes limited access for Linda to logistical planning information, pending Elena's explicit consent.",
+        "id": "asg-003",
+        "inference_version": "5",
+        "information_scope": "logistical planning for post-ED follow-up",
+        "participant": "family_linda_park",
+        "policy_hash": "32f8ed8c1445231be50c734c6d3feb7cb76153ce37ad03903257d4eaf521762f",
+        "scope_evidence": [
+          {
+            "source_id": "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c",
+            "text": "I can discuss logistical planning with you if Elena wants, but the clinical interpretation stays with Elena unless she changes that instruction."
+          }
+        ],
+        "self_check": {
+          "actions_supported": "Search, read, and derive are necessary for Linda to understand and participate in logistical planning.",
+          "basis_supported": "Dr. Shah offers to discuss logistical planning with Linda if Elena wants, and Elena's prior participation in the clinical follow-up supports her authority to grant this limited access.",
+          "scope_supported": "Scope is limited to logistical planning, explicitly excluding clinical interpretation as per Dr. Shah's statement."
+        },
+        "status": "proposed",
+        "subject": "patient_elena_park",
+        "validity": {}
+      },
+      "self-use:893bca0a1a833241212009ad": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "authority": "patient_elena_park",
+        "basis": "explicit",
+        "bindings": [
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231"
+              ],
+              "source_id": [
+                "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231"
+              ],
+              "subject": [
+                "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding Dr. Shah's clinical plan to Elena's self-use assignment.",
+            "necessity": "Elena's self-use access requires the clinical plan for serial labs and follow-up scan to understand her own care trajectory.",
+            "restriction_decisions": [],
+            "self_check": {
+              "context_preserved": "The full clause is retained to preserve the clinical context and conditions.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction itself.",
+              "restrictions_checked": "No current restrictions apply to this clinical instruction.",
+              "scope_supported": "The instruction is responsive to the subject's accepted clinical follow-up activity.",
+              "task_requires": "The subject's participation in her own follow-up requires knowledge of the next steps (serial labs, scan)."
+            },
+            "source_id": "permission-source:bb964eeab0664116f00972e3f2b49a693ea93b6c9d7961ad729569cf139f7231",
+            "spans": [
+              [
+                29,
+                154
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+              ],
+              "source_id": [
+                "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Bind new clinical instruction to Elena's self-use assignment.",
+            "necessity": "Elena's self-use access requires the medication instruction to manage her own care.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+                ],
+                "explanation": "Restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99"
+                ],
+                "explanation": "Restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "Reason (bleeding) and specific action (stop ibuprofen) are preserved.",
+              "metadata_safe": "No sensitive metadata beyond the clinical instruction itself.",
+              "restrictions_checked": "Restrictions apply to family_linda_park, not the subject.",
+              "scope_supported": "Instruction is part of the self-use scope for clinical follow-up.",
+              "task_requires": "Self-use requires access to instructions directed at the subject."
+            },
+            "source_id": "permission-source:3434ba020406ccb14abc4b420f09260aa1523113d6beef895342b07bca83ca99",
+            "spans": [
+              [
+                12,
+                84
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+              ],
+              "source_id": [
+                "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new medication instruction to Elena's self-use assignment.",
+            "necessity": "Elena's self-use access requires the medication instruction to manage her own care.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full instruction including dosage and limits is preserved.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to patient_elena_park.",
+              "scope_supported": "The instruction is within the scope of her self-use for post-ED clinical follow-up.",
+              "task_requires": "Elena's self-use requires the specific medication instruction for her own care."
+            },
+            "source_id": "permission-source:e014949824a9b129417d759f89cbb076ccc80d958c486af5cad1f493812ff914",
+            "spans": [
+              [
+                0,
+                130
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+              ],
+              "source_id": [
+                "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new medication instructions to the patient's self-use assignment.",
+            "necessity": "Elena's self-use access requires the medication continuation instructions to manage her own care.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full instruction is preserved, including the specific medication names, dosages, and timing.",
+              "metadata_safe": "The source is a direct dialogue turn from the clinician to the patient, containing no sensitive metadata beyond the clinical instruction itself.",
+              "restrictions_checked": "Both existing restrictions (res-001, res-002) apply to family_linda_park and do not restrict the patient's access to her own clinical instructions.",
+              "scope_supported": "The instruction is a direct clinical directive from the treating physician to the patient, falling within the scope of the patient's self-use access for the clinical follow-up activity.",
+              "task_requires": "The self-use task requires the patient to have access to her own medication instructions for managing her care."
+            },
+            "source_id": "permission-source:49d0e7f814dfd96e474dd3dd66b4cac2a51155476c31c1ea9747a6b475d7800a",
+            "spans": [
+              [
+                0,
+                86
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+              ],
+              "source_id": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding the clinician's question to the patient's self-use assignment.",
+            "necessity": "Elena's self-use access requires the clinical question to understand her own care trajectory and respond appropriately.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The question is preserved in the context of the clinical dialogue.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical context.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to the patient.",
+              "scope_supported": "The question is within the scope of post-ED clinical follow-up.",
+              "task_requires": "The self-use task requires access to clinical questions directed at the patient."
+            },
+            "source_id": "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+            "spans": [
+              [
+                0,
+                31
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+              ],
+              "source_id": [
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "asserted_fact",
+            "explanation": "Binding patient's nausea report to her own self-use assignment.",
+            "necessity": "Elena's self-use access requires her own symptom report to track her care trajectory and communicate with her provider.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full sentence preserves the severity, absence of vomiting, and temporal trend.",
+              "metadata_safe": "No metadata or provenance issues; standard clinical dialogue.",
+              "restrictions_checked": "Restrictions res-001 and res-002 target family_linda_park; this binding is for patient_elena_park.",
+              "scope_supported": "Nausea assessment is within the post-ED clinical follow-up scope.",
+              "task_requires": "Elena is the subject of the clinical follow-up; her own symptom data is necessary for her self-management."
+            },
+            "source_id": "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362",
+            "spans": [
+              [
+                0,
+                86
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:8a158d9abf084022bdab3dbd8bf3ee27ecd4348476dd650c25209fa8b16f05b8",
+                "permission-source:ad49dc9cbdcc34e1237075c93c77312b061dd076a17b881f33568ee70da79362",
+                "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+              ],
+              "source_id": [
+                "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding new clinical instruction to Elena's self-use assignment.",
+            "necessity": "Elena's self-use access requires the new medication instruction to manage her own care.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full prescription is retained for the patient's reference.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instruction.",
+              "restrictions_checked": "Restrictions on family_linda_park do not apply to patient_elena_park.",
+              "scope_supported": "The instruction is directly responsive to the patient's reported symptoms.",
+              "task_requires": "Self-use requires access to all responsive clinical instructions."
+            },
+            "source_id": "permission-source:7d7fea7847c54bf7bc1ea431952b73c61901f3d8e736d3ae07337b45f1c6b821",
+            "spans": [
+              [
+                0,
+                91
+              ]
+            ]
+          },
+          {
+            "evidence": {
+              "authorization": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ],
+              "necessity": [
+                "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+              ],
+              "source_id": [
+                "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+              ],
+              "subject": [
+                "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+              ]
+            },
+            "evidence_kind": "instruction",
+            "explanation": "Binding the consolidated medication plan to Elena's self-use assignment.",
+            "necessity": "Elena's self-use access requires the consolidated medication plan to manage her own care and track her treatment.",
+            "restriction_decisions": [
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-001"
+              },
+              {
+                "applies": false,
+                "evidence": [
+                  "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50"
+                ],
+                "explanation": "The restriction applies to family_linda_park, not patient_elena_park.",
+                "restriction_id": "res-002"
+              }
+            ],
+            "self_check": {
+              "context_preserved": "The full medication plan is preserved to maintain clinical context.",
+              "metadata_safe": "No sensitive metadata is exposed beyond the clinical instructions.",
+              "restrictions_checked": "Restrictions res-001 and res-002 do not apply to patient_elena_park.",
+              "scope_supported": "The medication plan is within the scope of Elena's self-use for post-ED clinical follow-up.",
+              "task_requires": "Elena's self-use requires the medication plan to manage her own care."
+            },
+            "source_id": "permission-source:f031818069293ae8ac24a6777dacf5e021654a325314e0b5e0c820d8b96ddb50",
+            "spans": [
+              [
+                0,
+                236
+              ]
+            ]
+          }
+        ],
+        "evidence": {
+          "actions": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "authority": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "basis": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "information_scope": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f"
+          ],
+          "participant": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "status": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "subject": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Configured self-use convention applied to authenticated subject acceptance of this activity.",
+        "id": "self-use:893bca0a1a833241212009ad",
+        "inference_version": "5",
+        "information_scope": "self-use: post-ED clinical follow-up",
+        "participant": "patient_elena_park",
+        "policy_hash": "32f8ed8c1445231be50c734c6d3feb7cb76153ce37ad03903257d4eaf521762f",
+        "scope_evidence": [
+          {
+            "source_id": "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "text": "I had light bleeding and cramping. The ED ultrasound showed a gestational sac but they said it might just be too early to say more."
+          },
+          {
+            "source_id": "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "text": "Hi Elena, I'm Dr. Shah. I reviewed the ED note but I'd like to hear in your own words what happened."
+          }
+        ],
+        "self_check": {
+          "actions_supported": "Only configured read/search/derive self-use actions.",
+          "basis_supported": "The subject accepted this particular activity.",
+          "scope_supported": "Only responsive information for this accepted activity; bindings remain empty."
+        },
+        "self_use_activity": "act-001",
+        "status": "active",
+        "subject": "patient_elena_park",
+        "validity": {
+          "end_activity": "act-001"
+        }
+      }
+    },
+    "restriction": {
+      "res-001": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "effect": "deny",
+        "evidence": {
+          "actions": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "information_scope": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "issuer": [
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ],
+          "participants": [
+            "permission-source:2518dd7aed9297d686c034332817ebd7543bdb4d06d0091f550a66017c824b1a",
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "reason": [
+            "permission-source:59dba182cc97c51432363744ae4ac32a9abf969dc0e2ab37e4099951e507272c"
+          ],
+          "subject": [
+            "permission-source:7ad0acf99ecb0ead941650bf55b082830a923c7a6c6f3b96f9e151049b33a07f",
+            "permission-source:a4ee2c3f4614b01097a031a8bc6de069024ceb8d4cdd3337f35feb1b23936f77"
+          ]
+        },
+        "explanation": "Restricts Linda from accessing clinical interpretation of Elena's pregnancy assessment.",
+        "id": "res-001",
+        "information_scope": "clinical interpretation of post-ED pregnancy assessment",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Clinical interpretation is restricted to Elena unless she changes the instruction.",
+        "self_check": {
+          "denial_supported": "Dr. Shah explicitly states clinical interpretation stays with Elena unless she changes the instruction, denying Linda access to that specific scope.",
+          "permitted_scope_excluded": "Logistical planning is explicitly permitted for Linda, so it is excluded from this restriction."
+        },
+        "subject": "patient_elena_park",
+        "validity": {}
+      },
+      "res-002": {
+        "actions": [
+          "search",
+          "read",
+          "derive"
+        ],
+        "effect": "deny",
+        "evidence": {
+          "actions": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ],
+          "information_scope": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ],
+          "issuer": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ],
+          "participants": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ],
+          "reason": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ],
+          "subject": [
+            "permission-source:a49103125f7135b683a3d1bbba175ed7299d8a1311e0ff2ea527b859f809b12b"
+          ]
+        },
+        "explanation": "Elena explicitly restricts Linda's access to clinical details, reinforcing the boundary between clinical and logistical information.",
+        "id": "res-002",
+        "information_scope": "clinical details of post-ED pregnancy assessment",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Elena explicitly instructed to keep clinical details private from Linda, limiting her role to appointment logistics.",
+        "self_check": {
+          "denial_supported": "Elena's statement 'Please keep the clinical details private' is an explicit denial of access to clinical information for Linda.",
+          "permitted_scope_excluded": "The restriction targets clinical details, excluding the logistical planning scope already granted in asg-003."
+        },
+        "subject": "patient_elena_park",
+        "validity": {}
+      }
+    }
+  }
+}

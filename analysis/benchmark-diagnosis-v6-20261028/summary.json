@@ -1,0 +1,97 @@
+{
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 21,
+    "scored_checkpoints": 21,
+    "expected_boundaries": 567,
+    "completed_boundaries": 18,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 178,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "saved_metrics": {
+    "n_checkpoints": 21,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 9,
+    "n_privacy_scored": 9,
+    "n_privacy_context_scored": 9,
+    "n_privacy_e2e_scored": 9,
+    "n_safety": 3,
+    "n_safety_scored": 3,
+    "n_safety_context_scored": 3,
+    "n_safety_e2e_scored": 3,
+    "action_accuracy": 0.3333333333333333,
+    "utility_accuracy": 0.5555555555555556,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": 0.3333333333333333,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.3333333333333333,
+    "privacy_context_leakage_rate": 0.1111111111111111,
+    "deletion_context_leakage_rate": 0.3333333333333333,
+    "privacy_e2e_leakage_rate": 0.1111111111111111,
+    "deletion_e2e_leakage_rate": 0.3333333333333333,
+    "over_refusal_rate": 0.4444444444444444,
+    "compliance_utility_score": 0.3703703703703704,
+    "compliance_utility_e2e_score": 0.3292181069958848,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "dataset_and_current_code_match_run_manifest": true,
+  "manual_review_counts": {
+    "complete_by_manual_review": 2,
+    "incomplete_answer_saved_judge_pass": 3,
+    "missing_authorized_evidence": 4,
+    "safe_withholding_wrong_action": 7,
+    "safe_partial_wrong_action": 1,
+    "partial_disclosure_missing_authorized_evidence": 1,
+    "deleted_value_leak": 1,
+    "no_recovery_pass_without_erasure_guarantee": 2
+  },
+  "benchmark_categories": {
+    "utility": 210,
+    "privacy": 192,
+    "safety": 177
+  },
+  "benchmark_expected_actions": {
+    "answer": 210,
+    "refuse": 175,
+    "answer_redacted": 17,
+    "no_memory": 177
+  },
+  "timing": {
+    "boundary_seconds": 33082.138273915276,
+    "logged_source_seconds": 31998.2,
+    "permission_seconds": 6397.987999999999,
+    "timed_evolution_seconds": 1681.431883521378,
+    "outside_permission_and_evolution_timers_seconds": 25002.7183903939,
+    "caution": "Permission elapsed_s includes host validation/publication and is not pure model latency. Evolution attempts exclude neighbor search, input setup, and related authorization. Rounded per-source log values introduce sub-second differences."
+  },
+  "ledger": {
+    "record_versions": 245,
+    "historical_body_bytes": 9569088,
+    "distinct_records": 25
+  },
+  "memory": {
+    "indexed_resources": 448,
+    "deleted_resources": 0,
+    "tombstones": 0,
+    "memory_records_with_sequence": 0
+  },
+  "source_files": {
+    "/home/thaddus/GateMem/bench/data/medical/episodes.jsonl": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+    "/home/thaddus/GateMem/bench/data/medical/checkpoints.jsonl": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-raw-stream-v6/summary.json": "a4d00a8f2660caead6ea2ade43278dafaaf415f6d1b2d5afee8907c7046fe702",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-raw-stream-v6/official_predictions.jsonl": "27f950d71fa927ba1cddd0bfaa6ebb95000d553a754682af32f1398bc989121f",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-raw-stream-v6/scores.jsonl": "9c73b850c501ee2470a5d084bb604f9a4b790d8bdc0c7e729ff697ab24643401",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-raw-stream-v6/manifest.json": "e3f07d38ff475ce8741bc92e159fa24363dbc910c97a45b0e2ddbfcd6b0a47e2"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "code_digest": "5445ed9620e509773d3dafa7fb2c178f05220118ecd6bf8b2cd9b8e4e899a7bf",
+  "regression": {
+    "tests": 483,
+    "subtests": 43,
+    "failures": 0,
+    "errors": 0,
+    "artifact": "regression-v14-release.xml"
+  },
+  "generic_workflow": {
+    "audit.json": {
+      "all_sources_complete": true,
+      "no_active_control_holds": true,
+      "revocation_published": true,
+      "owner_access_survives_revocation": true,
+      "coordinator_access_revoked": true,
+      "passed": true
+    },
+    "scope-audit.json": {
+      "two_active_coordinator_queries": true,
+      "confidential_contact_absent_from_context": true,
+      "budget_absent_from_context": true,
+      "passed": true
+    }
+  },
+  "unchanged_source_backend_late_field_denial": {
+    "initial_access_empty": true,
+    "initial_logistics_available": true,
+    "logistics_survive_later_field_denial": true,
+    "private_budget_absent": true,
+    "helper_grant_still_active": true,
+    "explicit_revocation_committed": true,
+    "helper_access_revoked": true,
+    "owner_access_survives": true,
+    "all_sources_complete": true,
+    "no_active_control_holds": true,
+    "passed": true
+  },
+  "focused_booking_completeness_probe": {
+    "passed": true,
+    "artifact": "v14-answer-probe-score.json",
+    "full_benchmark_evidence": false
+  },
+  "offline_resume": {
+    "checkpoints": 4,
+    "revisions": [],
+    "semantic_quality_evidence": false
+  },
+  "live_run": "candidate-14",
+  "live_run_status": "in progress; final first25 comparison pending"
+}

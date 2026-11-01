@@ -1,0 +1,79 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "pairs",
+  "model_calls": 16,
+  "max_calls": 18,
+  "http_attempts": 16,
+  "prompt_tokens": 64338,
+  "completion_tokens": 12256,
+  "elapsed_seconds": 480.874,
+  "cases": {
+    "outreach": {
+      "completed_turns": [
+        "t097",
+        "t099",
+        "t100",
+        "t101",
+        "t110",
+        "t111",
+        "t112"
+      ],
+      "source_turns": 7,
+      "processing_seconds": 399.499,
+      "active_assignments": [
+        {
+          "id": "task-grant:df11f6caf8c0ed356ab9ab9a",
+          "subject": "patient_elena_park",
+          "scope": "Postpartum symptom assessment: pad change frequency and cramp intensity reported by patient_elena_park",
+          "bindings": 1
+        },
+        {
+          "id": "task-grant:faea41032bb030500b370932",
+          "subject": "patient_elena_park",
+          "scope": "Postpartum symptom assessment: pad change frequency and cramp intensity reported by patient_elena_park",
+          "bindings": 1
+        }
+      ],
+      "worker_bound_turns": [
+        "t101"
+      ],
+      "retrieved_text": [
+        "About every four to five hours. Cramps are still around a four out of ten."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 1,
+      "focused_reassessments": 4,
+      "history_rounds": 0
+    },
+    "counseling": {
+      "completed_turns": [
+        "t116",
+        "t117",
+        "t144"
+      ],
+      "source_turns": 3,
+      "processing_seconds": 81.291,
+      "active_assignments": [
+        {
+          "id": "task-grant:a9862dbbe253b724a47e006b",
+          "subject": "patient_elena_park",
+          "scope": "Patient's confirmation of starting doxylamine and pyridoxine and current nausea/vomiting status for the nausea plan follow-up.",
+          "bindings": 1
+        }
+      ],
+      "worker_bound_turns": [
+        "t117"
+      ],
+      "retrieved_text": [
+        "Yes. I started them. Nausea is better and I haven't vomited."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 0,
+      "focused_reassessments": 1,
+      "history_rounds": 0
+    }
+  }
+}

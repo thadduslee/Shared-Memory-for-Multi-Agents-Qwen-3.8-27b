@@ -1,0 +1,146 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 4,
+    "scored_checkpoints": 4,
+    "expected_boundaries": 567,
+    "completed_boundaries": 3,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 83,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 4,
+    "n_utility": 3,
+    "n_utility_scored": 3,
+    "n_privacy": 1,
+    "n_privacy_scored": 1,
+    "n_privacy_context_scored": 1,
+    "n_privacy_e2e_scored": 1,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 1.0,
+    "utility_accuracy": 0.6666666666666666,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "evolution": {
+    "jobs": {
+      "applied": 3
+    },
+    "attempts": 3,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 12,
+      "pending": 125
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "evolution_total": 10.857,
+    "permission_total": 1167.611,
+    "source_ingest": 0.288,
+    "source_total": 1167.961
+  },
+  "governance": {
+    "candidate_versions": 113,
+    "decisions": 113,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 83,
+      "pending": 1
+    },
+    "attempts": 146,
+    "record_versions": 114,
+    "skipped_turns": [],
+    "quarantined_turns": [],
+    "active_scoped_control_holds": 0,
+    "complete": true,
+    "runtime_assignments": 16,
+    "indexed_resources": 149,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.738,
+    "latency_seconds": {
+      "mean": 14.071814753777202,
+      "median": 11.804371885955334,
+      "p90": 27.05036031641066,
+      "max": 39.96108329296112
+    },
+    "processing_seconds": 1072.103,
+    "model_seconds": 1031.741,
+    "mean_seconds_per_source": 12.917,
+    "measured_attempts": 146,
+    "prompt_tokens": 1132707,
+    "completion_tokens": 68462
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 83,
+      "pending": 1
+    },
+    "candidate_states": {
+      "active": 83
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 83,
+        "timed_calls": 83,
+        "seconds": 769.7615383258089,
+        "prompt_tokens": 975211,
+        "completion_tokens": 31102
+      },
+      "incremental_repair": {
+        "calls": 63,
+        "timed_calls": 63,
+        "seconds": 302.34115517977625,
+        "prompt_tokens": 157496,
+        "completion_tokens": 37360
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 137,
+      "restricted": 12,
+      "scope_or_subject_excluded": 663
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 1,
+    "checkpoints_with_evidence": 4,
+    "checkpoints_without_evidence": 0,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 9715
+  }
+}

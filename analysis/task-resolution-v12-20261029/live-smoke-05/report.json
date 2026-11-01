@@ -1,0 +1,105 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "trace",
+  "model_calls": 30,
+  "max_calls": 32,
+  "http_attempts": 30,
+  "prompt_tokens": 127637,
+  "completion_tokens": 33080,
+  "elapsed_seconds": 1288.579,
+  "cases": {
+    "outreach": {
+      "completed_turns": [
+        "t074",
+        "t076",
+        "t097",
+        "t098",
+        "t099",
+        "t100",
+        "t101",
+        "t110",
+        "t111",
+        "t112"
+      ],
+      "source_turns": 10,
+      "processing_seconds": 783.353,
+      "active_assignments": [
+        {
+          "id": "grant:00c83a59cd4de2e890825c6b",
+          "scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+          "bindings": 1
+        },
+        {
+          "id": "grant:fe92d7245746337313a741e7",
+          "scope": "Safe phone number 415-555-0174 for contact starting Sunday evening, replacing 415-555-0186",
+          "bindings": 2
+        },
+        {
+          "id": "task-grant:4d99a4414eb1b694c91d7d00",
+          "scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+          "bindings": 1
+        },
+        {
+          "id": "task-grant:ec16f29f72b26bc2f6c19555",
+          "scope": "Current pad-change frequency and cramp intensity reported by patient_elena_park during the live callback initiated from the safe number 415-555-0186, limited to the specific questions asked in s6.",
+          "bindings": 1
+        }
+      ],
+      "worker_bound_turns": [
+        "t101",
+        "t111",
+        "t112"
+      ],
+      "retrieved_text": [
+        "About every four to five hours. Cramps are still around a four out of ten."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 3,
+      "focused_reassessments": 6,
+      "history_rounds": 0
+    },
+    "counseling": {
+      "completed_turns": [
+        "t069",
+        "t070",
+        "t071",
+        "t091",
+        "t092",
+        "t116",
+        "t117",
+        "t144"
+      ],
+      "source_turns": 8,
+      "processing_seconds": 505.181,
+      "active_assignments": [
+        {
+          "id": "task-grant:041cd49d89db6726f3218e9c",
+          "scope": "Doxylamine and pyridoxine initiation and nausea symptom status necessary to assess the follow-up on the new nausea plan.",
+          "bindings": 2
+        },
+        {
+          "id": "task-grant:158d51f126c43d262f101172",
+          "scope": "Doxylamine and pyridoxine dosage, timing, and side-effect management facts necessary to clarify the new nausea plan for the patient.",
+          "bindings": 2
+        }
+      ],
+      "worker_bound_turns": [
+        "t091",
+        "t117",
+        "t144"
+      ],
+      "retrieved_text": [
+        "Current active medication list reviewed: prenatal vitamin, levothyroxine 75 mcg daily, acetaminophen 650 mg q6h PRN with 3,000 mg/day max, doxylamine 12.5 mg nightly, pyridoxine 25 mg BID. Ibuprofen remains stopped.",
+        "Yes. I started them. Nausea is better and I haven't vomited.",
+        "One more clarification: if the bedtime doxylamine makes you too sleepy the next morning, keep it at bedtime only and continue the pyridoxine twice daily."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 1,
+      "focused_reassessments": 2,
+      "history_rounds": 0
+    }
+  }
+}

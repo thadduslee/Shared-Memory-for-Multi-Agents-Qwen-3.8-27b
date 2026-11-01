@@ -1,0 +1,40 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "pairs",
+  "model_calls": 4,
+  "max_calls": 10,
+  "http_attempts": 4,
+  "prompt_tokens": 11216,
+  "completion_tokens": 2947,
+  "elapsed_seconds": 114.534,
+  "cases": {
+    "counseling": {
+      "completed_turns": [
+        "t116",
+        "t117",
+        "t144"
+      ],
+      "source_turns": 3,
+      "processing_seconds": 114.51,
+      "active_assignments": [
+        {
+          "id": "asg:9f0c7f86ec39e23aa6edf0b8",
+          "scope": "Nausea plan adherence (doxylamine/pyridoxine initiation) and current symptom status (nausea/vomiting) for follow-up.",
+          "bindings": 1
+        }
+      ],
+      "worker_bound_turns": [
+        "t117"
+      ],
+      "retrieved_text": [
+        "Yes. I started them. Nausea is better and I haven't vomited."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 0,
+      "focused_reassessments": 1,
+      "history_rounds": 0
+    }
+  }
+}

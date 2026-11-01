@@ -1,0 +1,68 @@
+{
+  "updated_at": "2026-11-01T09:43:01.121458+00:00",
+  "requested_checkpoints": 579,
+  "status": "stopped",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 8,
+    "scored_checkpoints": 8,
+    "expected_boundaries": 567,
+    "completed_boundaries": 7,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 120,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 8,
+    "n_utility": 5,
+    "n_utility_scored": 5,
+    "n_privacy": 3,
+    "n_privacy_scored": 3,
+    "n_privacy_context_scored": 3,
+    "n_privacy_e2e_scored": 3,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.75,
+    "utility_accuracy": 0.8,
+    "privacy_leakage_rate": 0.3333333333333333,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.3333333333333333,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.3333333333333333,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "summary_complete": false,
+  "source_jobs": {
+    "complete": 120,
+    "pending": 1
+  },
+  "source_timings": {
+    "count": 120,
+    "mean_seconds": 13.399451829935424
+  },
+  "checkpoint_counts": {
+    "predictions": 8,
+    "scored": 8
+  },
+  "exit": {
+    "finished_at": "2026-11-01T09:43:01.100204+00:00",
+    "exit_code": 1
+  }
+}

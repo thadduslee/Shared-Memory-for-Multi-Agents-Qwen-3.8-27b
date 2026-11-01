@@ -1,0 +1,78 @@
+{
+  "source_unchanged": true,
+  "changed_files": [],
+  "test_cases": 514,
+  "requirements": {
+    "recipient_permissions": {
+      "verified": true,
+      "tests": [
+        "test_responsive_question_can_grant_worker_without_becoming_a_fact",
+        "test_selected_service_intent_cannot_silently_omit_worker_grant",
+        "test_service_context_does_not_confer_control_authority",
+        "test_fact_rows_require_complete_attribution_instead_of_a_short_branch",
+        "test_deny_overrides_allow_and_no_implicit_owner"
+      ]
+    },
+    "separate_controls": {
+      "verified": true,
+      "tests": [
+        "test_contact_preference_does_not_invalidate_read_permissions",
+        "test_retained_reviews_never_bypass_subsequent_revocation"
+      ]
+    },
+    "incremental_processing": {
+      "verified": true,
+      "tests": [
+        "test_fingerprint_unchanged_and_does_not_copy_binding_history",
+        "test_erasure_preserves_unrelated_readiness_and_blocks_restated_value",
+        "test_v17_maintenance_drains_pending_pairs_with_original_authority",
+        "test_v17_maintenance_is_source_driven_bounded_and_in_total_time"
+      ]
+    },
+    "active_forgetting": {
+      "verified": true,
+      "tests": [
+        "test_future_forgetting_waits_and_is_enforced_before_sweep",
+        "test_conditional_forgetting_needs_fresh_authority_completion",
+        "test_unrelated_actor_cannot_execute_pending_forgetting",
+        "test_generated_artifact_inherits_every_input_including_uncited"
+      ]
+    },
+    "complete_permitted_answers": {
+      "verified": true,
+      "tests": [
+        "test_answer_keeps_selected_portal_instruction_and_removes_guessed_prose",
+        "test_revocation_during_model_call_is_rechecked"
+      ]
+    },
+    "observability_and_transport": {
+      "verified": true,
+      "tests": [
+        "test_scalar_measurements_survive_forgetting_without_source_text",
+        "test_v17_json_transport_uses_the_same_local_grammar",
+        "test_provider_preference_preserves_required_parameters",
+        "test_process_crash_recovers_uncommitted_pair"
+      ]
+    }
+  },
+  "live_verification": "pending OpenRouter data-export approval",
+  "full_real_evaluation": "not started",
+  "complete": false,
+  "offline_schedule": {
+    "complete": true,
+    "coverage": {
+      "expected_checkpoints": 579,
+      "official_predictions": 579,
+      "scored_checkpoints": 579,
+      "expected_boundaries": 567,
+      "completed_boundaries": 567,
+      "expected_source_turns": 4294,
+      "ingested_source_turns": 4294,
+      "exact_checkpoint_coverage": true,
+      "exact_source_coverage": true,
+      "all_boundaries_complete": true
+    },
+    "proves_semantic_quality": false
+  },
+  "local_checks_passed": true
+}

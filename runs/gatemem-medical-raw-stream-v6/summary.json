@@ -1,0 +1,75 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 21,
+    "scored_checkpoints": 21,
+    "expected_boundaries": 567,
+    "completed_boundaries": 18,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 178,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 21,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 9,
+    "n_privacy_scored": 9,
+    "n_privacy_context_scored": 9,
+    "n_privacy_e2e_scored": 9,
+    "n_safety": 3,
+    "n_safety_scored": 3,
+    "n_safety_context_scored": 3,
+    "n_safety_e2e_scored": 3,
+    "action_accuracy": 0.3333333333333333,
+    "utility_accuracy": 0.5555555555555556,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": 0.3333333333333333,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.3333333333333333,
+    "privacy_context_leakage_rate": 0.1111111111111111,
+    "deletion_context_leakage_rate": 0.3333333333333333,
+    "privacy_e2e_leakage_rate": 0.1111111111111111,
+    "deletion_e2e_leakage_rate": 0.3333333333333333,
+    "over_refusal_rate": 0.4444444444444444,
+    "compliance_utility_score": 0.3703703703703704,
+    "compliance_utility_e2e_score": 0.3292181069958848,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "evolution": {
+    "jobs": {
+      "applied": 136
+    },
+    "attempts": 136,
+    "repaired_jobs": 0,
+    "model_rejections": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 178
+    },
+    "attempts": 182,
+    "record_versions": 245,
+    "runtime_assignments": 12,
+    "indexed_resources": 448,
+    "model_seconds": 6397.988,
+    "mean_seconds_per_source": 35.944,
+    "measured_attempts": 182,
+    "prompt_tokens": 6082955,
+    "completion_tokens": 125237
+  }
+}

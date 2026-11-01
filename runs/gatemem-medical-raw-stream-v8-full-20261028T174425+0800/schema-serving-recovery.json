@@ -1,0 +1,16 @@
+{
+  "reason": "HTTP 400: Grammar error: schema too large",
+  "source": "t078",
+  "original_request_hash": "4912bb1449f8604d1b3a44efc1f652bd4e63c56392e5bc2e61f0d1910270c4f9",
+  "backend": "guidance",
+  "change": "Serving-only factoring of repeated subschemas into equivalent local $defs/$ref; no schema constraint removed.",
+  "original_schema_bytes": 459855,
+  "shared_schema_bytes": 85346,
+  "evaluation_code_digest_unchanged": true,
+  "original_manifest_unchanged": true,
+  "files": {
+    "scripts/serve_model.sh": "e960e68e10564eafaa517428874414571dd08ec6eadf346820940f34cfb1dba1",
+    "scripts/vllm_schema_support/schema_refs.py": "36e133a30eb2f050550c84940c9e879d8d9580997ae331eb000e59491db089dc",
+    "scripts/vllm_schema_support/sitecustomize.py": "4b9b6b86f5d1c5c9f5ef16bcce677131cda8e17df00d295db0b1a3b8a50ed639"
+  }
+}

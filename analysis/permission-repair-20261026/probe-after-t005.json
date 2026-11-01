@@ -1,0 +1,143 @@
+{
+  "before": false,
+  "turn": "t005",
+  "seconds": 38.852029350586236,
+  "usage": {
+    "prompt_tokens": 3479,
+    "total_tokens": 4470,
+    "completion_tokens": 991,
+    "prompt_tokens_details": null
+  },
+  "payload_chars": 7435,
+  "proposal": {
+    "revision": 4,
+    "considered_restrictions": [],
+    "operations": [
+      {
+        "op": "establish_activity",
+        "basis": "corroborated",
+        "id": "act-003",
+        "participant": "reception_marta",
+        "subject": "patient_elena_park",
+        "activity": "reception_check_in_verification",
+        "corroboration": [
+          "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+        ],
+        "performance": [
+          "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a"
+        ],
+        "self_check": {
+          "involvement_supported": "Reception asked the patient about information sharing for the visit.",
+          "corroboration_supports": "Patient explicitly answered the question, defining the scope of information sharing.",
+          "scope_resolved": "Scope is limited to logistical details for the family member, excluding clinical information."
+        },
+        "status": "established",
+        "explanation": "Patient's response to the specific question corroborates the involvement in the check-in verification process.",
+        "evidence": {
+          "activity": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a",
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "basis": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participant": [
+            "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a"
+          ],
+          "status": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "op": "propose_assignment",
+        "basis": "explicit",
+        "id": "asg-001",
+        "participant": "family_linda_park",
+        "subject": "patient_elena_park",
+        "authority": "patient_elena_park",
+        "actions": [
+          "read"
+        ],
+        "information_scope": "logistical_details",
+        "self_check": {
+          "basis_supported": "Patient explicitly authorized the mother to receive logistical details.",
+          "actions_supported": "Reading is the necessary action to receive the information.",
+          "scope_supported": "Scope is strictly limited to appointment times and parking details as specified."
+        },
+        "status": "active",
+        "explanation": "Explicit permission from the subject for logistical information sharing.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "authority": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "basis": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participant": [
+            "permission-source:77ca0115853301a55e2619e9b8ed0bdc56582396e4afcbc7fbe7e726fc1616c2",
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "status": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      },
+      {
+        "op": "record_restriction",
+        "effect": "deny",
+        "id": "res-001",
+        "subject": "patient_elena_park",
+        "actions": [
+          "read",
+          "search",
+          "derive"
+        ],
+        "information_scope": "clinical_information",
+        "issuer": "patient_elena_park",
+        "participants": [
+          "family_linda_park"
+        ],
+        "reason": "Patient explicitly excluded results, medications, and notes from information sharing with the mother.",
+        "self_check": {
+          "denial_supported": "Patient explicitly stated 'not my results, medications, or notes'.",
+          "permitted_scope_excluded": "The restriction applies to clinical information, which is distinct from the permitted logistical details."
+        },
+        "explanation": "Explicit denial of access to clinical information for the family member.",
+        "evidence": {
+          "actions": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "information_scope": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "issuer": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "participants": [
+            "permission-source:77ca0115853301a55e2619e9b8ed0bdc56582396e4afcbc7fbe7e726fc1616c2",
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "reason": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ],
+          "subject": [
+            "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "activity": {
+    "linda_checkin_help": {
+      "id": "linda_checkin_help",
+      "participant": "family_linda_park",
+      "subject": null,
+      "activity": "Assist with check-in details for Elena Park's early pregnancy clinic visit",
+      "status": "tentative",
+      "validity": {},
+      "unresolved": [
+        {
+          "question": "Elena Park has not yet accepted Linda's offer to help with check-in details"
+        }
+      ]
+    }
+  },
+  "assignment": {},
+  "restriction": {
+    "elena_linda_scope_limit": {
+      "id": "elena_linda_scope_limit",
+      "issuer": "patient_elena_park",
+      "participants": [
+        "family_linda_park"
+      ],
+      "subject": "patient_elena_park",
+      "information_scope": "results, medications, notes",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

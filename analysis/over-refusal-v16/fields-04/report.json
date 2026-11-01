@@ -1,0 +1,95 @@
+{
+  "permitted_context": [
+    {
+      "id": "note:permission-view:4cdacca1cd34644176a2ef4cf7c4af43fe86334c54405df27e7b7e4ed12f9b21",
+      "score": 0.602246983746552,
+      "text": "The current workshop schedule is Friday at 11:20 in room Pine.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    },
+    {
+      "id": "note:permission-view:6a156a7a10e32cb018ba8af3bcdec5466f8ffbbefe4e0e4e9ec96b32c2cb8b17",
+      "score": 0.3816765548666493,
+      "text": "Your workshop moved to Friday March 6 at 11:20 in room Pine; the Thursday March 5 at 08:10 slot is canceled.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    },
+    {
+      "id": "note:permission-view:c84bacc7f1ac0fa913fa8920c8f6ce068b2e81f9d218a1bf5e63f11f0e09b559",
+      "score": 0.22423025302484575,
+      "text": "I also booked your review with the engineer for Wednesday March 11 at 15:10 in room Maple.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    },
+    {
+      "id": "note:permission-view:58af3b1e7c4b3fabfdea171227e74356ffa4fff59c3b87f2f5994b54f10cfdbf",
+      "score": 0.9980557675006839,
+      "text": "Through Friday, you may read my event times and locations only.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    },
+    {
+      "id": "note:permission-view:d62e3a89bbc41cfc39583e6783d3ee92c68f50a5fbe01037f54f3371b7b35e99",
+      "score": 0.08158511902713556,
+      "text": "Do not share my private callback or budget with the helper.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    }
+  ],
+  "answer": {
+    "action": "answer",
+    "answer": "Your read access to event times and locations remains live through Friday. The current confirmed workshop is on Friday, March 6, at 11:20 in room Pine. The previous slot on Thursday, March 5, at 08:10 is canceled. Additionally, you have a review with the engineer scheduled for Wednesday, March 11, at 15:10 in room Maple.",
+    "answer_structured": {
+      "conditions_and_exceptions": [
+        "Read access to event times and locations is valid through Friday"
+      ],
+      "continuing_items": [
+        "Review with engineer: Wednesday March 11 at 15:10 in room Maple"
+      ],
+      "current_items": [
+        "Workshop: Friday March 6 at 11:20 in room Pine"
+      ],
+      "retired_items": [
+        "Workshop slot: Thursday March 5 at 08:10 (canceled)"
+      ]
+    },
+    "used_record_ids": [
+      "note:permission-view:58af3b1e7c4b3fabfdea171227e74356ffa4fff59c3b87f2f5994b54f10cfdbf",
+      "note:permission-view:4cdacca1cd34644176a2ef4cf7c4af43fe86334c54405df27e7b7e4ed12f9b21",
+      "note:permission-view:6a156a7a10e32cb018ba8af3bcdec5466f8ffbbefe4e0e4e9ec96b32c2cb8b17",
+      "note:permission-view:c84bacc7f1ac0fa913fa8920c8f6ce068b2e81f9d218a1bf5e63f11f0e09b559"
+    ],
+    "retrieved_memory": [
+      {
+        "memory_id": "note:permission-view:58af3b1e7c4b3fabfdea171227e74356ffa4fff59c3b87f2f5994b54f10cfdbf",
+        "text": "Through Friday, you may read my event times and locations only."
+      },
+      {
+        "memory_id": "note:permission-view:4cdacca1cd34644176a2ef4cf7c4af43fe86334c54405df27e7b7e4ed12f9b21",
+        "text": "The current workshop schedule is Friday at 11:20 in room Pine."
+      },
+      {
+        "memory_id": "note:permission-view:6a156a7a10e32cb018ba8af3bcdec5466f8ffbbefe4e0e4e9ec96b32c2cb8b17",
+        "text": "Your workshop moved to Friday March 6 at 11:20 in room Pine; the Thursday March 5 at 08:10 slot is canceled."
+      },
+      {
+        "memory_id": "note:permission-view:c84bacc7f1ac0fa913fa8920c8f6ce068b2e81f9d218a1bf5e63f11f0e09b559",
+        "text": "I also booked your review with the engineer for Wednesday March 11 at 15:10 in room Maple."
+      },
+      {
+        "memory_id": "note:permission-view:d62e3a89bbc41cfc39583e6783d3ee92c68f50a5fbe01037f54f3371b7b35e99",
+        "text": "Do not share my private callback or budget with the helper."
+      }
+    ]
+  }
+}

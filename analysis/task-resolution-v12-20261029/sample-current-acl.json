@@ -1,0 +1,32 @@
+{
+  "activity": {
+    "task:c5d333102b69ae5010e06d73": {
+      "id": "task:c5d333102b69ae5010e06d73",
+      "participant": "helper",
+      "subject": "owner",
+      "activity": "Pickup coordination",
+      "status": "established",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "task-grant:126cf6dc0885bc859aa5355c": {
+      "id": "task-grant:126cf6dc0885bc859aa5355c",
+      "participant": "helper",
+      "subject": "owner",
+      "actions": [
+        "read",
+        "search",
+        "derive"
+      ],
+      "information_scope": "Pickup time and pickup location for the accepted ride only.",
+      "status": "active",
+      "basis": "task",
+      "activity_id": "task:c5d333102b69ae5010e06d73",
+      "validity": {
+        "end_activity": "task:c5d333102b69ae5010e06d73"
+      }
+    }
+  },
+  "restriction": {}
+}

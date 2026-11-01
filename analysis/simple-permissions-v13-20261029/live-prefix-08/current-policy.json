@@ -1,0 +1,67 @@
+{
+  "activity": {
+    "linda_checkin": {
+      "id": "linda_checkin",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "activity": "Assist with check-in details for Elena Park's early pregnancy clinic visit",
+      "status": "established",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "linda_checkin_assign": {
+      "id": "linda_checkin_assign",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "scheduling logistics, appointment times, parking details, registration details (DOB, phone number)",
+      "status": "active",
+      "basis": "task",
+      "activity_id": "linda_checkin",
+      "validity": {
+        "end_activity": "linda_checkin"
+      }
+    },
+    "self-use:d55dd82f0000cba53bf1871d": {
+      "id": "self-use:d55dd82f0000cba53bf1871d",
+      "participant": "patient_elena_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "self-use: Assist with check-in details for Elena Park's early pregnancy clinic visit",
+      "status": "active",
+      "basis": "explicit",
+      "authority": "patient_elena_park",
+      "self_use_activity": "linda_checkin",
+      "validity": {
+        "end_activity": "linda_checkin"
+      }
+    }
+  },
+  "restriction": {
+    "elena_linda_scope": {
+      "id": "elena_linda_scope",
+      "issuer": "patient_elena_park",
+      "participants": [
+        "family_linda_park"
+      ],
+      "subject": "patient_elena_park",
+      "information_scope": "results, medications, notes",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

@@ -1,0 +1,48 @@
+--- before/agentic_memory/privacy/permissions.py
++++ after/agentic_memory/privacy/permissions.py
+@@ -966,7 +966,23 @@
+                 body=sources.get(op.get('source_id'),{}).get('text','')
+                 if (not isinstance(quote,str) or not quote or 'spans' in op or
+                         body.find(quote)<0 or body.find(quote)!=body.rfind(quote)):
+-                    fail('Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases')
++                    from .quote_selection import binding_quotes
++                    matching=([sid for sid,source in sources.items() if quote in source['text']]
++                              if isinstance(quote,str) and quote else [])
++                    available=set(sources) if available_source_ids is None else available_source_ids
++                    reason=('invalid_selector' if not isinstance(quote,str) or not quote or 'spans' in op else
++                            'wrong_source' if quote not in body else 'ambiguous_quote')
++                    fail('Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases',
++                         {'path':f'operations[{operation_index}].quote','code':reason,
++                          'supplied_source_id':op.get('source_id'),'matching_source_ids':matching,
++                          'source_quote_choices':binding_quotes(body) if op.get('source_id') in available else [],
++                          'required_context':[{'kind':'source','reference':sid,'offset':0}
++                                              for sid in matching if sid not in available],
++                          'repair':'Choose the source whose own text contains the quote, then update the supporting '
++                                   'evidence for that actual source. Do not copy text onto a different turn. '
++                                   'Use that source binding_quotes, or request an exact narrower quote with kind quote. '
++                                   'For repeated text choose a longer unique excerpt. Omit unsupported bindings '
++                                   'while retaining valid control changes.'})
+                 start=body.index(quote);op.pop('quote');op['spans']=[[start,start+len(quote)]]
+             if not isinstance(op,dict) or op.get('op') not in _FIELDS: fail('Unsupported permission operation')
+             name=op['op'];allowed=_FIELDS[name]|{'op','evidence','explanation'}
+@@ -1418,9 +1434,9 @@
+     def references(value, mapping, key=None):
+         if isinstance(value,dict) and value.get('kind')=='source' and 'reference' in value:
+             return {k:(mapping.get(v,v) if k=='reference' else references(v,mapping,k)) for k,v in value.items()}
+-        if key in {'source_id','new_source_id'} and isinstance(value,str):
++        if key in {'source_id','new_source_id','supplied_source_id'} and isinstance(value,str):
+             return mapping.get(value,value)
+-        if key in {'evidence','performance','corroboration','execution_evidence','binding_authorizations','required_authorization_sources','source_ids'}:
++        if key in {'evidence','performance','corroboration','execution_evidence','binding_authorizations','required_authorization_sources','source_ids','matching_source_ids'}:
+             def refs(v):
+                 if isinstance(v,str):return mapping.get(v,v)
+                 if isinstance(v,list):return [refs(x) for x in v]
+@@ -1523,6 +1539,8 @@
+     constrained['properties']['operations']['items']['anyOf']=variants
+     from .permission_wire import delta_contract
+     compact,constrained,expand_delta=delta_contract(compact,constrained)
++    from .quote_selection import couple_binding_quotes
++    compact,constrained=couple_binding_quotes(compact,constrained)
+     return compact,constrained,lambda result:references(expand_delta(result),originals)
+ 
+ 

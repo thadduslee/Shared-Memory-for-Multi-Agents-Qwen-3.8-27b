@@ -1,0 +1,112 @@
+{
+  "security": {
+    "passed": true,
+    "tests": 164,
+    "output": "----------------------------------------------------------------------\nRan 164 tests in 10.476s\n\nOK"
+  },
+  "evaluation": {
+    "passed": true,
+    "tests": 35,
+    "output": "----------------------------------------------------------------------\nRan 35 tests in 2.889s\n\nOK"
+  },
+  "performance": {
+    "mode": "disposable-v6-copy-authorization-profile",
+    "real_embedding_or_model_calls": 0,
+    "indexed_candidates": 448,
+    "full_authorized_search_seconds": 1.9532100418582559,
+    "returned_records": 16,
+    "ledger_load_queries_during_search": 0,
+    "cached_and_uncached_decisions_equal": true,
+    "compared_decisions": 27,
+    "limitations": "Stored vectors replace embedding execution to isolate authorization/search. No whole-run or model-quality speed claim."
+  },
+  "logistics_real_model": {
+    "mode": "real-model-focused-nonmedical-regression",
+    "checks": {
+      "current_time": true,
+      "room": true,
+      "cancellation": true,
+      "no_sensitive_context": true,
+      "protected_request_withheld": true
+    },
+    "passed": true
+  },
+  "response_plan_real_model": {
+    "checks": {
+      "permitted_answer": true,
+      "protected_refuse": true,
+      "mixed_redacted": true,
+      "no_private_value": true
+    },
+    "passed": true
+  },
+  "development_real_model": {
+    "mode": "real-model-nonmedical-focused-diagnostic",
+    "not_official_benchmark": true,
+    "seconds_this_invocation": 833.2691340167075,
+    "checks": [
+      {
+        "check": "accepted-reviewer-task",
+        "passed": true
+      },
+      {
+        "check": "operational-contact-binding",
+        "passed": true
+      },
+      {
+        "check": "narrow-logistics-and-cancellation",
+        "passed": false
+      },
+      {
+        "check": "erasure-owner",
+        "passed": true
+      },
+      {
+        "check": "erasure-coordinator",
+        "passed": true
+      }
+    ],
+    "passed": false,
+    "permission_jobs": 12,
+    "recipient_decisions": 39,
+    "erasure_selectors": 1
+  },
+  "judge_review": {
+    "incomplete_answers_rejected": true,
+    "nondisclosure_rule_not_context_leak": true
+  },
+  "original_v6_unchanged": {
+    "episodes.jsonl": true,
+    "checkpoints.jsonl": true,
+    "summary.json": true,
+    "official_predictions.jsonl": true,
+    "scores.jsonl": true,
+    "manifest.json": true
+  },
+  "diff_check_passed": true,
+  "runtime_code_hashes": {
+    "agentic_memory/privacy/governance.py": "99d2d011b8608417e9fe52d36f0645bdb088ea3f8d64888667526d16cb58878b",
+    "agentic_memory/privacy/system.py": "661b4a01aa8812ba95fc3389202e6a8e2eea2b7c30f8c50af7aefe81f0c227f0",
+    "agentic_memory/privacy/lifecycle.py": "b6c9034b2f17f5743d13e1f66bb251747de21649b8486052327d1a59098c31d1",
+    "agentic_memory/privacy/learning.py": "5d5cb52436e495c08f45ef0859252ae95a9b5d6d500686c9207ea30024b3996a",
+    "agentic_memory/privacy/processors.py": "d8bef1a0ca6d179a00c5ead0079af8dd5ab4e279d02ef83898d6b441756e0ffd",
+    "agentic_memory/privacy/permissions.py": "6e371a87490de86ad6a6750e93b52c21c95af3cc46f52005573daf04ac231bf6",
+    "agentic_memory/privacy/__init__.py": "1255e870646db771da6464e4cc62c0b96904228c003b54b8086164f348738caa",
+    "agentic_memory/privacy/evolution.py": "2a34b50fbb3bcd5b0c984ae05ad61387696dbb0f9064d7fa2d095d8e9ca90e8a",
+    "agentic_memory/privacy/migrate.py": "8e3216021432d32f22361d35e85f54e695be7a4b76e7b0014bb7e1cb652d7833",
+    "agentic_memory/privacy/ingestion.py": "ddd0616c5418c7119dd83b8fe1b474e068c2318ae5dab56546b2054c32f04567",
+    "agentic_memory/privacy/storage.py": "c7f8b4dccb51e62ecb5d04151ebc40b0e9e2ac135eb1fdd76e103382e91b3ffd",
+    "evaluation/gatemem_medical/access_audit.py": "06241a8d86f876a9d2bfa320124a08561a35fb1ef52d341fb76fb53355542b07",
+    "evaluation/gatemem_medical/inference_adapter.py": "cadec97e6043204a5ffc7d45ad35c4f0af4f8cb70ff9e98ab435629ac0f95278",
+    "evaluation/gatemem_medical/lifecycle.py": "e629aa8f1b58c091bc3426abfec54cf3314089b26160982228b6b73df9b7dbee",
+    "evaluation/gatemem_medical/adapter.py": "790e24c2910eb180eebe747cbfd6ac0bfca179f2a683c48ab07184f699f81f95",
+    "evaluation/gatemem_medical/__init__.py": "58062afff86fdbe25a0df36a3948cd42bcf2776914a7f530c070422d3bbf5b22",
+    "evaluation/gatemem_medical/rejudge.py": "8b0697225b98c26d244008870d8d3970ec10658c3e786993f9b84cc63d841aa1",
+    "evaluation/gatemem_medical/runner.py": "09fe3c02f777c9edd0c3456511e1e44caee7a377580b35b61758c71b037a87f3",
+    "evaluation/gatemem_medical/evolution_ablation.py": "b4ac799e8f5ce85646e4a9d3159ccbf1ffcc74dd872d4e98a1cde40dbaf4fdb3",
+    "evaluation/gatemem_medical/operational.py": "ca526460e32dc30ca0a6288d5254b0bfa8d7183960108bb762e7a27f3437a33a",
+    "evaluation/gatemem_medical/scoring.py": "66bc9f9e07ce0bb41b012a29839ee096c66f1f00a570065bd66d72bba5886302",
+    "evaluation/gatemem_medical/__main__.py": "74fff10eb2bd330c92909b27a5a9ae84f41b3f268a5c04f51f849276919f19c6",
+    "evaluation/gatemem_medical/input_boundary.py": "4f79c079694698106f5cbb1b5e2a3660a8fbff9a0ebe83820ad2be20afd1c4ea"
+  }
+}

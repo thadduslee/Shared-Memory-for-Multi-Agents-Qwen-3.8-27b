@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-29T02:58:11.833013+00:00",
+  "state": "blocked",
+  "stage": "permission permission-job:65c05bcd81bf7dcaced8d3a5d820f6439a2a8ab04a86086d2c55f55145f0a471",
+  "failures": 1,
+  "error_type": "PermissionRepairExhausted",
+  "error": "Permission update paused after 3 rejected proposals: All existing restrictions must be considered",
+  "contract_failure": false,
+  "details": {
+    "job_id": "permission-job:65c05bcd81bf7dcaced8d3a5d820f6439a2a8ab04a86086d2c55f55145f0a471",
+    "rejections": 3,
+    "limit": 3,
+    "last_validation": {
+      "accepted": false,
+      "details": {},
+      "elapsed_s": 31.786,
+      "error": "PermissionProposalRejected",
+      "model_elapsed_s": 31.779547337442636,
+      "reason": "All existing restrictions must be considered",
+      "usage": {
+        "completion_tokens": 821,
+        "prompt_tokens": 7889,
+        "prompt_tokens_details": null,
+        "total_tokens": 8710
+      }
+    },
+    "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+  },
+  "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+}

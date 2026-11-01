@@ -1,0 +1,121 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 18,
+    "scored_checkpoints": 18,
+    "expected_boundaries": 567,
+    "completed_boundaries": 14,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 164,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 18,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 9,
+    "n_privacy_scored": 9,
+    "n_privacy_context_scored": 9,
+    "n_privacy_e2e_scored": 9,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.7222222222222222,
+    "utility_accuracy": 0.4444444444444444,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.4444444444444444,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [
+    {
+      "previous_code_digest": "b93f430cbd088310576155ace27746bd41e2830e4bba47a2356388d89515935d",
+      "code_digest": "d44e9d4aecc2bfe7d388ea22ca6ce79ab0a88a23085aff0de80fd9c74ffb1065",
+      "at": "2026-10-29T03:04:36.389834+00:00",
+      "preserved_predictions": 0,
+      "completed_boundaries": 0
+    },
+    {
+      "previous_code_digest": "d44e9d4aecc2bfe7d388ea22ca6ce79ab0a88a23085aff0de80fd9c74ffb1065",
+      "code_digest": "b496d33757cf20f067432a96d456e818d88c9c3115c0c6ce5c4e5dde5a576862",
+      "at": "2026-10-29T03:28:57.459986+00:00",
+      "preserved_predictions": 0,
+      "completed_boundaries": 0
+    }
+  ],
+  "mixed_implementation": true,
+  "recovery": {
+    "at": "2026-10-29T03:29:25.250875+00:00",
+    "state": "running",
+    "stage": "permission permission-job:e822eb520bbf11b792abe6364cb9fb820f000c806bdca02e80a0d2f0a63f235c",
+    "reviewed_quote_repair": true,
+    "recovered_after_attempts": 4,
+    "code_digest": "b496d33757cf20f067432a96d456e818d88c9c3115c0c6ce5c4e5dde5a576862"
+  },
+  "evolution": {
+    "jobs": {
+      "applied": 14,
+      "running": 1
+    },
+    "attempts": 14,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 56,
+      "pending": 115,
+      "stale": 19
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "evolution_total": 275.366,
+    "permission_total": 4790.58,
+    "source_ingest": 0.562,
+    "source_total": 4791.434
+  },
+  "governance": {
+    "candidate_versions": 194,
+    "decisions": 194,
+    "recipient_decisions": 919,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 164
+    },
+    "attempts": 170,
+    "record_versions": 207,
+    "runtime_assignments": 10,
+    "indexed_resources": 246,
+    "coverage_adjustments": 182,
+    "processing_seconds": 4985.909,
+    "model_seconds": 4953.687,
+    "mean_seconds_per_source": 30.402,
+    "measured_attempts": 170,
+    "prompt_tokens": 3025471,
+    "completion_tokens": 115483
+  }
+}

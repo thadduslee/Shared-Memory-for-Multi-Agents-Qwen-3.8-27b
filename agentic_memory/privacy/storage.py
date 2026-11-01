@@ -31,6 +31,14 @@ CREATE TABLE IF NOT EXISTS evolution_attempts(
  job_id TEXT NOT NULL, attempt INTEGER NOT NULL, status TEXT NOT NULL,
  error_code TEXT, diagnostic_id TEXT, prompt_hash TEXT NOT NULL,
  proposal_hash TEXT, elapsed_s REAL NOT NULL, PRIMARY KEY(job_id,attempt));
+CREATE TABLE IF NOT EXISTS pipeline_timings(
+ job_id TEXT NOT NULL, stage TEXT NOT NULL, seconds REAL NOT NULL,
+ PRIMARY KEY(job_id,stage));
+CREATE TABLE IF NOT EXISTS evolution_queue(
+ id TEXT PRIMARY KEY, compartment TEXT NOT NULL, source_job TEXT NOT NULL,
+ resource_id TEXT NOT NULL, processor TEXT NOT NULL, batch_id TEXT,
+ status TEXT NOT NULL DEFAULT 'pending', error TEXT);
+CREATE INDEX IF NOT EXISTS evolution_queue_pending ON evolution_queue(compartment,status);
 CREATE INDEX IF NOT EXISTS resources_route ON resources(compartment,kind,state);
 '''
 PRIVACY_SCHEMA = '''
@@ -49,6 +57,68 @@ CREATE TABLE IF NOT EXISTS privacy.privacy_vectors(
 CREATE TABLE IF NOT EXISTS privacy.privacy_metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS privacy.assignment_diagnostics(
  id TEXT PRIMARY KEY, issuer TEXT NOT NULL, body TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS privacy.permission_bootstrap(
+ compartment TEXT PRIMARY KEY, issuer TEXT NOT NULL, body TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS privacy.permission_configurations(
+ compartment TEXT NOT NULL, version TEXT NOT NULL, body TEXT NOT NULL,
+ PRIMARY KEY(compartment,version));
+CREATE TABLE IF NOT EXISTS privacy.permission_jobs(
+ id TEXT PRIMARY KEY, compartment TEXT NOT NULL, source_id TEXT NOT NULL, version TEXT NOT NULL,
+ request_hash TEXT NOT NULL, status TEXT NOT NULL, inputs TEXT NOT NULL,
+ revision INTEGER, snapshot TEXT, model TEXT NOT NULL, prompt_version TEXT NOT NULL,
+ proposal TEXT, validation TEXT, changes TEXT, attempts INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS privacy.permission_attempts(
+ job_id TEXT NOT NULL, attempt INTEGER NOT NULL, input_manifest TEXT NOT NULL,
+ prompt_hash TEXT NOT NULL, proposal TEXT, validation TEXT,
+ PRIMARY KEY(job_id,attempt));
+CREATE TABLE IF NOT EXISTS privacy.permission_records(
+ compartment TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL, version INTEGER NOT NULL,
+ body TEXT NOT NULL, job_id TEXT NOT NULL, PRIMARY KEY(compartment,kind,id,version));
+CREATE TABLE IF NOT EXISTS privacy.permission_access_state(
+ compartment TEXT NOT NULL, kind TEXT NOT NULL, id TEXT NOT NULL,
+ body TEXT NOT NULL, PRIMARY KEY(compartment,kind,id));
+CREATE TABLE IF NOT EXISTS privacy.permission_task_candidates(
+ compartment TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL,
+ PRIMARY KEY(compartment,id));
+CREATE TABLE IF NOT EXISTS privacy.permission_dependencies(
+ compartment TEXT NOT NULL, record_kind TEXT NOT NULL, record_id TEXT NOT NULL,
+ source_id TEXT NOT NULL, PRIMARY KEY(compartment,record_kind,record_id,source_id));
+CREATE INDEX IF NOT EXISTS privacy.permission_pending ON permission_jobs(compartment,status);
+CREATE TABLE IF NOT EXISTS privacy.permission_control_holds(
+ id TEXT PRIMARY KEY, compartment TEXT NOT NULL, job_id TEXT NOT NULL,
+ subject TEXT, body TEXT NOT NULL, state TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS privacy.fact_extractions(
+ job_id TEXT PRIMARY KEY, source_id TEXT NOT NULL, status TEXT NOT NULL,
+ attempts INTEGER NOT NULL DEFAULT 0, body TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS privacy.fact_candidates(
+ id TEXT PRIMARY KEY, compartment TEXT NOT NULL, source_id TEXT NOT NULL,
+ body TEXT NOT NULL, state TEXT NOT NULL, job_id TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS privacy.fact_candidate_source ON fact_candidates(compartment,source_id,state);
+CREATE TABLE IF NOT EXISTS privacy.fact_processing(
+ job_id TEXT NOT NULL, key TEXT NOT NULL, snapshot TEXT NOT NULL, body TEXT NOT NULL,
+ PRIMARY KEY(job_id,key));
+CREATE TABLE IF NOT EXISTS privacy.fact_attempts(
+ job_id TEXT NOT NULL, stage TEXT NOT NULL, key TEXT NOT NULL,
+ attempt INTEGER NOT NULL, body TEXT NOT NULL,
+ PRIMARY KEY(job_id,stage,key,attempt));
+CREATE TABLE IF NOT EXISTS privacy.capability_candidates(
+ id TEXT NOT NULL, version INTEGER NOT NULL, compartment TEXT NOT NULL,
+ body TEXT NOT NULL, state TEXT NOT NULL, source_job TEXT NOT NULL,
+ PRIMARY KEY(id,version));
+CREATE TABLE IF NOT EXISTS privacy.capability_decisions(
+ id TEXT PRIMARY KEY, candidate_id TEXT NOT NULL, version INTEGER NOT NULL,
+ issuer TEXT NOT NULL, decision TEXT NOT NULL, receipt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS privacy.permission_coverage(
+ job_id TEXT NOT NULL, principal TEXT NOT NULL, body TEXT NOT NULL,
+ PRIMARY KEY(job_id,principal));
+CREATE TABLE IF NOT EXISTS privacy.source_erasures(
+ compartment TEXT NOT NULL, subject TEXT NOT NULL, fingerprint TEXT NOT NULL,
+ words INTEGER NOT NULL, issuer TEXT NOT NULL, evidence TEXT NOT NULL,
+ job_id TEXT NOT NULL, PRIMARY KEY(compartment,subject,fingerprint));
+CREATE TABLE IF NOT EXISTS privacy.scheduled_erasures(
+ id TEXT PRIMARY KEY, compartment TEXT NOT NULL, subject TEXT NOT NULL,
+ state TEXT NOT NULL, effective_at TEXT, body TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS privacy.scheduled_erasure_due ON scheduled_erasures(compartment,state,effective_at);
 '''
 
 

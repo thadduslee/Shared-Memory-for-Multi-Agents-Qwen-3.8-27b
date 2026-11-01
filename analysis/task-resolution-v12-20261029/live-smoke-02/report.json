@@ -1,0 +1,50 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "pairs",
+  "model_calls": 8,
+  "max_calls": 20,
+  "prompt_tokens": 18522,
+  "completion_tokens": 3895,
+  "elapsed_seconds": 524.869,
+  "cases": {
+    "outreach": {
+      "error": "ProcessorFailure: smoke:permission: transport TimeoutError",
+      "completed_turns": [
+        "t097",
+        "t099",
+        "t100"
+      ],
+      "source_turns": 7,
+      "processing_seconds": 423.68,
+      "active_assignments": [],
+      "worker_bound_turns": [],
+      "retrieved_text": [],
+      "pending_jobs": [
+        "permission-job:17500f1a2ae4f4d80fec3488c145b52c4fd473cd790233fce34f6a5bfaa0ed44"
+      ],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 0,
+      "focused_reassessments": 0,
+      "history_rounds": 0
+    },
+    "counseling": {
+      "error": "PermissionRepairExhausted: Permission update paused after 3 rejected proposals: Authorized task resolution requires its own validated active narrow assignment",
+      "completed_turns": [
+        "t116"
+      ],
+      "source_turns": 3,
+      "processing_seconds": 101.146,
+      "active_assignments": [],
+      "worker_bound_turns": [],
+      "retrieved_text": [],
+      "pending_jobs": [
+        "permission-job:65882745bda950e5f3f9e750862b649809ba05de050b10adc09e247c99318f3e"
+      ],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 3,
+      "focused_reassessments": 0,
+      "history_rounds": 0
+    }
+  }
+}

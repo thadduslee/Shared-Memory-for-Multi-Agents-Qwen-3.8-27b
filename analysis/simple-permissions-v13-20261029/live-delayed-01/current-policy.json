@@ -1,0 +1,52 @@
+{
+  "activity": {
+    "pickup-tomorrow": {
+      "id": "pickup-tomorrow",
+      "participant": "owner",
+      "subject": "owner",
+      "activity": "Pickup tomorrow at 4 PM outside the library",
+      "status": "ended",
+      "validity": {},
+      "unresolved": [
+        {
+          "question": "Missing acceptance from helper or configured authority"
+        }
+      ]
+    }
+  },
+  "assignment": {},
+  "restriction": {
+    "r-diagnosis-private": {
+      "id": "r-diagnosis-private",
+      "issuer": "owner",
+      "participants": [
+        "owner"
+      ],
+      "subject": "owner",
+      "information_scope": "diagnosis",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    },
+    "r-pickup-revoked": {
+      "id": "r-pickup-revoked",
+      "issuer": "owner",
+      "participants": [
+        "owner"
+      ],
+      "subject": "owner",
+      "information_scope": "pickup arrangements",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

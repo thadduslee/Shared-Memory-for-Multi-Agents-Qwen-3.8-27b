@@ -1,0 +1,175 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 0,
+    "scored_checkpoints": 0,
+    "expected_boundaries": 567,
+    "completed_boundaries": 0,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 8,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 0,
+    "n_utility": 0,
+    "n_utility_scored": 0,
+    "n_privacy": 0,
+    "n_privacy_scored": 0,
+    "n_privacy_context_scored": 0,
+    "n_privacy_e2e_scored": 0,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": null,
+    "privacy_leakage_rate": null,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": null,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-10-31T12:06:48.238032+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:293b8769ca1bcd5fda5b3a214c286c944fc3d5980167699224e2501a0e18b7da",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:293b8769ca1bcd5fda5b3a214c286c944fc3d5980167699224e2501a0e18b7da",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": true,
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 5
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "permission_total": 54.186,
+    "source_ingest": 0.015,
+    "source_total": 54.203
+  },
+  "governance": {
+    "candidate_versions": 6,
+    "decisions": 6,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 6,
+      "quarantined": 1,
+      "running": 1
+    },
+    "attempts": 11,
+    "record_versions": 7,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:293b8769ca1bcd5fda5b3a214c286c944fc3d5980167699224e2501a0e18b7da",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:b8b3b28791e585396963ffc10b709bc3834c4fb20fa2a6ca04d4f29a4a744dfd"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Responsive grant must cite the actual recipient worker, independently from the subject",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      }
+    ],
+    "active_scoped_control_holds": 1,
+    "complete": false,
+    "runtime_assignments": 3,
+    "indexed_resources": 5,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.25,
+    "latency_seconds": {
+      "mean": 7.743352533451149,
+      "median": 4.647543171420693,
+      "p90": 19.608863532543182,
+      "max": 19.608863532543182
+    },
+    "processing_seconds": 53.296,
+    "model_seconds": 53.09,
+    "mean_seconds_per_source": 7.614,
+    "measured_attempts": 10,
+    "prompt_tokens": 49499,
+    "completion_tokens": 2765
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 6,
+      "pending": 2
+    },
+    "candidate_states": {
+      "active": 5
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 8,
+        "timed_calls": 8,
+        "seconds": 50.13715205062181,
+        "prompt_tokens": 39135,
+        "completion_tokens": 2678
+      },
+      "incremental_repair": {
+        "calls": 2,
+        "timed_calls": 2,
+        "seconds": 3.1585871130228043,
+        "prompt_tokens": 10364,
+        "completion_tokens": 87
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 5,
+      "scope_or_subject_excluded": 2
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 2,
+    "checkpoints_with_evidence": 0,
+    "checkpoints_without_evidence": 0,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 0
+  }
+}

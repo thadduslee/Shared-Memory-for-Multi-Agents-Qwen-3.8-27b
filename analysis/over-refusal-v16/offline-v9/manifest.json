@@ -1,0 +1,28 @@
+{
+  "dataset_digest": "6fd85e05ed8d7127aa0e1d70a923c1f905ffc4fb6d91f27fcec33e73d2eccc7a",
+  "code_digest": "1f98bea834a3ce7e16670bfad4e6d4c9846927255eaeefa7e2246b7c269e9fff",
+  "embedding_fingerprint": {
+    "model": "test-hash",
+    "revision": "v1",
+    "dimensions": 128,
+    "preprocessing": "unicode-word-lower:l2"
+  },
+  "models": {
+    "embedding": "test-hash-v1:sha256-word-lower:128:l2",
+    "memory": "test:scripted",
+    "judge": null
+  },
+  "offline": true,
+  "evolution": true,
+  "evolution_schedule": "after-answers-durable-batches-of-4",
+  "schedule": "episode-id-then-turn-position-v2-with-data-tails",
+  "permission_mode": "inference",
+  "permission_version": "16",
+  "agent_input_contract": "raw-stream-v1",
+  "permission_workflow": "combined-incremental",
+  "permission_max_tokens": 3072,
+  "initial_requester_grants": 0,
+  "max_semantic_calls_per_turn": 2,
+  "opaque_model_identities": true,
+  "incremental_max_tokens": 2048
+}

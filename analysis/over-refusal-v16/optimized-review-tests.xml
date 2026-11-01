@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="77" time="52.393" timestamp="2026-11-01T13:23:44.656961+08:00" hostname="maplecg-fisher"><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_absence_classifier_has_one_structurally_required_slot_per_request" time="0.322" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_binding_failure_does_not_block_previously_authorized_facts" time="0.840" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_binding_maintenance_cannot_bypass_unresolved_controls" time="0.498" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_bootstrap_empty_and_opaque_model_input_no_role_shortcut" time="0.211" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_bounded_router_reviews_other_recipients_before_overlapping_grants" time="0.026" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_delayed_acceptance_reuses_persisted_worker_receipt" time="1.796" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_durable_unbound_facts_and_late_grant_are_batched" time="0.591" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_erasure_selects_retained_fact_without_replaying_it_as_authority" time="2.175" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_existing_grant_new_fact_one_call_and_no_repeat_history_review" time="1.836" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_expiry_is_enforced_without_another_model_call" time="0.521" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_explicit_question_cannot_become_factual_evidence" time="0.607" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_fact_only_medication_update_preserves_doses_limits_and_exceptions" time="0.698" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_failed_stranger_control_is_scoped_and_cannot_deny_unrelated_owner" time="1.037" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_focused_control_repair_preserves_other_valid_operations" time="0.422" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_generic_query_flow_distinguishes_missing_and_denied_without_writing_access" time="0.540" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_identical_binding_duplicates_do_not_trigger_a_repair" time="0.475" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_independent_state_survives_reopening_and_event_replay_is_idempotent" time="0.634" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_initial_grants_and_automatic_self_grants_are_rejected" time="0.022" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_interrupted_publication_reuses_accepted_semantics_without_a_model_call" time="0.605" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_invalid_optional_replacement_does_not_discard_an_independent_fact" time="0.795" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_invalid_worker_controls_can_be_withdrawn_without_changing_owner_policy" time="0.839" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_large_late_grant_backlog_is_bounded_durable_and_explicitly_drained" time="4.288" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_missing_beneficiary_binding_does_not_reject_worker_or_copy_their_grant" time="0.821" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_missing_denial_is_appended_while_exact_duplicate_grants_are_merged" time="0.545" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_missing_extraction_rejoins_next_turn_without_repeating_control_changes" time="0.796" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_new_grant_and_new_facts_share_one_semantic_call" time="0.361" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_no_progress_maintenance_has_a_durable_budget" time="0.634" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_null_optional_wire_evidence_does_not_crash_or_infer_access" time="0.366" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_opaque_ids_do_not_rewrite_action_names_or_source_envelopes" time="0.022" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_other_actor_cannot_resolve_owner_hold" time="0.903" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_other_recipient_restriction_does_not_trigger_old_binding_reviews" time="1.004" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_owner_hold_survives_new_grant_and_needs_later_authority_resolution" time="1.291" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_project_and_personal_domains_use_same_pipeline_without_role_configuration" time="1.255" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_quarantine_invalidates_buffered_release_and_survives_restart" time="0.879" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_reassessment_publishes_fresh_bindings_instead_of_rejected_first_bindings" time="0.833" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_recipient_decisions_are_independent_and_new_grant_is_not_copied" time="0.611" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_relationship_routing_is_bounded_and_keeps_matching_old_and_recent_facts" time="0.023" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_rephrased_duplicate_binding_keeps_validated_access" time="0.452" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_required_review_slots_cannot_be_skipped_or_redirected" time="0.068" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_resolving_interpretation_hold_preserves_accepted_denial" time="1.099" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_restriction_replacement_uses_fresh_host_id_and_later_authority" time="0.985" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_revoke_invalidates_cached_access_and_final_release" time="0.671" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_same_subject_replacement_updates_each_permitted_recipient" time="0.841" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_scoped_hold_reports_unavailable_without_inventing_a_denial" time="0.809" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_semantic_grant_without_facts_reports_missing_not_denied" time="0.299" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_source_deletion_scrubs_candidates_and_cached_decisions" time="0.526" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_task_id_bookkeeping_reuses_only_one_exact_saved_worker_receipt" time="0.331" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_transport_failure_resumes_valid_control_and_repairs_only_missing_bindings" time="0.625" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_unresolved_control_retains_hold_and_durable_two_attempt_budget" time="0.813" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_activity_can_reference_a_separate_literal_worker_field_grant" time="0.357" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_does_not_send_empty_binding_repair_for_an_irrelevant_repeat" time="0.697"><failure message="agentic_memory.privacy.permissions.PermissionRepairExhausted: V15 control assessment unresolved after bounded repair">self = &lt;test_incremental_permissions.IncrementalTests testMethod=test_v16_does_not_send_empty_binding_repair_for_an_irrelevant_repeat&gt;
+
+    def test_v16_does_not_send_empty_binding_repair_for_an_irrelevant_repeat(self):
+        self.updater=PermissionUpdater(self.core,self.host,'work',self.bootstrap,self.model,version='16')
+        self.setup_access();self.classify=lambda p,s:'instruction'
+        self.turn('Pickup is at 4 PM.')
+        self.classify=lambda p,s:'context';original=self.model.handler
+        def repeated(p):
+            value=original(p)
+            if p['stage']=='combined_incremental':
+                value['binding_reviews'].append({'candidate_id':p['candidates'][0]['id'],
+                    'assignment_id':next(iter(p['permission_state']['assignment'])),
+                    'in_scope':True,'subject_supported':True,'blocked_by':[],
+                    'reason':'An unnecessary repeat of the cached decision.'})
+            return value
+        self.model.handler=repeated;before=len(self.model.calls)
+&gt;       self.turn('Thank you.')
+
+security_tests/test_incremental_permissions.py:498: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+security_tests/test_incremental_permissions.py:139: in turn
+    self.updater.update(job['job_id'],max_attempts=max_attempts)
+agentic_memory/privacy/permissions.py:802: in update
+    try:return run(self,job_id,max_attempts=min(2,max_attempts))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+updater = &lt;agentic_memory.privacy.permissions.PermissionUpdater object at 0x7fa563217a60&gt;
+job_id = 'permission-job:72e58836b048a0d55842cd19cfa12e44a67991f9f55741b90a31b1bd30c9e18d'
+max_attempts = 2
+
+    def run(updater, job_id, *, max_attempts=2):
+        """One combined call, at most one focused repair/late-history batch.
+    
+        Incomplete control interpretation blocks access. Binding-only failures are
+        durable unavailable pairs and never turn into permission holds.
+        """
+        import json
+        from .permissions import proposal_schema, PermissionRepairExhausted, PermissionRevisionConflict
+        c=updater.core
+        if c.db.in_transaction:raise RuntimeError('Inference must run outside a transaction')
+        c._session(updater.ctx,'manage_policy',updater.compartment)
+        with c.transaction():
+            updater._current_configuration()
+            job=c.db.execute('SELECT * FROM permission_jobs WHERE id=? AND compartment=?',(job_id,updater.compartment)).fetchone()
+            if not job or job['version']!=updater.version:raise ValueError('Unknown job/version')
+            if job['status'] in {'complete','skipped','superseded','quarantined'}:
+                return {'status':job['status'],'changes':json.loads(job['changes'] or '[]')}
+            if job['prompt_version']!=updater.prompt_version or job['model']!=getattr(updater.processor,'model',updater.processor.processor_id):
+                raise ValueError('Changed model/prompt requires a fresh version')
+            ids=json.loads(job['inputs'])
+            sources={sid:c._resource(updater.ctx,sid,'derive',updater.processor.processor_id)['payload']
+                for sid in ids if c._source_live(sid) and c._current(sid)}
+            if job['source_id'] not in sources:fail('Current source is unavailable')
+            state=updater._state();snapshot=updater._snapshot()
+            revision=c.db.execute('SELECT revision FROM permission_bootstrap WHERE compartment=?',(updater.compartment,)).fetchone()[0]
+            recent,projected,context=sliding.context_view(sources,state,job['source_id'],ids)
+            bootstrap=updater._source_bootstrap(sources)
+            canonical_schema=sliding.response_contract({'sources':[{'id':s,**v} for s,v in recent.items()]},
+                proposal_schema(revision=revision,bootstrap=bootstrap,source_ids=recent,allow_context_requests=False))[1]
+            payload={'revision':revision,'bootstrap':asdict(bootstrap),'new_source_id':job['source_id'],
+                'sources':[{'id':s,**v} for s,v in recent.items()],'permission_state':projected}
+            old=facts.rows(updater,prefix=sources)
+            compact,schema,pools,_,spans=schema_for(updater,payload,canonical_schema,job_id,old,sources[job['source_id']])
+            requests=extraction_plan(updater,job,sources,recent)
+            schema['properties']['segments']['items']['properties']['index']['maximum']=max(0,len(requests)-1)
+            schema['properties']['segments']['items']['properties']['subject_source']['enum'].extend(
+                r['canonical_source_id'] for r in requests if r['canonical_source_id'] not in recent)
+            schema['properties']['binding_reviews']['items']['properties']['candidate_id']['enum']=list(dict.fromkeys(
+                [p['id'] for p in old]+[r['candidate_id'] for r in requests]))
+            grounded=int(updater.version.split('-',1)[0])&gt;=16
+            if grounded:
+                from .incremental_routing import router
+                routing=router(updater,old,state,sources[job['source_id']]['text'])
+            main_pairs=pairs(updater,old,state,sources)
+            if grounded:
+                main_pairs=[r for r in main_pairs if state['assignment'][r['assignment_id']]['participant']==
+                    state['assignment'][r['assignment_id']]['subject']]
+                schema['properties']['binding_reviews']['items']['properties']['assignment_id']=enum([
+                    *[aid for aid,a in state['assignment'].items() if a['participant']==a['subject']],*pools['grant']])
+            pending=select_pairs(main_pairs,old,job['source_id'],updater=updater,state=state,
+                                 limit=4 if grounded else MAX_BINDING_REVIEWS)
+            # Existing decisions stay in the host cache. No full historical replay.
+            selected={p['candidate_id'] for p in pending}
+            if grounded:
+                # A new recipient can be authorized even when other recipients
+                # already have grants. Full historical facts must be available for
+                # that independent assessment; somebody else's grant is not a filter.
+                selected.update(p['id'] for p in routing.history(old,state))
+            # A prospective grant can bind protected history in the same response.
+            # This is an input shortlist, never an automatic scope/subject decision.
+            for candidate in old:
+                if len(selected)&gt;=MAX_BINDING_REVIEWS:break
+                if not any(a['status']=='active' and a['subject']==candidate['subject'] for a in state['assignment'].values()):
+                    selected.add(candidate['id'])
+            compact.update(stage='combined_incremental',new_ids=pools,as_of=c.clock(),
+                segments=[{**{k:r[k] for k in ('index','candidate_id','source_id','quote')},
+                    'available_assignments':[aid for aid,a in state['assignment'].items() if active(updater,a,state,sources)]}
+                    for r in requests],
+                control_segments=[{'index':i,'quote':sources[job['source_id']]['text'][a:b]} for i,(a,b) in enumerate(spans)],
+                fact_sources=[{'id':sid,**sources[sid]} for sid in dict.fromkeys(r['canonical_source_id'] for r in requests)
+                    if sid not in recent],
+                candidates=[p for p in old if p['id'] in selected],
+                required_pairs=[{k:p[k] for k in ('candidate_id','assignment_id')} for p in pending],
+                relationship_targets=[{'id':p['id'],'subject':p['subject'],'topics':p['topics'],
+                    'preview':p['quote'][:160]} for p in relationship_index(old,sources[job['source_id']]['text'])],
+                control_rules='Every current segment needs a control decision independently of factual extraction.')
+            from .control_holds import context as hold_context
+            compact['control_holds']=hold_context(updater,sources,job['source_id'])
+            compact['permission_version']=updater.version
+            if grounded:compact['binding_review_scope']='own_subject_only'
+            payload['required_pair_batch']=compact['required_pairs']
+            if int(updater.version.split('-',1)[0])&gt;=16:
+                authorization_context(compact,state,sources)
+            actors=list(bootstrap.participants)
+            identities={pid:'p'+str(i+1) for i,pid in enumerate(actors)}
+            identities.update({sid:'resource'+str(i+1) for i,sid in enumerate(bootstrap.resources) if sid not in identities})
+            for kind,prefix in [('assignment','g'),('restriction','r'),('activity','t')]:
+                identities.update({rid:prefix+str(i+1) for i,rid in enumerate(state[kind])})
+            for kind,values in pools.items():
+                identities.update({rid:'new_'+kind[0]+str(i) for i,rid in enumerate(values)})
+            identities.update({p['id']:'f'+str(i+1) for i,p in enumerate(old)})
+            identities.update({facts.candidate_id(updater.compartment,job['source_id'],span):'new_f'+str(i)
+                for i,span in enumerate(spans)})
+            identities.update({r['candidate_id']:'segment_f'+str(r['index']) for r in requests})
+            identities.update({sid:'history'+str(i+1) for i,sid in enumerate(sources)})
+            identities.update({h['id']:'hold'+str(i+1) for i,h in enumerate(compact['control_holds'])})
+            # Metadata-assisted role hints are never part of v15 semantic input.
+            compact['bootstrap']['participants']={p:{} for p in bootstrap.participants}
+            compact['bootstrap']['resources']={p:{} for p in bootstrap.resources}
+            reverse={v:k for k,v in identities.items()}
+            saved=c.db.execute('SELECT body FROM fact_processing WHERE job_id=? AND key=? AND snapshot=?',
+                (job_id,'incremental-progress',snapshot)).fetchone()
+            progress=json.loads(saved[0]) if saved else {}
+            semantic_attempts=sum(json.loads(r[0] or '{}').get('semantic_response',True)
+                for r in c.db.execute('SELECT validation FROM permission_attempts WHERE job_id=?',(job_id,)))
+        started=time.monotonic();model_calls=0;last_error=None
+        wire=progress.get('wire');canonical=progress.get('canonical');preview=None
+        accepted_reviews={(d['candidate_id'],d['assignment_id']):d for d in progress.get('accepted_reviews',[])}
+        missing=progress.get('missing',[r['index'] for r in requests])
+        visible_candidates=set(progress.get('visible_candidates',[]))
+        verification_pairs={tuple(p) for p in progress.get('verification_pairs',[])}
+        if progress.get('error'):
+            from .permissions import PermissionProposalRejected
+            last_error=PermissionProposalRejected(progress['error'],progress.get('error_details',{}))
+        if canonical is not None:
+            preview=updater._validate(canonical,state,sources,revision,new_source_id=job['source_id'],
+                available_source_ids=set(sources),available_records=payload['permission_state'],control_source_ids=set(recent))
+        remaining=max(0,min(2,max_attempts)-semantic_attempts)
+        if (canonical is not None and not missing and not progress.get('error') and
+            all((r['candidate_id'],r['assignment_id']) in accepted_reviews
+                for r in pairs(updater,facts.rows(updater,prefix=sources),preview[0],sources))):
+            remaining=0  # Resume an interrupted publication without re-inference.
+        if not remaining and canonical is None:
+            raise PermissionRepairExhausted('V15 durable two-call budget exhausted',{'rejections':semantic_attempts,'job_id':job_id})
+        for local_attempt in range(remaining):
+            query=deepcopy(compact);response_schema=deepcopy(schema)
+            if wire is None and last_error is not None:
+                query['correction']={'reason':str(last_error),'details':getattr(last_error,'details',{}),'instruction':
+                    'Return all four structured decision arrays. Keep reasons short; never invent authorization. '
+                    'A literal subject permission naming a recipient uses via=explicit without q. '
+                    'An inferred worker response grant needs q authored by that actual worker.'}
+            if wire is not None:
+                # Preserve successful extraction and binding decisions. Control
+                # replacement is limited to the offending operation when identifiable.
+                error_details=getattr(last_error,'details',{}) if last_error else {}
+                index=error_details.get('operation_index')
+                query.update(stage='incremental_repair',correction={'reason':str(last_error) if last_error else '',
+                    'details':error_details,
+                    'operation_index':index,'preserved_permission_changes':wire['permission_changes'],
+                    'instruction':'Return only failed segments/pairs. Preserve independent successful decisions. '
+                        'A permission operation may be replaced at the named index; a restrictive operation cannot be dropped.'})
+                if canonical is not None:
+                    query['permission_state']=sliding.access_state(preview[0])
+                    if grounded:authorization_context(query,preview[0],sources)
+                    response_schema['properties']['permission_changes']['maxItems']=0
+                    query['correction']['instruction']+=' Controls are validated: permission_changes must be empty.'
+                elif not independent_current_controls(wire,payload):
+                    query['correction'].update(mode='reassess_invalid_controls',instruction=
+                        'No proposed control has a validated current authority receipt. Reassess this event. '
+                        'You may withdraw invalid speculative controls. Unaccepted offers can be tentative tasks; '
+                        'unprivileged access requests are no_change, not unresolved limits. Existing accepted controls stay unchanged.')
+                elif type(index) is int:
+                    response_schema['properties']['permission_changes']['maxItems']=3
+                    if error_details.get('required_effect'):
+                        effect=error_details['required_effect']
+                        allowed={'grant':{'propose_assignment'},'deny':{'record_restriction','replace_restriction','revoke_assignment','suspend_assignment'},
+                            'task':{'observe_participation','establish_activity','end_activity'},
+                            'lifecycle':{'erase_information','erase_candidates','schedule_expiry','end_activity'}}[effect]
+                        variants=response_schema['properties']['permission_changes']['items']['anyOf']
+                        response_schema['properties']['permission_changes']['items']['anyOf']=[v for v in variants
+                            if v['properties']['op']['enum'][0] in allowed]
+                        query['correction'].update(mode='append_effect',instruction=
+                            'Preserve ALL prior operations. Return only the missing '+effect+
+                            ' operation(s), appended after them. Control references use final combined indexes.')
+                query['segments']=[s for s in compact['segments'] if s['index'] in missing]
+                current=facts.rows(updater,prefix=sources)
+                wanted=select_pairs(pairs(updater,current,preview[0] if preview else state,sources),current,job['source_id'],
+                                    updater=updater,state=preview[0] if preview else state)
+                if verification_pairs:
+                    all_pending=pairs(updater,current,preview[0] if preview else state,sources)
+                    verify=[r for r in all_pending if (r['candidate_id'],r['assignment_id']) in verification_pairs]
+                    wanted=(verify+[r for r in wanted if r not in verify])[:MAX_BINDING_REVIEWS]
+                query['required_pairs']=[{k:r[k] for k in ('candidate_id','assignment_id')}
+                    for r in wanted if (r['candidate_id'],r['assignment_id']) not in accepted_reviews]
+                if grounded and canonical is not None and not missing and not query['required_pairs']:
+                    # A model can emit an irrelevant/cached pair even after all
+                    # actual work succeeded. It cannot change accepted bindings.
+                    # Do not make an empty repair request (or construct empty enums).
+                    last_error=None
+                    break
+                needed_candidates={r['candidate_id'] for r in query['required_pairs']}
+                if canonical is None:
+                    needed_candidates.update(p['id'] for p in compact['candidates'])
+                query['candidates']=[p for p in current if p['id'] in needed_candidates]
+                query['accepted_binding_reviews']=list(accepted_reviews.values())
+            context_ids={p['source_id'] for p in query['candidates']}
+            context_ids.update(sid for p in query['candidates'] for sid in p['subject_evidence'])
+            context_ids.update(s['id'] for s in query['fact_sources'])
+            context_ids.update(h['failed_source_id'] for h in query['control_holds'] if h['failed_source'])
+            context_ids.update(e['source_id'] for a in query['permission_state']['assignment'].values()
+                for e in a.get('authorization_context',[]))
+            query['fact_sources']=[{'id':sid,**sources[sid]} for sid in sources if sid in context_ids and sid not in recent]
+            visible_candidates.update(p['id'] for p in facts.rows(updater,prefix=sources)
+                if p['source_id'] in set(recent)|context_ids)
+            visible_candidates.update(r['candidate_id'] for r in requests)
+            from . import incremental_wire
+            narrow=grounded and canonical is not None and not missing
+            call_query=binding_query(query,sources) if narrow else query
+            if narrow:
+                response_schema=obj({'binding_reviews':deepcopy(response_schema['properties']['binding_reviews'])})
+                binding_props=response_schema['properties']['binding_reviews']['items']['properties']
+                binding_props['candidate_id']=enum([p['id'] for p in call_query['candidates']])
+                binding_props['assignment_id']=enum(call_query['permission_state']['assignment'])
+            outgoing,output_schema,decode=incremental_wire.contract(remap(call_query,identities),opaque_schema(response_schema,identities))
+            payload['required_pair_batch']=query['required_pairs']
+            wire_instruction=updater.instruction+incremental_wire.INSTRUCTION
+            if int(updater.version.split('-',1)[0])&gt;=16:
+                wire_instruction=updater.instruction+incremental_wire.GROUNDED_INSTRUCTION
+            if narrow:wire_instruction=BINDING_REPAIR_INSTRUCTION
+            with c.transaction():
+                if updater._snapshot()!=snapshot:raise PermissionRevisionConflict('State changed before inference')
+                attempt=job['attempts']+local_attempt+1
+                c.db.execute("UPDATE permission_jobs SET status='running',attempts=?,snapshot=?,revision=? WHERE id=?",
+                    (attempt,snapshot,revision,job_id))
+                c.db.execute('INSERT INTO permission_attempts VALUES (?,?,?,?,NULL,NULL)',
+                    (job_id,attempt,encoded({'snapshot':snapshot,'source_ids':list(dict.fromkeys([*recent,*context_ids])),
+                        'stage':call_query['stage'],'wire':'compact-v16' if grounded else 'compact-v15'}),
+                        digest({'system':wire_instruction,'payload':outgoing,'schema':output_schema})))
+            model_calls+=1;call_started=time.monotonic();received=False;response=None
+            try:
+                response=updater.learner.propose(list(dict.fromkeys([*recent,*[p['source_id'] for p in query['candidates']],
+                        *[r['canonical_source_id'] for r in requests],*context_ids])),
+                    wire_instruction,outgoing,output_schema)
+                c._tickets.pop(id(response),None)
+                received=True
+                response=remap(decode(response),reverse)
+                if narrow:response={'control_review':[],'permission_changes':[],'segments':[],**response}
+                if not isinstance(response,dict) or set(response)!=set(schema['properties']):fail('Combined response needs all four decision arrays')
+                if wire is None:wire=deepcopy(response)
+                else:
+                    wire['segments']=response['segments']
+                    if canonical is None:
+                        index=getattr(last_error,'details',{}).get('operation_index')
+                        if query.get('correction',{}).get('mode')=='reassess_invalid_controls':
+                            wire['permission_changes']=response['permission_changes']
+                        elif type(index) is int:
+                            replacement=response['permission_changes']
+                            if query.get('correction',{}).get('mode')=='reassess_invalid_controls':
+                                wire['permission_changes']=replacement
+                            elif not 1&lt;=len(replacement)&lt;=3:
+                                fail('Focused control repair must replace the failed operation and its dependencies',stage='controls')
+                            elif getattr(last_error,'details',{}).get('required_effect'):
+                                wire['permission_changes'].extend(replacement)
+                            else:wire['permission_changes'][index:index+1]=replacement
+                        else:
+                            previous={o.get('id') for o in wire['permission_changes'] if isinstance(o,dict) and o.get('id')}
+                            proposed={o.get('id') for o in response['permission_changes'] if isinstance(o,dict)}
+                            if not previous&lt;=proposed:fail('An unfocused repair cannot discard prior independent control proposals',stage='controls')
+                            wire['permission_changes']=response['permission_changes']
+                        wire['control_review']=response['control_review']
+                    elif response['permission_changes']:fail('A binding repair cannot modify validated controls')
+                # A repair's fresh recipient decisions replace the rejected wire
+                # decisions; retain earlier accepted pairs separately below.
+                wire['binding_reviews']=deepcopy(response['binding_reviews'])
+                with c.transaction():
+                    if updater._snapshot()!=snapshot:raise PermissionRevisionConflict('Policy changed during inference')
+                    missing,extraction_errors=extract_plan(updater,requests,wire['segments'],sources,list(recent))
+                if canonical is None:
+                    canonical,preview=validate_controls(updater,wire,payload,canonical_schema,pools,spans,state,sources)
+                    response['binding_reviews']=wire.get('binding_reviews',response['binding_reviews'])
+                candidates=facts.rows(updater,prefix=sources)
+                required=pairs(updater,candidates,preview[0],sources)
+                payload['visible_candidate_ids']=visible_candidates
+                decisions=list(accepted_reviews.values())+response['binding_reviews']
+                accepted_reviews,binding_errors,binding_ops=validate_bindings(updater,decisions,required,candidates,
+                    canonical,preview,state,sources,payload)
+                if grounded and not narrow:
+                    # The combined extractor can confuse adjacent fields or return
+                    # an allow flag contradicting its rationale. Before publishing
+                    # somebody else's information, use the existing second-call
+                    # budget for an independent, read-only, exact-fact review.
+                    # A control repair that consumes that budget leaves such fields
+                    # protected for a later update; it never bypasses this review.
+                    for pair,d in list(accepted_reviews.items()):
+                        grant=preview[0]['assignment'][pair[1]]
+                        if (grant['participant']!=grant['subject'] and d['in_scope']
+                                and d['subject_supported'] and not d['blocked_by']):
+                            accepted_reviews.pop(pair)
+                            verification_pairs.add(pair)
+                            binding_errors[pair]='Third-party disclosure requires focused exact-fact review'
+                elif narrow:
+                    verification_pairs.difference_update(accepted_reviews)
+                error_text={'missing_segments':missing,'extraction_errors':extraction_errors,
+                    'binding_errors':[{'candidate_id':p[0],'assignment_id':p[1],'reason':v} for p,v in binding_errors.items()]}
+                audit={'accepted':not (missing or binding_errors),'control_complete':True,
+                    'semantic_response':True,
+                    'elapsed_s':time.monotonic()-call_started,
+                    'errors':error_text,'model_elapsed_s':getattr(updater.processor,'last_elapsed_seconds',None),
+                    'usage':deepcopy(getattr(updater.processor,'usage',None))}
+                with c.transaction():
+                    c.db.execute('UPDATE permission_attempts SET proposal=?,validation=? WHERE job_id=? AND attempt=?',
+                        (encoded(response),encoded(audit),job_id,attempt))
+                    c.db.execute('INSERT OR REPLACE INTO fact_attempts VALUES (?,?,?,?,?)',
+                        (job_id,query['stage'],'combined',attempt,encoded(audit)))
+                last_error=ValueError(encoded(error_text)) if missing or binding_errors else None
+                with c.transaction():
+                    c.db.execute('INSERT OR REPLACE INTO fact_processing VALUES (?,?,?,?)',
+                        (job_id,'incremental-progress',snapshot,encoded({'wire':wire,'canonical':canonical,
+                            'accepted_reviews':list(accepted_reviews.values()),'missing':missing,
+                            'verification_pairs':[list(p) for p in verification_pairs],
+                            'visible_candidates':sorted(visible_candidates),
+                            'error':str(last_error) if last_error else None})))
+                if not missing and not binding_errors:break
+            except Exception as exc:
+                last_error=exc
+                if wire is None:missing=[r['index'] for r in requests]
+                from .processors import ProcessorFailure,ModelContractError
+                transport=isinstance(exc,ProcessorFailure) and not isinstance(exc,ModelContractError)
+                failure_audit={'accepted':False,'error':'PermissionProposalRejected' if isinstance(exc,(ValueError,KeyError,TypeError)) else type(exc).__name__,
+                    'exception_type':type(exc).__name__,'reason':str(exc),'elapsed_s':time.monotonic()-call_started,
+                    'semantic_response':received or not transport,
+                    'model_elapsed_s':getattr(updater.processor,'last_elapsed_seconds',None),
+                    'usage':deepcopy(getattr(updater.processor,'usage',None)),
+                    'details':getattr(exc,'details',{}),'control_complete':canonical is not None}
+                with c.transaction():
+                    c.db.execute('UPDATE permission_attempts SET proposal=?,validation=? WHERE job_id=? AND attempt=?',
+                        (encoded(response) if received else None,encoded(failure_audit),job_id,attempt))
+                    c.db.execute('INSERT OR REPLACE INTO fact_attempts VALUES (?,?,?,?,?)',
+                        (job_id,query['stage'],'combined',attempt,encoded(failure_audit)))
+                    c.db.execute('INSERT OR REPLACE INTO fact_processing VALUES (?,?,?,?)',
+                        (job_id,'incremental-progress',snapshot,encoded({'wire':wire,'canonical':canonical,
+                            'accepted_reviews':list(accepted_reviews.values()),'missing':missing,
+                            'verification_pairs':[list(p) for p in verification_pairs],
+                            'visible_candidates':sorted(visible_candidates),
+                            'error':str(exc),'error_details':getattr(exc,'details',{})})))
+                from .permissions import PermissionProposalRejected
+                from .processors import ModelContractError
+                if not isinstance(exc,(PermissionProposalRejected,ModelContractError,ValueError,KeyError,TypeError)):raise
+        if canonical is None:
+            with c.transaction():
+                c.db.execute("UPDATE permission_jobs SET status='rejected',validation=? WHERE id=?",
+                    (encoded({'accepted':False,'error':'PermissionProposalRejected','reason':str(last_error),
+                        'unresolved_access_hold':True}),job_id))
+&gt;           raise PermissionRepairExhausted('V15 control assessment unresolved after bounded repair',
+                {'job_id':job_id,'rejections':attempt,'limit':min(2,max_attempts)})
+E           agentic_memory.privacy.permissions.PermissionRepairExhausted: V15 control assessment unresolved after bounded repair
+
+agentic_memory/privacy/incremental.py:1094: PermissionRepairExhausted</failure></testcase><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_late_grant_finds_history_when_another_recipient_already_has_access" time="0.945" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_later_field_denial_preserves_permitted_logistics_grant" time="0.681" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_literal_fields_preserve_authorization_without_invented_topic_limits" time="0.243" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_literal_fields_reject_fabricated_scope_quotes" time="0.388" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_model_selected_self_activity_keeps_responsive_outputs_and_excludes_others" time="0.677" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_negative_reassessment_removes_old_field_but_keeps_allowed_field" time="0.757" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_negative_receipt_blocks_a_still_materialized_old_view" time="0.469" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_observation_cannot_derive_a_receipt_for_another_worker" time="0.448" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_observation_uses_its_actual_authenticated_worker_receipt_without_access" time="0.237" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_plan_format_precedes_answer_and_receives_only_permitted_facts" time="0.455" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_read_expiry_does_not_filter_later_event_dates" time="0.500" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_responsive_grant_cannot_select_an_unrelated_recipient" time="0.513" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_responsive_grant_cites_actual_worker_and_retains_original_context" time="0.482" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_scheduling_expiry_keeps_validator_operation_context" time="0.622" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_selected_service_uses_worker_receipt_and_independent_field_reviews" time="0.745" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_self_activity_cannot_name_another_recipient" time="0.235" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_service_cannot_use_another_workers_receipt" time="0.462" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_source_grounded_grant_needs_no_duplicate_operation_indexes" time="0.450" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_stale_positive_receipt_is_unavailable_until_fresh_review" time="0.640"><failure message="AssertionError: [] is not true">self = &lt;test_incremental_permissions.IncrementalTests testMethod=test_v16_stale_positive_receipt_is_unavailable_until_fresh_review&gt;
+
+    def test_v16_stale_positive_receipt_is_unavailable_until_fresh_review(self):
+        self.updater=PermissionUpdater(self.core,self.host,'work',self.bootstrap,self.model,version='16')
+        self.setup_access();self.classify=lambda p,s:'instruction';self.turn('Pickup is at 4 PM.')
+        self.assertTrue(self.selected())
+        with self.core.transaction():
+            self.core.db.execute("UPDATE fact_processing SET snapshot='obsolete' WHERE job_id='incremental-reviews:work'")
+        self.assertFalse(self.selected())
+        self.classify=lambda p,s:'context';self.turn('Thank you.')
+&gt;       self.assertTrue(self.selected())
+E       AssertionError: [] is not true
+
+security_tests/test_incremental_permissions.py:1318: AssertionError</failure></testcase><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_third_party_data_requires_independent_focused_review" time="0.432" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_uses_its_versioned_prompt_and_starts_without_access" time="0.120" /><testcase classname="security_tests.test_incremental_permissions.IncrementalTests" name="test_v16_wrong_binding_quote_repairs_without_subject_control_hold" time="0.482" /><testcase classname="security_tests.test_structured_output_order.StructuredOutputOrderTests" name="test_answer_key_ordering_composes_with_citation_aliases" time="0.016" /><testcase classname="security_tests.test_structured_output_order.StructuredOutputOrderTests" name="test_conflicting_alias_and_canonical_key_are_rejected" time="0.001" /><testcase classname="security_tests.test_structured_output_order.StructuredOutputOrderTests" name="test_sorted_wire_preserves_review_before_decision_and_all_values" time="0.014" /><testcase classname="security_tests.test_structured_output_order.StructuredOutputOrderTests" name="test_source_transport_keeps_budget_and_source_text" time="0.001" /></testsuite></testsuites>

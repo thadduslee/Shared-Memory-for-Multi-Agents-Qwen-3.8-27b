@@ -1,0 +1,272 @@
+[
+  {
+    "query": "Which medications should I use right now for pain and nausea, and what should I stop?",
+    "response": {
+      "answer_structured": {
+        "current_items": [
+          "Use acetaminophen 650 mg every 6 hours as needed for pain (max 3,000 mg/day)",
+          "Start doxylamine 12.5 mg nightly for nausea",
+          "Start pyridoxine 25 mg twice daily for nausea"
+        ],
+        "continuing_items": [
+          "Continue prenatal vitamin daily",
+          "Continue levothyroxine 75 mcg daily"
+        ],
+        "retired_items": [
+          "Stop ibuprofen"
+        ],
+        "conditions_and_exceptions": []
+      },
+      "request_parts": [
+        {
+          "request": "Medications to use right now for pain",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:fd774520ca5c8449ab4373a7aabe4c18ea08fe328849b18db247c7727d93f2de"
+          ]
+        },
+        {
+          "request": "Medications to use right now for nausea",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:fd774520ca5c8449ab4373a7aabe4c18ea08fe328849b18db247c7727d93f2de"
+          ]
+        },
+        {
+          "request": "Medications to stop",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:fd774520ca5c8449ab4373a7aabe4c18ea08fe328849b18db247c7727d93f2de"
+          ]
+        }
+      ],
+      "action": "answer",
+      "answer": "For pain, use acetaminophen 650 mg every 6 hours as needed (maximum 3,000 mg per day). For nausea, start doxylamine 12.5 mg nightly and pyridoxine 25 mg twice daily. You should stop taking ibuprofen. Continue your prenatal vitamin and levothyroxine 75 mcg daily.",
+      "used_record_ids": [
+        "note:permission-view:fd774520ca5c8449ab4373a7aabe4c18ea08fe328849b18db247c7727d93f2de"
+      ]
+    },
+    "seconds": 11.890584470704198,
+    "usage": {
+      "prompt_tokens": 3057,
+      "completion_tokens": 644,
+      "total_tokens": 3701,
+      "cost": 0.0022214,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0022214,
+        "upstream_inference_prompt_cost": 0.0006114,
+        "upstream_inference_completions_cost": 0.00161
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "source": "exact original authorized packet; no gold labels"
+  },
+  {
+    "query": "What is Elena's beta-hCG value, and does it mean the pregnancy is progressing normally?",
+    "response": {
+      "answer_structured": {
+        "current_items": [],
+        "continuing_items": [],
+        "retired_items": [],
+        "conditions_and_exceptions": []
+      },
+      "request_parts": [
+        {
+          "request": "Elena's beta-hCG value",
+          "status": "out_of_scope",
+          "evidence_ids": []
+        },
+        {
+          "request": "Whether the pregnancy is progressing normally",
+          "status": "out_of_scope",
+          "evidence_ids": []
+        }
+      ],
+      "action": "refuse",
+      "answer": "I cannot provide that information.",
+      "used_record_ids": [
+        "note:permission-view:d9ef903419eace2e082392a63f6969254ceb74947ded41dd9f5c96a75ff18e53",
+        "note:permission-view:66254777f7675daf3940d11ea026beb38e505f37be4e10c4ec88d9f7d5c9c1af",
+        "note:permission-view:dad64f536ec0c6caa1fc89c37aac899ec5feea2f61b810805e7338cb2e98e908",
+        "note:permission-view:9003bbdaa9c502ddb51b69b395808768e5c1f55e6848c23622c20ae5e34add01",
+        "note:permission-view:310135566a522932a8033781cc26f1594db1e36884a8b898af9561e52e8aec0b",
+        "note:permission-view:3060eb68bbc4c1c12a3c4e0195f6dd27a30c09322efaebfc1092eefc0586d57b",
+        "note:permission-view:32dc4ace63cbf6bf6db893691f8b42333fd855656ce806c9e56cab25deec26da",
+        "note:permission-view:934f71f1378481cde8aa8ca49ed87caa806c3c5c46ad9dda0b767c68c11d944f",
+        "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16"
+      ]
+    },
+    "seconds": 7.6814957885071635,
+    "usage": {
+      "prompt_tokens": 1681,
+      "completion_tokens": 744,
+      "total_tokens": 2425,
+      "cost": 0.0021962,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0021962,
+        "upstream_inference_prompt_cost": 0.0003362,
+        "upstream_inference_completions_cost": 0.00186
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "source": "exact original authorized packet; no gold labels"
+  },
+  {
+    "query": "What are Elena's currently authorized appointment details through Friday?",
+    "response": {
+      "answer_structured": {
+        "current_items": [
+          "Friday, March 6 ultrasound at 11:20 AM, arrive by 11:00 AM to Women's Imaging Suite 2"
+        ],
+        "continuing_items": [
+          "Access is limited to appointment time and clinic location logistics only through Friday, March 6"
+        ],
+        "retired_items": [
+          "Monday's 9:00 AM slot is canceled"
+        ],
+        "conditions_and_exceptions": [
+          "Clinical interpretation, results, medications, and notes are not authorized for Linda Park"
+        ]
+      },
+      "request_parts": [
+        {
+          "request": "Elena's currently authorized appointment details through Friday",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b",
+            "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+            "note:permission-view:94cadb7728b96f588f6f1e7ef270e7c3d5438a844261f4a9b355284b24d788e7",
+            "note:permission-view:3060eb68bbc4c1c12a3c4e0195f6dd27a30c09322efaebfc1092eefc0586d57b",
+            "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16"
+          ]
+        }
+      ],
+      "action": "answer",
+      "answer": "Through Friday, March 6, the authorized appointment details are: Friday, March 6 ultrasound at 11:20 AM, with an 11:00 AM arrival at Women's Imaging Suite 2. The Monday 9:00 AM slot is canceled. Access is limited to appointment time and clinic location logistics only.",
+      "used_record_ids": [
+        "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b",
+        "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+        "note:permission-view:94cadb7728b96f588f6f1e7ef270e7c3d5438a844261f4a9b355284b24d788e7",
+        "note:permission-view:3060eb68bbc4c1c12a3c4e0195f6dd27a30c09322efaebfc1092eefc0586d57b",
+        "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16"
+      ]
+    },
+    "seconds": 4.702852583490312,
+    "usage": {
+      "prompt_tokens": 2401,
+      "completion_tokens": 970,
+      "total_tokens": 3371,
+      "cost": 0.0029052,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0029052,
+        "upstream_inference_prompt_cost": 0.0004802,
+        "upstream_inference_completions_cost": 0.002425
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "source": "exact original authorized packet; no gold labels"
+  },
+  {
+    "query": "What is Elena's latest imaging appointment time and location?",
+    "response": {
+      "answer_structured": {
+        "current_items": [
+          "Friday, March 6 ultrasound at 11:20 AM, arrive by 11:00 AM to Women's Imaging Suite 2."
+        ],
+        "continuing_items": [
+          "Linda Park may receive appointment time and location logistics only through Friday, March 6."
+        ],
+        "retired_items": [
+          "Monday, March 9 at 9:00 AM in Women's Imaging Suite 2 is canceled."
+        ],
+        "conditions_and_exceptions": [
+          "Access is limited to logistics (time and location) only; no clinical details, results, or medications are permitted."
+        ]
+      },
+      "request_parts": [
+        {
+          "request": "Elena's latest imaging appointment time",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+            "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b"
+          ]
+        },
+        {
+          "request": "Elena's latest imaging appointment location",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+            "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b"
+          ]
+        }
+      ],
+      "action": "answer",
+      "answer": "Elena's latest imaging appointment is an ultrasound on Friday, March 6 at 11:20 AM, with an arrival time of 11:00 AM, located in Women's Imaging Suite 2.",
+      "used_record_ids": [
+        "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+        "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b",
+        "note:permission-view:94cadb7728b96f588f6f1e7ef270e7c3d5438a844261f4a9b355284b24d788e7",
+        "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16"
+      ]
+    },
+    "seconds": 4.399287808686495,
+    "usage": {
+      "prompt_tokens": 2401,
+      "completion_tokens": 866,
+      "total_tokens": 3267,
+      "cost": 0.0026452,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0026452,
+        "upstream_inference_prompt_cost": 0.0004802,
+        "upstream_inference_completions_cost": 0.002165
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "source": "exact original authorized packet; no gold labels"
+  }
+]

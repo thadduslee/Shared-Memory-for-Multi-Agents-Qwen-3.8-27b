@@ -1,0 +1,46 @@
+{
+  "source_event": "t023",
+  "job_id": "permission-job:ae0928467fe31b1d18ffb4acdac953563653aa6ccdf0166ba84181dde72dc818",
+  "status": "complete",
+  "model_calls": 0,
+  "code_digest": "b9cec3ed3bab2bddc11b5520001e198c0f0f1d02f41dbdec47fd86e10b40a3ac",
+  "reviewed_replay": {
+    "from_attempt": 1,
+    "proposal_digest": "3f18923cb31b6ddd6cadae7eb4bc9f61263dcb292391b762ddef3ff9fb2bc272"
+  },
+  "authorization_deferrals": [
+    {
+      "activity_id": "nurse_med_review",
+      "participant": "nurse_alvarez",
+      "pending_activity_id": "nurse_med_review",
+      "proposed_corroboration": [
+        "permission-source:137e30aa4976496a28b387948fc1f6d99019529bded6d9a8980592e7568afb09"
+      ],
+      "reason": "missing_authorized_corroboration",
+      "subject": "patient_elena_park",
+      "withheld_assignment_ids": [
+        "nurse_med_review_assign"
+      ]
+    }
+  ],
+  "pending_task": {
+    "id": "nurse_med_review",
+    "participant": "nurse_alvarez",
+    "subject": "patient_elena_park",
+    "activity": "Medication review before Dr. Shah's arrival",
+    "status": "tentative",
+    "validity": {},
+    "information_needs": [
+      {
+        "description": "current medication list, dosages, allergies"
+      }
+    ],
+    "unresolved": [
+      {
+        "question": "Awaiting authenticated subject or authority acceptance of this task."
+      }
+    ]
+  },
+  "medication_grant_installed": false,
+  "existing_rooming_grant_active": true
+}

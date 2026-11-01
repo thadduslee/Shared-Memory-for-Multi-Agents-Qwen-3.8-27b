@@ -1,0 +1,38 @@
+{
+  "activity": {
+    "ride": {
+      "id": "ride",
+      "participant": "helper",
+      "subject": "owner",
+      "activity": "ride coordination",
+      "status": "established",
+      "validity": {},
+      "information_needs": [
+        {
+          "description": "Pickup instructions for this ride"
+        }
+      ]
+    }
+  },
+  "assignment": {
+    "access": {
+      "id": "access",
+      "participant": "helper",
+      "subject": "owner",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "pickup",
+      "status": "active",
+      "basis": "task",
+      "authority": null,
+      "activity_id": "ride",
+      "validity": {
+        "end_activity": "ride"
+      }
+    }
+  },
+  "restriction": {}
+}

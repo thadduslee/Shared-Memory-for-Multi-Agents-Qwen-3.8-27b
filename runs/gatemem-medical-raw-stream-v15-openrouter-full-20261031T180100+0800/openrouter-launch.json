@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-31T10:01:03.135026+00:00",
+  "base_url": "https://openrouter.ai/api/v1",
+  "models": {
+    "memory": "qwen/qwen3.8-27b",
+    "judge": "openai/gpt-4.1"
+  },
+  "permission_version": "15",
+  "expected": {
+    "episodes": 21,
+    "source_turns": 4294,
+    "checkpoints": 579,
+    "boundaries": 567
+  },
+  "schedule": "episode-id-then-turn-position-v2-with-data-tails",
+  "initial_requester_grants": 0,
+  "evolution": true,
+  "offline": false,
+  "key_setting": "AMEM_OPENROUTER_API_KEY",
+  "env_file": "/home/thaddus/a-mem-variant/.env",
+  "permission_token_cap": 1024,
+  "preflight": [
+    {
+      "role": "memory-and-answer",
+      "requested_model": "qwen/qwen3.8-27b",
+      "response_model": "qwen/qwen3.8-27b",
+      "provider": "Cloudflare",
+      "seconds": 0.8679044414311647,
+      "usage": {
+        "prompt_tokens": 29,
+        "completion_tokens": 6,
+        "total_tokens": 35,
+        "cost": 3.225e-05,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 3.225e-05,
+          "upstream_inference_prompt_cost": 1.305e-05,
+          "upstream_inference_completions_cost": 1.92e-05
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    {
+      "role": "judge",
+      "requested_model": "openai/gpt-4.1",
+      "response_model": "openai/gpt-4.1",
+      "provider": "OpenAI",
+      "seconds": 1.5340460203588009,
+      "usage": {
+        "prompt_tokens": 51,
+        "completion_tokens": 6,
+        "total_tokens": 57,
+        "cost": 0.00015,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00015,
+          "upstream_inference_prompt_cost": 0.000102,
+          "upstream_inference_completions_cost": 4.8e-05
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  ],
+  "resume": false
+}

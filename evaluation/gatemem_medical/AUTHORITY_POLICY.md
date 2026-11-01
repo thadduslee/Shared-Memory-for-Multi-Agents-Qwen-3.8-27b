@@ -1,5 +1,13 @@
 # GateMem medical authority and interpretation policy
 
+This document describes the retained `--permission-mode baseline` adapter.
+The default general updater and its thin source adapter are documented in
+[PERMISSION_INFERENCE.md](../../PERMISSION_INFERENCE.md); they do not use the
+episode-specific bindings or medical compiler rules below. Default inference uses
+`raw-stream-v1`: `entities`, structured role/access metadata and subject hints are
+evaluator-only. The baseline described here is explicitly labeled
+`metadata-assisted-oracle-baseline` and is not a raw-stream benchmark result.
+
 This is a benchmark adapter convention, not a hospital authorization standard.
 The domain-free core does not know staff roles, patients, clinical terms or
 GateMem query categories. A production source must supply its own verified ACLs,

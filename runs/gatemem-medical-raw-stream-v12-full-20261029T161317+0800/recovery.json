@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-29T08:28:38.496586+00:00",
+  "state": "blocked",
+  "stage": "permission permission-job:04c98b0a24156a0a13ac6efe299e4bf6f8b2c5d12bba11e6196e6ab64d159fe6",
+  "failures": 1,
+  "error_type": "PermissionRepairExhausted",
+  "error": "Permission update paused after 3 rejected proposals: An empty task assignment must remain awaiting_facts, not complete without bindings",
+  "contract_failure": false,
+  "details": {
+    "job_id": "permission-job:04c98b0a24156a0a13ac6efe299e4bf6f8b2c5d12bba11e6196e6ab64d159fe6",
+    "rejections": 3,
+    "limit": 3,
+    "last_validation": {
+      "accepted": false,
+      "details": {},
+      "elapsed_s": 69.941,
+      "error": "PermissionProposalRejected",
+      "model_elapsed_s": 69.92956842575222,
+      "reason": "An empty task assignment must remain awaiting_facts, not complete without bindings",
+      "usage": {
+        "completion_tokens": 1807,
+        "prompt_tokens": 6903,
+        "prompt_tokens_details": null,
+        "total_tokens": 8710
+      }
+    },
+    "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+  },
+  "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+}

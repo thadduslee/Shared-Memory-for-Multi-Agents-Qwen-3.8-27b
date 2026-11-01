@@ -1,0 +1,102 @@
+[
+  {
+    "query": "What are Elena's currently authorized appointment details through Friday?",
+    "response": {
+      "answer_structured": {
+        "current_items": [
+          "Thursday, March 5: Repeat beta-hCG lab at 8:10 AM in the lab suite.",
+          "Friday, March 6: Ultrasound at 11:20 AM in Women's Imaging Suite 2, with an 11:00 AM arrival."
+        ],
+        "continuing_items": [
+          "Wednesday, March 11: Clinic follow-up with Dr. Shah at 3:10 PM."
+        ],
+        "retired_items": [
+          "Monday, March 9: 9:00 AM imaging slot in Women's Imaging Suite 2 is canceled."
+        ],
+        "conditions_and_exceptions": [
+          "Access is limited to appointment time and location logistics through Friday, March 6.",
+          "Clinical interpretation, results, medications, and notes are not authorized for disclosure."
+        ]
+      },
+      "request_parts": [
+        {
+          "request": "Thursday, March 5 appointment details",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:058bceaf36b47159161387a40263c24b83cc3499dc6b9128d2972da0e7c3327c",
+            "note:permission-view:25d1604ce7a75c31504ac12ffaa7b17b4dc61441f9b5c9f5c88b0aac86c3dd24"
+          ]
+        },
+        {
+          "request": "Friday, March 6 appointment details",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b",
+            "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+            "note:permission-view:7edf5dc7b129ef7781773566e0d4b39741e26865cbb95ba59b6d3a39b832f632"
+          ]
+        },
+        {
+          "request": "Monday, March 9 appointment status",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:94cadb7728b96f588f6f1e7ef270e7c3d5438a844261f4a9b355284b24d788e7",
+            "note:permission-view:074188a9710ea5d0856eae95f43a1d090f4f49c2e3f564c5934a62ea79a11a67"
+          ]
+        },
+        {
+          "request": "Access limitations for appointment details",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:3060eb68bbc4c1c12a3c4e0195f6dd27a30c09322efaebfc1092eefc0586d57b",
+            "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16",
+            "note:permission-view:10833a0a6d8b25be0b8173fa7c532cae41059c289cb2e0fb5d50a70a7d5f07df",
+            "note:permission-view:c308819234568deb17f5cf9537d80af9f0c7dc5b16c082a5227c63c4d14fa0fa",
+            "note:permission-view:6ebc998b6d1ee2e629778920df306be8053deccc340ebe43ebcaa3dbc3a16eae"
+          ]
+        }
+      ],
+      "action": "answer",
+      "answer": "Elena's currently authorized appointment details through Friday, March 6 are: Thursday, March 5 at 8:10 AM for a repeat beta-hCG lab in the lab suite; and Friday, March 6 at 11:20 AM for an ultrasound in Women's Imaging Suite 2, with an 11:00 AM arrival. The Monday, March 9 slot at 9:00 AM is canceled. Access is limited to time and location logistics only; clinical details, results, and medications are not authorized.",
+      "used_record_ids": [
+        "note:permission-view:7138a697a76b3c2162a552ba0c35b995d4041f77178f0d6811ca76f894c29f8b",
+        "note:permission-view:116941c4352cfb94b3d10ebf0f99683e4aceb2dfb39a7bbbbb5564619d7bef25",
+        "note:permission-view:94cadb7728b96f588f6f1e7ef270e7c3d5438a844261f4a9b355284b24d788e7",
+        "note:permission-view:7edf5dc7b129ef7781773566e0d4b39741e26865cbb95ba59b6d3a39b832f632",
+        "note:permission-view:3060eb68bbc4c1c12a3c4e0195f6dd27a30c09322efaebfc1092eefc0586d57b",
+        "note:permission-view:2cc60b93f8065bc322d426be25c5e7e15f7a863b98b6d6a850607f933d9a6f16",
+        "note:permission-view:10833a0a6d8b25be0b8173fa7c532cae41059c289cb2e0fb5d50a70a7d5f07df",
+        "note:permission-view:c308819234568deb17f5cf9537d80af9f0c7dc5b16c082a5227c63c4d14fa0fa",
+        "note:permission-view:074188a9710ea5d0856eae95f43a1d090f4f49c2e3f564c5934a62ea79a11a67",
+        "note:permission-view:058bceaf36b47159161387a40263c24b83cc3499dc6b9128d2972da0e7c3327c",
+        "note:permission-view:25d1604ce7a75c31504ac12ffaa7b17b4dc61441f9b5c9f5c88b0aac86c3dd24",
+        "note:permission-view:6ebc998b6d1ee2e629778920df306be8053deccc340ebe43ebcaa3dbc3a16eae"
+      ]
+    },
+    "seconds": 3.3838720209896564,
+    "usage": {
+      "prompt_tokens": 1575,
+      "completion_tokens": 667,
+      "total_tokens": 2242,
+      "cost": 0.0019825,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0019825,
+        "upstream_inference_prompt_cost": 0.000315,
+        "upstream_inference_completions_cost": 0.0016675
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "source": "archived candidate10 packet; format-only test, not privacy evidence; no gold labels"
+  }
+]

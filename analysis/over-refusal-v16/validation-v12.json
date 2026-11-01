@@ -1,0 +1,38 @@
+{
+  "regression": {
+    "tests": 525,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 123.225,
+    "artifact": "regression-v12-frozen.xml"
+  },
+  "generic_workflow": {
+    "audit.json": {
+      "all_sources_complete": true,
+      "no_active_control_holds": true,
+      "revocation_published": true,
+      "owner_access_survives_revocation": true,
+      "coordinator_access_revoked": true,
+      "passed": true
+    },
+    "scope-audit.json": {
+      "two_active_coordinator_queries": true,
+      "confidential_contact_absent_from_context": true,
+      "budget_absent_from_context": true,
+      "passed": true
+    }
+  },
+  "scope_regression": {
+    "schedule_with_cancellation_allowed_by_general_time_location_grant": true,
+    "contact_excluded": true,
+    "price_excluded": true,
+    "passed": true
+  },
+  "offline_resume": {
+    "checkpoints": 4,
+    "revisions": [],
+    "semantic_quality_evidence": false
+  },
+  "live_run": "candidate-12",
+  "live_run_status": "in progress; no final quality or speed claim"
+}

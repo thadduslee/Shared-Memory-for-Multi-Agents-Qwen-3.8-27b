@@ -8,6 +8,7 @@ from unittest.mock import patch
 from agentic_memory.privacy import PrivacyMemorySystem,AccessDenied
 from agentic_memory.privacy.evolution import ProposalRejected
 from agentic_memory.privacy.processors import HashEmbedder,ScriptedProcessor,ProcessorFailure
+from agentic_memory.privacy.processors import CompletionProcessor
 
 
 class SequenceProcessor(ScriptedProcessor):
@@ -60,6 +61,25 @@ class EvolutionContracts(unittest.TestCase):
         self.assertEqual(model.schemas[0]['properties']['updates']['items']['properties']['id']['enum'],[self.note])
         history=list(self.core.db.execute('SELECT status,error_code FROM evolution_attempts ORDER BY attempt'))
         self.assertEqual([tuple(r) for r in history],[('rejected','unknown_target'),('applied',None)])
+
+    def test_network_aliases_restore_canonical_ids_before_processing_ticket(self):
+        import io
+        seen=[]
+        def response(request,**kwargs):
+            body=json.loads(request.data);wire=json.loads(body['messages'][1]['content']);seen.append(wire)
+            self.assertEqual(wire['new_note_ids'],['m1'])
+            self.assertEqual(wire['notes'][0]['id'],'m1')
+            result={'updates':[{'id':'m1','keywords':['arrival'],'tags':[],
+                                'context':'arrival 11:00 AM.'}],'edges':[]}
+            return io.BytesIO(json.dumps({'choices':[{'message':{'content':json.dumps(result)}}]}).encode())
+        model=CompletionProcessor('test:completion','http://unused','test-model')
+        self.core.register_processor(self.admin,model)
+        with patch('urllib.request.urlopen',side_effect=response):
+            result=self.core.evolve(self.admin,model,[self.note],job_id='wire',k=0)
+        self.assertEqual(result['status'],'applied')
+        overlay=self.core.read(self.reader,'enrichment:wire:0')
+        self.assertEqual(overlay['payload']['base_memory_id'],self.note)
+        self.assertEqual(overlay['payload']['semantic']['context'],'arrival 11:00 AM.')
 
     def test_exhaustion_keeps_sources_and_is_idempotent(self):
         invalid={'updates':[],'edges':[],'policy':'public'}
@@ -141,6 +161,29 @@ class EvolutionContracts(unittest.TestCase):
         row=self.core.db.execute('SELECT status,error_code FROM evolution_attempts').fetchone()
         self.assertEqual(tuple(row),('processor_error','ProcessorFailure'))
         self.assertFalse(self.core.db.execute('SELECT 1 FROM provenance').fetchone())
+
+    def test_repeated_transport_failures_do_not_exhaust_contract_repair_budget(self):
+        invalid={'updates':[],'edges':[],'policy':'forbidden'}
+        model=SequenceProcessor([invalid]+[ProcessorFailure('offline')]*4+[self.valid()])
+        self.core.register_processor(self.admin,model)
+        for _ in range(4):
+            with self.assertRaises(ProcessorFailure):
+                self.core.evolve(self.admin,model,[self.note],job_id='recover',k=0)
+        result=self.core.evolve(self.admin,model,[self.note],job_id='recover',k=0)
+        self.assertEqual(result,{'status':'applied','attempts':6})
+        self.assertEqual(model.calls[-1]['correction']['code'],'forbidden_operation')
+        self.assertEqual(self.core.db.execute("SELECT COUNT(*) FROM evolution_attempts WHERE job_id='recover'").fetchone()[0],6)
+
+    def test_actual_rejected_proposals_still_have_a_bounded_budget_after_outage(self):
+        invalid={'updates':[],'edges':[],'policy':'forbidden'}
+        model=SequenceProcessor([invalid,ProcessorFailure('offline'),invalid,invalid])
+        self.core.register_processor(self.admin,model)
+        with self.assertRaises(ProcessorFailure):
+            self.core.evolve(self.admin,model,[self.note],job_id='bounded',k=0)
+        result=self.core.evolve(self.admin,model,[self.note],job_id='bounded',k=0)
+        self.assertEqual(result,{'status':'rejected','attempts':4,'error_code':'forbidden_operation'})
+        self.assertEqual(self.core.evolve(self.admin,model,[self.note],job_id='bounded',k=0),result)
+        self.assertEqual(len(model.calls),4)
 
     def test_policy_revocation_is_not_retried_as_model_error(self):
         outer=self

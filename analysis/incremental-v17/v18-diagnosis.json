@@ -1,0 +1,51 @@
+{
+  "original_run": "runs/gatemem-medical-v17-openrouter-full-20261101T231136+0800",
+  "frozen_code_present": true,
+  "scored_checkpoints": 5,
+  "utility_questions": 4,
+  "over_refusal_rate": 1.0,
+  "mean_source_seconds": 18.07224420308032,
+  "source_total_seconds": 1626.502,
+  "source_model_seconds": 1587.691,
+  "job_statuses": {
+    "complete": 68,
+    "quarantined": 22,
+    "running": 1
+  },
+  "quarantine_reasons": {
+    "Structured output failed local schema validation: s: enum": 1,
+    "Structured output failed local schema validation: c/0/r: maxLength": 4,
+    "Service-result attribution must match the actual accepted service recipient": 12,
+    "Structured output failed local schema validation: : additionalProperties; allowed keys=o,via,s,e,i,work,r,v | via: enum; allowed=request": 1,
+    "Own-information attribution must name the actual current speaker": 2,
+    "Structured output failed local schema validation: review: maxLength": 2
+  },
+  "first_prediction_processing": {
+    "active_assignments": 12,
+    "authorization_diagnoses": {},
+    "binding_decisions": 393,
+    "bound_candidates": 36,
+    "excluded_binding_decisions": 281,
+    "extraction_complete": false,
+    "extraction_receipts": 54,
+    "failure_holds": 14,
+    "incomplete_extractions": 0,
+    "live_candidates": 44,
+    "no_assignment_decisions": 0,
+    "pending_binding_reviews": 17,
+    "rejected_relationships": 0,
+    "scoped_control_holds": 14,
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 70,
+        "elapsed_s": 660.5433272058144
+      },
+      "incremental_repair": {
+        "calls": 28,
+        "elapsed_s": 247.31623275578022
+      }
+    },
+    "source_events": 54
+  },
+  "replacement_status": "generic JSON preflight passed all 22 checks; same first native checkpoints running in separate frozen prefix"
+}

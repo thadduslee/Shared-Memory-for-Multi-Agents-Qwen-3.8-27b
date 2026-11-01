@@ -1,0 +1,49 @@
+{
+  "permitted_context": [
+    {
+      "id": "note:permission-view:f8d3cb6944f57aacee46b548a6946ec81cf08cac2ae296665814a932aa871157",
+      "score": 0.602246983746552,
+      "text": "The current workshop schedule is Friday at 11:20 in room Pine.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    },
+    {
+      "id": "note:permission-view:dcdee3ea62ece6b7389eaf77177cb178689d823f6967b2c01ccd9d04fca4ec24",
+      "score": 0.22423025302484575,
+      "text": "I also booked your review with the engineer for Wednesday March 11 at 15:10 in room Maple.",
+      "kind": "memory",
+      "semantic": {},
+      "source": {},
+      "current": true
+    }
+  ],
+  "answer": {
+    "action": "answer",
+    "answer": "The current event schedule includes a workshop on Friday at 11:20 in room Pine and a review with the engineer on Wednesday March 11 at 15:10 in room Maple. There are no canceled slots in the provided evidence.",
+    "answer_structured": {
+      "conditions_and_exceptions": [],
+      "continuing_items": [],
+      "current_items": [
+        "Workshop: Friday at 11:20 in room Pine",
+        "Review with engineer: Wednesday March 11 at 15:10 in room Maple"
+      ],
+      "retired_items": []
+    },
+    "used_record_ids": [
+      "note:permission-view:f8d3cb6944f57aacee46b548a6946ec81cf08cac2ae296665814a932aa871157",
+      "note:permission-view:dcdee3ea62ece6b7389eaf77177cb178689d823f6967b2c01ccd9d04fca4ec24"
+    ],
+    "retrieved_memory": [
+      {
+        "memory_id": "note:permission-view:f8d3cb6944f57aacee46b548a6946ec81cf08cac2ae296665814a932aa871157",
+        "text": "The current workshop schedule is Friday at 11:20 in room Pine."
+      },
+      {
+        "memory_id": "note:permission-view:dcdee3ea62ece6b7389eaf77177cb178689d823f6967b2c01ccd9d04fca4ec24",
+        "text": "I also booked your review with the engineer for Wednesday March 11 at 15:10 in room Maple."
+      }
+    ]
+  }
+}

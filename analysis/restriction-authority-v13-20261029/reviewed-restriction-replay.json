@@ -1,0 +1,78 @@
+{
+  "source_event": "t027",
+  "job_id": "permission-job:344d0a25072333fd426a6a178e540229158c2605dfe9b5418e188b5240902ddf",
+  "status": "complete",
+  "model_calls": 0,
+  "code_digest": "2a3e028619f255ef28699115a9e59c914f222ed59bdb625b35c42baae694ae68",
+  "reviewed_replay": {
+    "from_attempt": 1,
+    "proposal_digest": "249c961f0df8fbdbc07942c409f41f9f0cafc77af663b883d453219ab56432d0"
+  },
+  "authorization_deferrals": [
+    {
+      "activity_id": "nurse_med_review",
+      "participant": "nurse_alvarez",
+      "pending_activity_id": "nurse_med_review",
+      "proposed_corroboration": [
+        "permission-source:d1b5edde2e93507b7e553c780c4407aaec939e52829392f0da448674ac7d870b"
+      ],
+      "reason": "missing_authorized_corroboration",
+      "subject": "patient_elena_park",
+      "withheld_assignment_ids": [
+        "nurse_med_review_assign"
+      ]
+    },
+    {
+      "participants": [
+        "family_linda_park"
+      ],
+      "proposed_issuer": "patient_elena_park",
+      "protective_hold": true,
+      "reason": "missing_authenticated_restriction_authority",
+      "restriction_id": "elena_linda_med_scope",
+      "subject": "patient_elena_park"
+    }
+  ],
+  "pending_task": {
+    "id": "nurse_med_review",
+    "participant": "nurse_alvarez",
+    "subject": "patient_elena_park",
+    "activity": "Medication review before Dr. Shah's arrival",
+    "status": "tentative",
+    "validity": {},
+    "information_needs": [
+      {
+        "description": "current medication list, dosages, allergies"
+      },
+      {
+        "description": "current medication list, dosages, allergies, recent medication use"
+      }
+    ],
+    "unresolved": [
+      {
+        "question": "Awaiting authenticated subject or authority acceptance of this task."
+      }
+    ]
+  },
+  "medication_grant_installed": false,
+  "existing_rooming_grant_active": true,
+  "pending_restriction": {
+    "id": "elena_linda_med_scope",
+    "issuer": null,
+    "participants": [
+      "family_linda_park"
+    ],
+    "subject": "patient_elena_park",
+    "information_scope": "visit assessment, lab numbers, medication changes",
+    "actions": [
+      "search",
+      "read",
+      "derive"
+    ],
+    "effect": "deny",
+    "validity": {},
+    "status": "unresolved",
+    "confirmation_required": "Awaiting an authenticated restriction authority statement; recipient access is held."
+  },
+  "existing_family_restriction_retained": true
+}

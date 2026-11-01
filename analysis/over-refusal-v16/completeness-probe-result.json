@@ -1,0 +1,41 @@
+{
+  "response": {
+    "review": "The draft accurately reflects the current medication plan. It correctly identifies acetaminophen for pain, doxylamine and pyridoxine for nausea, and ibuprofen as the medication to stop. It appropriately omits the continuing requirements for prenatal vitamins and levothyroxine, as the query specifically asked for pain/\u7eb3",
+    "action": "answer",
+    "answer": "For pain, use acetaminophen 650 mg every 6 hours as needed (maximum 3,000 mg per day). For nausea, start doxylamine 12.5 mg nightly and pyridoxine 25 mg twice daily. You should stop ibuprofen.",
+    "answer_structured": {
+      "pain_medication": "Acetaminophen 650 mg q6h PRN (max 3,000 mg/day)",
+      "nausea_medication": "Doxylamine 12.5 mg nightly and Pyridoxine 25 mg BID",
+      "medication_to_stop": "Ibuprofen"
+    },
+    "used_record_ids": [
+      "note:permission-view:fd774520ca5c8449ab4373a7aabe4c18ea08fe328849b18db247c7727d93f2de"
+    ]
+  },
+  "seconds": 4.628708893433213,
+  "usage": {
+    "prompt_tokens": 3125,
+    "completion_tokens": 326,
+    "total_tokens": 3451,
+    "cost": 0.00144,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.00144,
+      "upstream_inference_prompt_cost": 0.000625,
+      "upstream_inference_completions_cost": 0.000815
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "no_gold_labels": true,
+  "no_policy_mutation": true
+}

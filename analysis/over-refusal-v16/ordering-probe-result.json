@@ -1,0 +1,228 @@
+{
+  "original": {
+    "response": {
+      "c": [
+        0,
+        0,
+        0
+      ],
+      "p": [],
+      "f": [
+        {
+          "i": 0,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports her own bleeding severity in response to p6's rooming question",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        },
+        {
+          "i": 1,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports pad/liner changes this morning and afternoon",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        },
+        {
+          "i": 2,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports no soaking through pads",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        }
+      ],
+      "b": [
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "g2",
+          "r": "p2's own symptom update for active spotting activity",
+          "d": "allow"
+        },
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "g1",
+          "r": "p1's clinic visit symptom scope covers this update",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "g2",
+          "r": "p2's own bleeding detail for active activity",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "g1",
+          "r": "p1's symptom scope covers bleeding detail",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "g2",
+          "r": "p2's own bleeding severity detail",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "g1",
+          "r": "p1's symptom scope covers bleeding severity",
+          "d": "allow"
+        }
+      ]
+    },
+    "usage": {
+      "prompt_tokens": 7610,
+      "completion_tokens": 360,
+      "total_tokens": 7970,
+      "cost": 0.003524,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 2400,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.003524,
+        "upstream_inference_prompt_cost": 0.002444,
+        "upstream_inference_completions_cost": 0.00108
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "seconds": 3.716720186173916
+  },
+  "facts_first": {
+    "response": {
+      "f": [
+        {
+          "i": 0,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports her own bleeding severity in response to p6's rooming question",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        },
+        {
+          "i": 1,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports pad/liner changes this morning and afternoon",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        },
+        {
+          "i": 2,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 reports no soaking through pads",
+          "t": [
+            "symptom",
+            "bleeding"
+          ],
+          "x": []
+        }
+      ],
+      "p": [],
+      "c": [
+        0,
+        0,
+        0
+      ],
+      "b": [
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "g2",
+          "r": "p2's own symptom update for active spotting activity",
+          "d": "allow"
+        },
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "g1",
+          "r": "p1's scope covers symptoms for this clinic visit",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "g2",
+          "r": "p2's own bleeding detail for active activity",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "g1",
+          "r": "p1's scope covers symptoms for this clinic visit",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "g2",
+          "r": "p2's own bleeding detail for active activity",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "g1",
+          "r": "p1's scope covers symptoms for this clinic visit",
+          "d": "allow"
+        }
+      ]
+    },
+    "usage": {
+      "prompt_tokens": 7633,
+      "completion_tokens": 366,
+      "total_tokens": 7999,
+      "cost": 0.0035512,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 2400,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0035512,
+        "upstream_inference_prompt_cost": 0.0024532,
+        "upstream_inference_completions_cost": 0.001098
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "seconds": 3.8227654369547963
+  }
+}

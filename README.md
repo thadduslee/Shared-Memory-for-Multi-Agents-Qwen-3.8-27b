@@ -2,6 +2,14 @@
 
 A novel agentic memory system for LLM agents that can dynamically organize memories in an agentic way.
 
+The raw-stream privacy runtime defaults to selective incremental memory (v17):
+explicit recipient intent and worker fields, distinct communication preferences,
+scoped/deferred forgetting, retained unrelated access reviews, incremental
+publication, and evidence-backed answer completeness. See the
+[v17 implementation and verification guide](analysis/incremental-v17/README.md).
+Historical inference versions remain explicitly selectable; use a fresh store
+for the new contract. Existing evaluation artifacts are preserved.
+
 ## Introduction 🌟
 
 Large Language Model (LLM) agents have demonstrated remarkable capabilities in handling complex real-world tasks through external tool usage. However, to effectively leverage historical experiences, they require sophisticated memory systems. Traditional memory systems, while providing basic storage and retrieval functionality, often lack advanced memory organization capabilities.
@@ -205,6 +213,60 @@ with exact conditional access bindings and task-scoped assignments. See
 [the implemented architecture and migration guide](PRIVACY_TWO_STORE.md) and
 [the medical authority policy](evaluation/gatemem_medical/AUTHORITY_POLICY.md).
 The original experiment directories are preserved; new local audits use new paths.
+The default GateMem runner now uses [ingestion-time permission inference](PERMISSION_INFERENCE.md),
+with a general involvement/restriction ledger and exact field assignments.
+The default agent input contains only sequential raw turn text, speaker IDs and
+event/time envelopes; `entities`, structured role/access metadata and checkpoint
+labels stay with the evaluator. Identities are discovered from observed turns and
+no relationship grants are seeded. Start a new run directory for `raw-stream-v1`.
+`--permission-mode baseline` retains the metadata-assisted oracle compiler for
+comparison; it is not a raw-stream benchmark result.
+Version 7 adds [generic capability decisions, recipient coverage, scoped erasure,
+and transaction-scoped authorization reuse](GOVERNED_AUTHORIZATION.md). Use a fresh
+run directory and `--permission-version 7`; existing v6 artifacts are preserved.
+Version 9 adds [incremental permission context and targeted history retrieval](PERMISSION_INFERENCE.md#incremental-context-version-9).
+The model receives recent turns, relevant permissions with original evidence and
+conditions, pending decisions and all restrictions. Missing evidence is retrieved
+before an atomic delta is committed. Start a fresh run with
+`--permission-version 9`; earlier run directories retain their original results.
+Version 10 adds [final-state validation, durable repair limits, smaller deltas and
+deferred enrichment](PERMISSION_INFERENCE.md#per-turn-deltas-and-deferred-enrichment-version-10).
+Permissions and fields commit each turn;
+optional tags/links are queued and processed after boundary answers. Use a fresh
+directory with `--permission-version 10`; prior experiments remain preserved.
+Version 15 is the default: [combined incremental permission processing](INCREMENTAL_PERMISSIONS.md).
+It starts with empty requester access, persists protected facts independently of
+permissions, and batches model reasoning in one call on ordinary turns, with at
+most one focused repair/history batch. [Version 14](DURABLE_FACTS.md) remains selectable.
+Use a fresh run/store. The retained version 13 uses: [single-pass updates](PERMISSION_INFERENCE.md#single-pass-permission-deltas-version-13)
+use the latest six turns and concise current policy, including unconfirmed tasks.
+The model reports `permission_changes` and `new_facts` independently in one response;
+new facts can bind to existing permissions with no policy edits. Tasks retain the
+requester separately from worker and beneficiary, and assess each recipient's access.
+Later task facts require separate scope/restriction checks for all active allowed
+recipients. Missing allowed facts produce “I don't have that information”; refusals
+require a permission assessment. There is no history retrieval or focused
+reassessment. Repeated identical overlap IDs are deduplicated before validation;
+invalid responses have a durable three-attempt repair budget with validation feedback.
+The v13 evaluation records exhausted permission turns as skipped and continues.
+Rejected changes stay unpublished; skipped turns retain an access hold on their
+episode, and affected checkpoint outputs have `context_complete: false`. The run
+summary lists skipped turns and reports degraded permission inference separately
+from full boundary/checkpoint coverage.
+Original evidence remains in host audit storage; validated exact field bindings
+and enforcement are retained.
+Use a fresh directory with `--permission-version 13`; old runs are preserved.
+Version 12 remains available explicitly and adds [durable task resolution](PERMISSION_INFERENCE.md#durable-task-resolution-version-12)
+to the six-turn window and concise current access state. Potential worker tasks
+survive until later subject acceptance can resolve them. Affected recipients need
+an explicit resolution; supported tasks compile into narrow grants and exact facts.
+Reassessment and historical fact lookup are conditional and bounded.
+Old authorization text, justifications and binding history remain in host audit
+storage and are not fed back into each inference. Current policy is available in
+`memory.privacy.sqlite` → `permission_access_state`, or `updater.access_state()`.
+Use a fresh directory with `--permission-version 12`; populated legacy permission
+stores cannot silently migrate to the new scope contract.
+See [the task-resolution validation and live-model limitations](analysis/task-resolution-v12-20261029/REPORT.md).
 See [the source assessment](analysis/two-store-implementation/ASSESSMENT.md) and
 [the local validation and all 118 dispositions](analysis/two-store-implementation/VALIDATION.md).
 

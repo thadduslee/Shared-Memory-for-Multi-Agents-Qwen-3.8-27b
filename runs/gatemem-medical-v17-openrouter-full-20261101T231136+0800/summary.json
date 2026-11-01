@@ -1,0 +1,597 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 5,
+    "scored_checkpoints": 5,
+    "expected_boundaries": 567,
+    "completed_boundaries": 4,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 88,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 5,
+    "n_utility": 4,
+    "n_utility_scored": 4,
+    "n_privacy": 1,
+    "n_privacy_scored": 1,
+    "n_privacy_context_scored": 1,
+    "n_privacy_e2e_scored": 1,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": 0.0,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 1.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-01T15:38:51.317934+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:db6fa8a60967a788e5aaf7d66bc35f5e84e05a53b7720d824e8c58c8b144b44e",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:db6fa8a60967a788e5aaf7d66bc35f5e84e05a53b7720d824e8c58c8b144b44e",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": true,
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 173
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 2.848,
+    "permission_total": 1623.318,
+    "source_ingest": 0.284,
+    "source_total": 1626.502
+  },
+  "governance": {
+    "candidate_versions": 118,
+    "decisions": 118,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 68,
+      "quarantined": 22,
+      "running": 1
+    },
+    "attempts": 171,
+    "record_versions": 121,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:67c4be16ee4f725883148993d72ac1075fcd1caac5772c1e3b9e2ae9ec89adaf",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:96debb4f21b92de75878a5b0c7281cd98d53ad43f7fdf5cc94c98d7d5df35d5d",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:7f83fa008a57d0229dba2db82f3d6cccd06e722bc521d60aef20c394cef5ae7b"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: s: enum",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:6555d09e999c3db55c3c0aa6c69d4c9fe4670e6f88c64e3291aba89434d010a2",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:8b0eebf70474c5a13292cb8d2356abb46045006909e66e79b49b9f0bb22fe8c3",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:9b0f168ebbab567bca899790079fa2e8ddc289ff6bb96aa98f2633ddea3056c7"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: c/0/r: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:44e835e8b74fb07dd0313936b24328621e5450af866b0947bc662f774c899c8f",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:8487defef8d21835d0889147ddf7e7660ea1d0c29454023e86c425dfe3d28b46",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:055da5e51f919a82b9ea66885fc523bc9f9c2660222b43ffbc1f38333131b900"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:ff915909bc337f05d8bd881aca1ac008f65c07c1b0a36b086496a90317207ace",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:33f686cc1cbc78a06034d60cfb82678bba22c059c73d3d574cc03e5fe8d06679",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:0111cc15038c0d6592fef4854a8910597aa7250f4af820558af765b56efbcf86"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: : additionalProperties; allowed keys=o,via,s,e,i,work,r,v | via: enum; allowed=request",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:9157d44b274748efc3a1eeeefa3b9ed703aadc4e734b23a7d203a2a34700a509",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:39fc709588117a6d837dd329a31604b12a845485c8a51e8c98de0352f6216729",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:53b227213746ab3a9c018018d7156c8a65efadfac4ef7b99baca9875424b80f4"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:2d7c3214ab85e6b686b6de9d904a74926f7c987b32305a5d8ecfe88d6520c6b0",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:0882dadbe8bc6258f79f2aeecb5f846e858fb3f5b45c73aa89d856376728916a",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:3590697da8a87336a72df28a80fd60386ae5239ec7a50541e84309b64ff94bb8"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:392bd1d5e314850598663e5a466ec66636151219d801e78d4459d1294a2342e9",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:137e30aa4976496a28b387948fc1f6d99019529bded6d9a8980592e7568afb09",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:75e4d2e3e75c8489e18593b7179a5748b19d0813869790fb8449432c19bc563c"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: c/0/r: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:61bfaa320e774b6200f06af8afe23eb0d03fceedaa00251d2846060910aad8ee",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:d1b5edde2e93507b7e553c780c4407aaec939e52829392f0da448674ac7d870b",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:1076f2d11ee9f6ea53f4bf3beaba55e945df841250a1c91b3fe2defd232b5af6"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: c/0/r: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:f8fb410aabc5b12e693ba081116e4c6bbb26c4113691fd5d1c9d3268d0b4ab6e",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:1d7bf806ebb787a9cb1281e1637652fde3dd5748ed3887493db5a41d41d07b2d",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:b80199b598d3d453b8fa319b573ac9b5718ae5eec713ed2fbf7ffb2c64763d17"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:8e0ad27dad6cf15deb2d0613eed6ed149a8221fbceced4aabe526ecc5c615f39",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:44d6b70279c26a3ed8ba5834d63229c1612611f2b8ffc44c7e363614099470e9",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:b43d463b132d3a80abbc8ef12632ab89719337ab82e7d325e15e05e553d4e649"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:324cb34b3a36db96069534278a1a79fbd441a439b819b7aeeb3d465d358fe063",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:6265c6ad30b0bebf2320db7b8c0f94d22462c60d17f69fa4f30c8bf155cc65df",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:65d7e6e54e824e03ad067d383f04ce200044382e6f5185a941b4ecc3d65e5014"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Own-information attribution must name the actual current speaker",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:84ac3aa20c2e2e37b621fd3a99c8e67050e7159fbda51da2554a4052dce5872d",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:4339b9f6366e48cf895a5a51249d077b4e6911ea10c414d0e0adee2ea2bddf72",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:a3c71d395273cb2cc9719f9434e57c6860611ce53ebcdaffca93cbb1a58bd25b"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:6763b12e9cb5e5ec78926bf0530f5e33b1ce5a368e2400843c729e9d33714230",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:fb5a463ab7538d7865c0ffd1b7c3398c21bb9b98412cccbd607df14437ae1cef",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:d0be2fc273b1cf862b9309b131af35b05744dfd02be5b7f0aa03726da682596c"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:47675b6a80a69f5ddbd7a859a42f357eb765a31c96157c6a30be0942fec7f5c4",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:46788ef820f36c71adf236029bcc11616c85d6397139aa62f5162a1c0e0b398c",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:fa023a708a8161b2c8a5493d7f597f8e5a2e1cf594362496568fce0e0c41ba58"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: c/0/r: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:4785117f41e248a4f8b70faa6e5a3e11ea3341395389be5741a417c9c4185f05",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:0ceb8d06a6d090e8a8787ce3c9f3c0add47f573ce0ba818a439105fc29827f79",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:ac94a1e5f724748eb478125ae0d061f8ebca76eae3e981aec5d4eefed1dc506c"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:b921943a1f16b71abf06a67d9e2216c06a906fedec4178a56532bb905d81c90b",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:f17e97ee2180b246c81da620aa8407b284eceeadc7de639a6e731b752c3b0af1",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:a5e232a6d7f3a3e1c8885c569bfed05003bbd87b654f1d010666917cd607aff9"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: review: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:e17b82f4c649753b2b31f08911be177e60853d7440af6a52e804a3e41a81892e",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:662c7e5d61cc96aca1a2a11b187e6a4ec46f70bd9d25f4066154c685992d9a26",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:84116acd172da9b253abd4c2933972e06ed9375198297f8cbc088d6421ce5180"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:e13a81b8be26e7c188dd6f85415e5a58830cd12353d3ad1bc624199434eef71d",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:14154572a7bdbfa3639bdf79230daebdf55d2e41a58fd90afd04e43cc5cfc487",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:bbea04d9480798ca4d4c5b25928d6b09baf06ed80707ce7e7ff971018b9588d8"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:98163afbd661893085be15cc0c6edc17e2e8ada79c0e16b290f35319c7f08401",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:aeb90080c2797595649ee2451a60d7a7997b6ba2893e831ae3279fe01b6f849c",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:3e145c3c2bcd93603ce3868a8461b65ca0a11f3076f5f9a73623d056727e44cc"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:8cc290c49400b9b87474d02f638dec4516aecda7e55bd7bb33fc23dfebaaff23",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:f43ff28a9ba84bc152a331c6b73d2f7fe3f23c2dc8d6dc38523392dbab791ed8",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:b6d0054f342cebe8f13628fc4d912e07c87bfd6e8ca9079b7f6a58e2c6681405"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Service-result attribution must match the actual accepted service recipient",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:1cbce9bd27149d1a1db197ae246064316d6313920b1b39f89a7a6705fdfda0bb",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:347884ba44d4595160f31eb8c21af357129c6b76f0bd07dd80f1ce2bd766dfed",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:0b5aa3dcec83ed6db9639e3a0a1872298bb2bca53268f1b69039a32c48c8a06b"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Own-information attribution must name the actual current speaker",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:db6fa8a60967a788e5aaf7d66bc35f5e84e05a53b7720d824e8c58c8b144b44e",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:815a62fdc56316aa2ba3becc0a6e3082b240831f756ee7259ac11ab92f5f532f",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:8a3e820b658038ce7e33aa60e855fa2034e829da97fe6c3b97e77333876eed97"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: review: maxLength",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      }
+    ],
+    "active_scoped_control_holds": 22,
+    "complete": false,
+    "runtime_assignments": 19,
+    "indexed_resources": 173,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.868,
+    "latency_seconds": {
+      "mean": 18.07224420308032,
+      "median": 15.970735389739275,
+      "p90": 32.39314879477024,
+      "max": 49.57637882977724
+    },
+    "processing_seconds": 1597.244,
+    "model_seconds": 1585.175,
+    "mean_seconds_per_source": 17.552,
+    "measured_attempts": 170,
+    "prompt_tokens": 3087510,
+    "completion_tokens": 98330,
+    "maintenance_model_seconds": 2.516,
+    "total_source_model_seconds": 1587.691,
+    "outside_model_seconds": 38.811,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 16.83109771700576
+      },
+      "51_to_100": {
+        "count": 40,
+        "mean": 19.62367731067352
+      },
+      "after_100": {
+        "count": 0,
+        "mean": null
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 69,
+      "pending": 22
+    },
+    "candidate_states": {
+      "active": 74
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 116,
+        "timed_calls": 116,
+        "seconds": 1047.7975914860144,
+        "model_seconds": 1039.7458022292703,
+        "prompt_tokens": 2548839,
+        "completion_tokens": 59590
+      },
+      "incremental_binding_repair": {
+        "calls": 53,
+        "timed_calls": 53,
+        "seconds": 544.7952687870711,
+        "model_seconds": 540.9038659119979,
+        "prompt_tokens": 508339,
+        "completion_tokens": 38509
+      },
+      "incremental_repair": {
+        "calls": 1,
+        "timed_calls": 1,
+        "seconds": 4.651063188910484,
+        "model_seconds": 4.524964362382889,
+        "prompt_tokens": 30332,
+        "completion_tokens": 231
+      },
+      "binding_maintenance": {
+        "calls": 1,
+        "timed_calls": 1,
+        "seconds": 2.5248636780306697,
+        "model_seconds": 2.5158137641847134,
+        "prompt_tokens": 3821,
+        "completion_tokens": 183
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 173,
+      "restricted": 50,
+      "scope_or_subject_excluded": 751
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 23,
+    "checkpoints_with_evidence": 2,
+    "checkpoints_without_evidence": 3,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 3615,
+    "pending_binding_reviews_at_latest_publication": 170,
+    "historical_pending_pair_observations": 3615,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  }
+}

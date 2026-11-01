@@ -1,0 +1,151 @@
+{
+  "final_prefix": {
+    "case": "prefix",
+    "method": "Isolated real local model with HashEmbedder; no official scores.",
+    "completed_turns": [
+      "t001",
+      "t002",
+      "t003",
+      "t004",
+      "t005",
+      "t006",
+      "t007",
+      "t008"
+    ],
+    "model_calls": 8,
+    "prompt_tokens": 17615,
+    "completion_tokens": 693,
+    "model_seconds": 29.464,
+    "pending_jobs": []
+  },
+  "delayed_acceptance": {
+    "case": "delayed",
+    "method": "Isolated real local model with HashEmbedder; no official scores.",
+    "after_acceptance": {
+      "policy": {
+        "activity": {
+          "pickup-tomorrow": {
+            "id": "pickup-tomorrow",
+            "participant": "helper",
+            "subject": "owner",
+            "activity": "Pickup tomorrow at 4 PM outside the library",
+            "status": "established",
+            "validity": {}
+          }
+        },
+        "assignment": {
+          "pickup-tomorrow-assign": {
+            "id": "pickup-tomorrow-assign",
+            "participant": "helper",
+            "subject": "owner",
+            "actions": [
+              "search",
+              "read",
+              "derive"
+            ],
+            "information_scope": "Pickup logistics: time, location, and owner's presence for the scheduled pickup.",
+            "status": "active",
+            "basis": "task",
+            "activity_id": "pickup-tomorrow",
+            "validity": {
+              "end_activity": "pickup-tomorrow"
+            }
+          },
+          "self-use:a47c25a5f06f1d5c088a6dfc": {
+            "id": "self-use:a47c25a5f06f1d5c088a6dfc",
+            "participant": "owner",
+            "subject": "owner",
+            "actions": [
+              "search",
+              "read",
+              "derive"
+            ],
+            "information_scope": "self-use: Pickup tomorrow at 4 PM outside the library",
+            "status": "active",
+            "basis": "explicit",
+            "authority": "owner",
+            "self_use_activity": "pickup-tomorrow",
+            "validity": {
+              "end_activity": "pickup-tomorrow"
+            }
+          }
+        },
+        "restriction": {}
+      },
+      "retrieved": [
+        "Pickup is at 4 PM outside the library",
+        "Yes, you may pick me up tomorrow"
+      ]
+    },
+    "completed_turns": [
+      "t001",
+      "t002",
+      "t003",
+      "t004",
+      "t005",
+      "t006",
+      "t007",
+      "t008",
+      "t009",
+      "t010",
+      "t011"
+    ],
+    "model_calls": 11,
+    "prompt_tokens": 21243,
+    "completion_tokens": 483,
+    "model_seconds": 19.988,
+    "pending_jobs": [],
+    "after_revocation": [],
+    "checks": {
+      "no_early_access": true,
+      "pickup_available_after_acceptance": true,
+      "diagnosis_not_exposed": true,
+      "revocation_removes_access": true
+    }
+  },
+  "first_seven_model_comparison": {
+    "v12": {
+      "calls": 10,
+      "seconds": 405.055,
+      "output_tokens": 10366
+    },
+    "v13": {
+      "calls": 7,
+      "seconds": 16.181,
+      "output_tokens": 352
+    }
+  },
+  "offline_schedule": {
+    "mode": "offline-functional-test",
+    "coverage": {
+      "expected_checkpoints": 579,
+      "official_predictions": 579,
+      "scored_checkpoints": 579,
+      "expected_boundaries": 567,
+      "completed_boundaries": 567,
+      "expected_source_turns": 4294,
+      "ingested_source_turns": 4294,
+      "exact_checkpoint_coverage": true,
+      "exact_source_coverage": true,
+      "all_boundaries_complete": true
+    },
+    "complete": true
+  },
+  "final_source_hash": "ba37c035549c8ce5ad3600f7a273ed061a0d47f030d3cc4d730abf06e71b891d",
+  "fresh_run": "/home/thaddus/a-mem-variant/runs/gatemem-medical-raw-stream-v13-full-20261029T172138+0800",
+  "regressions": {
+    "security": 291,
+    "evaluator": 53,
+    "single_pass": 17
+  },
+  "preserved_first_launch": {
+    "path": "runs/gatemem-medical-raw-stream-v13-full-20261029T170355+0800",
+    "stopped_at": "t012",
+    "reason": "Inconsistent restriction targets; fixed compiler selector handling and omission of declared prohibited bindings."
+  },
+  "preserved_second_launch": {
+    "path": "runs/gatemem-medical-raw-stream-v13-full-20261029T171342+0800",
+    "stopped_at": "t019",
+    "reason": "Question binding; final compiler omits questions from factual projections with an audit record."
+  }
+}

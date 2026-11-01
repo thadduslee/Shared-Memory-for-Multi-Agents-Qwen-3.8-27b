@@ -1,0 +1,85 @@
+{
+  "activity": {
+    "checkin_linda": {
+      "id": "checkin_linda",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "activity": "Assist with check-in details for Elena Park at the early pregnancy clinic",
+      "status": "established",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "asg_linda_checkin": {
+      "id": "asg_linda_checkin",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "appointment times, parking details",
+      "status": "active",
+      "basis": "task",
+      "activity_id": "checkin_linda",
+      "validity": {
+        "end_activity": "checkin_linda"
+      }
+    },
+    "self-use:f91930f9133d3489b8a0b579": {
+      "id": "self-use:f91930f9133d3489b8a0b579",
+      "participant": "patient_elena_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "self-use: Assist with check-in details for Elena Park at the early pregnancy clinic",
+      "status": "active",
+      "basis": "explicit",
+      "authority": "patient_elena_park",
+      "self_use_activity": "checkin_linda",
+      "validity": {
+        "end_activity": "checkin_linda"
+      }
+    }
+  },
+  "restriction": {
+    "elena_logistics_only": {
+      "id": "elena_logistics_only",
+      "issuer": "patient_elena_park",
+      "participants": [
+        "family_linda_park"
+      ],
+      "subject": "patient_elena_park",
+      "information_scope": "results, medications, notes",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    },
+    "elena_no_pregnancy_callback": {
+      "id": "elena_no_pregnancy_callback",
+      "issuer": "patient_elena_park",
+      "participants": [
+        "reception_marta",
+        "agent_memcare",
+        "family_linda_park"
+      ],
+      "subject": "patient_elena_park",
+      "information_scope": "phone number 415-555-0122 for pregnancy-related callbacks",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

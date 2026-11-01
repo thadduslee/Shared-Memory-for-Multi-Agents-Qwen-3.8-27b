@@ -1,0 +1,55 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "trace",
+  "model_calls": 19,
+  "max_calls": 32,
+  "http_attempts": 19,
+  "prompt_tokens": 63117,
+  "completion_tokens": 12067,
+  "elapsed_seconds": 470.603,
+  "cases": {
+    "outreach": {
+      "error": "PermissionRepairExhausted: Permission update paused after 3 rejected proposals: Task decision and substantive reason_code disagree",
+      "completed_turns": [
+        "t074",
+        "t076"
+      ],
+      "source_turns": 10,
+      "processing_seconds": 115.535,
+      "active_assignments": [],
+      "worker_bound_turns": [],
+      "retrieved_text": [],
+      "pending_jobs": [
+        "permission-job:f8bbfe4e143aadc3be246824b2ec389bd1089cdffde3ef51b18d636658ba49d7"
+      ],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 4,
+      "focused_reassessments": 1,
+      "history_rounds": 0
+    },
+    "counseling": {
+      "error": "PermissionRepairExhausted: Permission update paused after 3 rejected proposals: Authorized task resolution requires its own validated active narrow assignment. Return the atomic authorization object with precise scope, corroboration and exact bindings; an established activity alone is insufficient.",
+      "completed_turns": [
+        "t069",
+        "t070",
+        "t071",
+        "t091",
+        "t092",
+        "t116"
+      ],
+      "source_turns": 8,
+      "processing_seconds": 355.025,
+      "active_assignments": [],
+      "worker_bound_turns": [],
+      "retrieved_text": [],
+      "pending_jobs": [
+        "permission-job:65882745bda950e5f3f9e750862b649809ba05de050b10adc09e247c99318f3e"
+      ],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 3,
+      "focused_reassessments": 3,
+      "history_rounds": 0
+    }
+  }
+}

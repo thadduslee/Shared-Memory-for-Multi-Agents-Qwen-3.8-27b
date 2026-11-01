@@ -1,0 +1,118 @@
+{
+  "review_first": {
+    "response": {
+      "review": "p2 (Elena) is responding to p6's specific clinical question about bleeding severity during the ongoing early pregnancy clinic visit. p6 is the actual worker asking. p2's self grant g2 already covers her responsive symptoms. p6 has no existing grant for p2's clinical symptoms; this response authorizes a narrow response-",
+      "c": [
+        0,
+        0,
+        0
+      ],
+      "p": [
+        {
+          "o": "grant",
+          "basis": "explicit",
+          "i": "new_g0",
+          "p": "p6",
+          "s": "p2",
+          "scope": "current bleeding severity and pad/liner usage for the early pregnancy clinic visit",
+          "v": {},
+          "e": "s6",
+          "r": "p2's factual reply to p6's specific rooming question authorizes p6 to read the necessary bleeding details for this task.",
+          "via": "response",
+          "q": "s5"
+        }
+      ],
+      "f": [
+        {
+          "i": 0,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 describes her own bleeding",
+          "x": []
+        },
+        {
+          "i": 1,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 describes her own pad/liner usage",
+          "x": []
+        },
+        {
+          "i": 2,
+          "k": "asserted_fact",
+          "s": "p2",
+          "r": "p2 describes her own bleeding severity",
+          "x": []
+        }
+      ],
+      "b": [
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "g2",
+          "r": "p2's self grant covers her responsive symptoms for this activity.",
+          "d": "allow"
+        },
+        {
+          "q": "Mostly spotting.",
+          "f": "segment_f0",
+          "g": "new_g0",
+          "r": "p6's response grant covers current bleeding severity for rooming.",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "g2",
+          "r": "p2's self grant covers her responsive symptoms for this activity.",
+          "d": "allow"
+        },
+        {
+          "q": "I changed one liner this morning and one this afternoon.",
+          "f": "segment_f1",
+          "g": "new_g0",
+          "r": "p6's response grant covers pad/liner usage for rooming.",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "g2",
+          "r": "p2's self grant covers her responsive symptoms for this activity.",
+          "d": "allow"
+        },
+        {
+          "q": "No soaking through pads.",
+          "f": "segment_f2",
+          "g": "new_g0",
+          "r": "p6's response grant covers bleeding severity for rooming.",
+          "d": "allow"
+        }
+      ]
+    },
+    "usage": {
+      "prompt_tokens": 7713,
+      "completion_tokens": 816,
+      "total_tokens": 8529,
+      "cost": 0.0049332,
+      "is_byok": false,
+      "prompt_tokens_details": {
+        "cached_tokens": 2400,
+        "cache_write_tokens": 0,
+        "audio_tokens": 0,
+        "video_tokens": 0
+      },
+      "cost_details": {
+        "upstream_inference_cost": 0.0049332,
+        "upstream_inference_prompt_cost": 0.0024852,
+        "upstream_inference_completions_cost": 0.002448
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "image_tokens": 0,
+        "audio_tokens": 0
+      }
+    },
+    "seconds": 6.815061912871897
+  }
+}

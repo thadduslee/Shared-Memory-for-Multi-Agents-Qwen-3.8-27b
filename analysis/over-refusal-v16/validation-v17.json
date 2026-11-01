@@ -1,0 +1,57 @@
+{
+  "code_digest": "330dbd6295237be0fbc3f27f91e64ba3f772d29f311814db61e7a32f542058cc",
+  "prompt_version": "permission-inference-v16-grounded-access-v16",
+  "regression": {
+    "tests": 486,
+    "subtests": 43,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 123.109,
+    "artifact": "regression-v17-final.xml"
+  },
+  "generic_workflow": {
+    "audit.json": {
+      "all_sources_complete": true,
+      "no_active_control_holds": true,
+      "revocation_published": true,
+      "owner_access_survives_revocation": true,
+      "coordinator_access_revoked": true,
+      "passed": true
+    },
+    "scope-audit.json": {
+      "two_active_coordinator_queries": true,
+      "confidential_contact_absent_from_context": true,
+      "budget_absent_from_context": true,
+      "passed": true
+    }
+  },
+  "operational_contact_workflow": {
+    "initial_access_empty": true,
+    "worker_offer_creates_no_self_grant": true,
+    "current_route_reaches_service_worker": true,
+    "communication_conditions_reach_service_worker": true,
+    "closed_field_helper_keeps_logistics": true,
+    "closed_field_helper_gets_no_contact": true,
+    "unrelated_private_budget_absent": true,
+    "no_worker_personal_grants": true,
+    "all_sources_complete": true,
+    "no_active_control_holds": true,
+    "passed": true
+  },
+  "live_run": "candidate-16",
+  "live_run_status": "in progress; exact first25 comparison pending",
+  "historical_failed_candidates_preserved": true,
+  "late_field_denial_workflow": {
+    "initial_access_empty": true,
+    "initial_logistics_available": true,
+    "logistics_survive_later_field_denial": true,
+    "private_budget_absent": true,
+    "helper_grant_still_active": true,
+    "explicit_revocation_committed": true,
+    "helper_access_revoked": true,
+    "owner_access_survives": true,
+    "all_sources_complete": true,
+    "no_active_control_holds": true,
+    "passed": true
+  }
+}

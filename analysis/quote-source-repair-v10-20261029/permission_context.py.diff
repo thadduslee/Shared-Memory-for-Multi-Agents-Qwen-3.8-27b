@@ -1,0 +1,23 @@
+--- before/agentic_memory/privacy/permission_context.py
++++ after/agentic_memory/privacy/permission_context.py
+@@ -12,7 +12,7 @@
+ PAGE_SIZE = 6
+ MAX_CONTEXT_ROUNDS = 3
+ MAX_CONTEXT_REQUESTS = 4
+-REQUEST_KINDS = ('source', 'search', 'activity', 'assignment', 'bindings')
++REQUEST_KINDS = ('source', 'search', 'quote', 'activity', 'assignment', 'bindings')
+ 
+ 
+ def control_record(record):
+@@ -69,6 +69,11 @@
+         if kind == 'source':
+             neighbors(reference)
+             found = [reference]
++        elif kind == 'quote':
++            matches=[sid for sid in reversed(ids) if reference in sources[sid]['text']]
++            total=len(matches)
++            found=matches[offset:offset+PAGE_SIZE]
++            for sid in found:neighbors(sid)
+         elif kind == 'search':
+             tokens = set(re.findall(r'\w+', reference.casefold()))
+             ranked = []

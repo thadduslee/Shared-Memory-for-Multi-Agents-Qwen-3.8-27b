@@ -1,0 +1,41 @@
+{
+  "episodes": 21,
+  "source_turns": 4294,
+  "checkpoints": 579,
+  "utility_checkpoints": 210,
+  "utility_roles": {
+    "patient": 86,
+    "family_member": 6,
+    "nurse": 33,
+    "pharmacist": 23,
+    "reception": 5,
+    "scheduler": 42,
+    "social_worker": 14,
+    "lab_tech": 1
+  },
+  "staff_utility_checkpoints": 118,
+  "staff_utility_without_entity_relationship": 118,
+  "staff_utility_with_prior_or_current_participation": 118,
+  "staff_utility_episode_count": 20,
+  "family_utility_checkpoints": 6,
+  "family_utility_with_entity_relationship": 6,
+  "current_utility_actions": {
+    "answer": 196,
+    "no_memory": 14
+  },
+  "current_staff_utility_actions": {
+    "answer": 108,
+    "no_memory": 10
+  },
+  "current_family_utility_actions": {
+    "answer": 4,
+    "no_memory": 2
+  },
+  "method": "All checkpoints inspected against their source prefix and initial entity metadata; saved actions joined by checkpoint ID. No model calls or counterfactual evaluation.",
+  "limitations": "No relationship entry does not mean no permission statement. Participation does not establish unrestricted access. Answer action does not establish correctness; no_memory does not by itself prove an access-policy failure.",
+  "sha256": {
+    "/home/thaddus/GateMem/bench/data/medical/episodes.jsonl": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+    "/home/thaddus/GateMem/bench/data/medical/checkpoints.jsonl": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+    "/home/thaddus/a-mem-variant/runs/privacy-evolution-off-full-20261025/official_predictions.jsonl": "9bce183c86e7f2c6f66c24d7237ded3d6ab6cb9083cca924a1a13192d1930c0a"
+  }
+}

@@ -60,23 +60,48 @@ class PrivacyMemorySystem:
         self._sessions = {}
         self._processors = {embedder.processor_id: embedder}
         self._tickets = {}
+        self._read_cache = {}
+        self._cache_active = False
 
     def close(self):
         self.db.close()
 
     @contextmanager
-    def transaction(self):
+    def transaction(self, *, write=True):
         with self._lock:
             if self.db.in_transaction:
                 yield
                 return
-            self.db.execute('BEGIN IMMEDIATE')
+            self._read_cache = {}
+            self.db.execute('BEGIN IMMEDIATE' if write else 'BEGIN')
+            self._cache_active = True
             try:
                 yield
                 self.db.execute('COMMIT')
             except BaseException:
                 self.db.execute('ROLLBACK')
                 raise
+            finally:
+                self._read_cache = {}
+                self._cache_active = False
+
+    def snapshot_read(self, key, load):
+        """Reuse reads only inside one locked SQLite snapshot, never across calls.
+
+        Any local SQL mutation (including direct trusted adapter writes) changes
+        total_changes and invalidates every cached value. Commit/rollback drops
+        the cache; another connection's changes are seen in the next snapshot.
+        """
+        if not self.db.in_transaction or not getattr(self,'_cache_active',False):
+            return load()
+        stamp = self.db.total_changes
+        cache = getattr(self, '_read_cache', {})
+        if cache.get('stamp') != stamp:
+            cache = self._read_cache = {'stamp': stamp, 'values': {}}
+        values = cache['values']
+        if key not in values:
+            values[key] = load()
+        return values[key]
 
     def issue_session(self, principal_id, agent_id, *, actions, compartments, purpose='',
                       expires_in=3600, delegations=(), processing_routes=()):
@@ -145,6 +170,9 @@ class PrivacyMemorySystem:
                     instant(rule[key])
         with self.transaction():
             self._claim_authority(ctx,'policy',policy_id)
+            previous=self.db.execute('SELECT body FROM policies WHERE id=?',(policy_id,)).fetchone()
+            if previous and previous[0]==encoded(body):
+                return
             for rule in body.get('allows',[])+body.get('denies',[]):
                 for group in rule.get('groups',[]):
                     self.db.execute('INSERT OR IGNORE INTO authority_owners VALUES (\'group\',?,?)',(group,ctx.principal_id))
@@ -152,14 +180,23 @@ class PrivacyMemorySystem:
             self.db.execute('INSERT INTO policies VALUES (?,1,?) ON CONFLICT(id) DO UPDATE SET revision=revision+1,body=excluded.body',
                             (policy_id, encoded(body)))
             self._processing_route(ctx, self.embedder)
-            vector = self.embedder.encode([encoded(body)])[0]
-            self.db.execute('INSERT OR REPLACE INTO privacy_vectors VALUES (?,?,?)',
-                            (policy_id, self.embedder.space_id, encoded(vector)))
+            # Opaque exact target IDs are enforced by the canonical policy, but
+            # do not change its semantic discovery representation.
+            def discovery(value):
+                return {k:[{a:b for a,b in rule.items() if a!='resource_ids'} for rule in v]
+                        if k in {'allows','denies'} else v for k,v in value.items()}
+            prior_vector=self.db.execute('SELECT space FROM privacy_vectors WHERE id=?',(policy_id,)).fetchone()
+            if (not previous or not prior_vector or prior_vector[0]!=self.embedder.space_id or
+                    discovery(json.loads(previous[0]))!=discovery(body)):
+                vector = self.embedder.encode([encoded(discovery(body))])[0]
+                self.db.execute('INSERT OR REPLACE INTO privacy_vectors VALUES (?,?,?)',
+                                (policy_id, self.embedder.space_id, encoded(vector)))
 
     def install_assignment(self, ctx, assignment_id, *, principals=(), groups=(),
-                           subject, compartment, information_scope, task,
+                           subject=None, compartment=None, information_scope='', task='',
                            actions, provenance, conditions=None, relationship='',
-                           collection='', delegation=None):
+                           collection='', delegation=None, resource_ids=None,
+                           evidence_relationships=None, resource_selector=None):
         """Trusted authority API. Participation and roles are never core grants.
 
         Authority provenance is a host-verified source/ACL/event receipt, retained
@@ -168,21 +205,39 @@ class PrivacyMemorySystem:
         """
         self._session(ctx, 'manage_policy')
         self._session(ctx, 'ingest', compartment)
-        if not all(isinstance(x, str) and x for x in (subject, compartment, information_scope, task)):
+        if resource_selector is None and not all(isinstance(x, str) and x for x in (subject, compartment, information_scope, task)):
             raise ValueError('Exact subject, collection route, information scope and task required')
+        if resource_selector is not None:
+            if (set(resource_selector) != {'namespace','attributes'} or
+                    resource_selector['namespace'] != compartment or
+                    not isinstance(resource_selector['attributes'],dict) or
+                    not resource_selector['attributes'] or not isinstance(task,str) or not task):
+                raise ValueError('A bounded resource selector and purpose are required')
         if not isinstance(provenance, dict) or not provenance.get('authority') or not provenance.get('evidence'):
             raise ValueError('Verified authority and supporting provenance required')
         conditions = dict(conditions or {})
         if set(conditions) - {'from', 'until', 'purpose'}:
             raise ValueError('Unsupported assignment condition')
         rule = {'actions': list(actions), 'scope': {'subject': subject, 'information_scope': information_scope}, **conditions}
+        if resource_selector is not None:
+            rule['scope'] = dict(resource_selector['attributes'])
         if collection: rule['scope']['collection'] = collection
+        if resource_ids is not None:
+            if (not isinstance(resource_ids,(list,tuple)) or not resource_ids or
+                    any(not isinstance(rid,str) or not rid for rid in resource_ids)):
+                raise ValueError('Exact assignment resources require a nonempty ID list')
+            if any(not self.db.execute('SELECT 1 FROM resources WHERE id=? AND compartment=?',
+                    (rid,compartment)).fetchone() for rid in resource_ids):
+                raise ValueError('Exact assignment resources must exist in the compartment')
+            rule['resource_ids'] = list(dict.fromkeys(resource_ids))
         if principals: rule['principals'] = list(principals)
         if groups: rule['groups'] = list(groups)
         policy_id = 'assignment:' + assignment_id
         body = dict(subject=subject, compartment=compartment, information_scope=information_scope,
                     task=task, relationship=relationship, collection=collection, provenance=provenance,
-                    delegation=delegation, rule=rule)
+                    delegation=delegation, rule=rule, evidence_relationships=evidence_relationships or {})
+        if resource_selector is not None:
+            body['resource_selector'] = resource_selector
         with self.transaction():
             self._claim_authority(ctx, 'assignment', assignment_id)
             if delegation:
@@ -196,6 +251,10 @@ class PrivacyMemorySystem:
                     raise AccessDenied('Delegation cannot widen selector scope')
                 if not set(actions) <= set(parent_body['rule']['actions']):
                     raise AccessDenied('Delegation cannot widen action scope')
+                if parent_body['rule'].get('resource_ids') and not set(rule.get('resource_ids',[])) <= set(parent_body['rule']['resource_ids']):
+                    raise AccessDenied('Delegation cannot widen exact resources')
+                if parent_body['rule'].get('resource_ids') and not rule.get('resource_ids'):
+                    raise AccessDenied('Delegation requires exact resources')
                 seen = {assignment_id}
                 ancestor = delegation
                 while ancestor:
@@ -207,17 +266,38 @@ class PrivacyMemorySystem:
                                                 'processors': list(self._session(ctx, 'derive')[6])})
             self.db.execute("INSERT INTO assignments VALUES (?,?,?,?,'active') ON CONFLICT(id) DO UPDATE SET body=excluded.body,state='active'",
                             (assignment_id, policy_id, ctx.principal_id, encoded(body)))
-            self.db.execute('DELETE FROM access_edges WHERE assignment_id=?', (assignment_id,))
-            for row in self.db.execute("SELECT id FROM resources WHERE compartment=? AND state='active'", (compartment,)).fetchall():
-                self._bind_assignments(row[0])
+            if resource_ids is not None:
+                # Exact capabilities already enumerate their targets. Rebinding
+                # every resource against every assignment grows quadratically.
+                selected=[]
+                for rid in resource_ids:
+                    row=self.db.execute('SELECT policy_id,attributes FROM resources WHERE id=?',(rid,)).fetchone()
+                    owner=self.db.execute("SELECT issuer FROM authority_owners WHERE kind='policy' AND id=?",(row['policy_id'],)).fetchone()
+                    attrs=json.loads(row['attributes'])
+                    if owner and owner[0]==ctx.principal_id and all(attrs.get(k)==v for k,v in rule['scope'].items()):
+                        selected.append(rid)
+                wanted=set(selected)
+                existing={r[0] for r in self.db.execute('SELECT memory_id FROM access_edges WHERE assignment_id=?',(assignment_id,))}
+                self.db.executemany('DELETE FROM access_edges WHERE assignment_id=? AND memory_id=?',
+                                    [(assignment_id,rid) for rid in existing-wanted])
+                self.db.executemany('INSERT OR IGNORE INTO access_edges VALUES (?,?,?)',
+                                    [(policy_id,rid,assignment_id) for rid in wanted-existing])
+            else:
+                self.db.execute('DELETE FROM access_edges WHERE assignment_id=?', (assignment_id,))
+                for row in self.db.execute("SELECT id FROM resources WHERE compartment=? AND state='active'", (compartment,)).fetchall():
+                    self._bind_assignments(row[0])
 
     def _assignment_live(self, assignment_id, session, action, seen=None):
         seen = set(seen or ())
         if assignment_id in seen: return False
         seen.add(assignment_id)
-        row = self.db.execute('SELECT body,state FROM assignments WHERE id=?', (assignment_id,)).fetchone()
-        if not row or row['state'] != 'active': return False
-        body = json.loads(row['body'])
+        def load_assignment():
+            row = self.db.execute('SELECT body,state FROM assignments WHERE id=?', (assignment_id,)).fetchone()
+            return json.loads(row['body']) if row and row['state'] == 'active' else None
+        body = self.snapshot_read(('assignment-body', assignment_id), load_assignment)
+        if body is None: return False
+        from .permissions import assignment_evidence_live
+        if not assignment_evidence_live(self, body): return False
         rule = body['rule']
         if action not in rule['actions']: return False
         now = instant(self.clock())
@@ -232,6 +312,8 @@ class PrivacyMemorySystem:
             parent_body = json.loads(parent_row[0])
             if any(parent_body[k] != body[k] for k in ('subject', 'compartment', 'information_scope')): return False
             if any(rule['scope'].get(k) != v for k,v in parent_body['rule']['scope'].items()): return False
+            if parent_body['rule'].get('resource_ids') and (not rule.get('resource_ids') or
+                    not set(rule['resource_ids']) <= set(parent_body['rule']['resource_ids'])): return False
             return self._assignment_live(parent, session, action, seen)
         return True
 
@@ -242,6 +324,7 @@ class PrivacyMemorySystem:
             body = json.loads(a['body'])
             owner = self.db.execute("SELECT issuer FROM authority_owners WHERE kind='policy' AND id=?", (row['policy_id'],)).fetchone()
             if (owner and owner[0] == a['issuer'] and row['compartment'] == body['compartment'] and
+                    (not body['rule'].get('resource_ids') or resource_id in body['rule']['resource_ids']) and
                     all(attrs.get(k) == v for k, v in body['rule']['scope'].items())):
                 self.db.execute('INSERT OR IGNORE INTO access_edges VALUES (?,?,?)', (a['policy_id'], resource_id, a['id']))
 
@@ -251,6 +334,13 @@ class PrivacyMemorySystem:
             self._claim_authority(ctx, 'assignment', assignment_id)
             self.db.execute("UPDATE assignments SET state='revoked' WHERE id=?", (assignment_id,))
             self._tickets.clear()
+            candidate=self.db.execute('SELECT body FROM capability_candidates WHERE id=? ORDER BY version DESC LIMIT 1',
+                                      (assignment_id,)).fetchone()
+            if candidate:
+                from .governance import CapabilityCandidate, PolicyGovernor
+                PolicyGovernor(self).record(ctx,CapabilityCandidate(**json.loads(candidate[0])),
+                    state='revoked',receipt={'authority':ctx.principal_id,'basis':'host_revocation'},
+                    source_job='host-revocation')
 
     def unresolved_assignment(self, ctx, diagnostic_id, details):
         self._session(ctx, 'manage_policy')
@@ -322,8 +412,23 @@ class PrivacyMemorySystem:
         return any(self._rule_matches(r, ctx, action, row, session) for r in body.get('allows', []))
 
     def allowed(self, ctx, resource_id, action='read', *, processor=None, visited=None):
-        with self._lock:
-            return self._allowed(ctx, resource_id, action, processor=processor, visited=visited)
+        with self.transaction(write=False):
+            # Session/delegation expiry is checked even for a memoized decision.
+            try:
+                self._session(ctx, action)
+            except AccessDenied:
+                return False
+            if visited is not None:
+                return self._allowed(ctx, resource_id, action, processor=processor, visited=visited)
+            namespace=self.snapshot_read(('resource-namespace',resource_id),lambda:self.db.execute(
+                'SELECT compartment FROM resources WHERE id=?',(resource_id,)).fetchone())
+            if namespace is None:return False
+            try:
+                session=self._session(ctx,action,namespace[0])
+            except AccessDenied:
+                return False
+            return self.snapshot_read(('allowed', ctx.session_id, session[3], resource_id, action, processor, self.clock()),
+                lambda: self._allowed(ctx, resource_id, action, processor=processor))
 
     def _allowed(self, ctx, resource_id, action='read', *, processor=None, visited=None):
         try:
@@ -331,16 +436,27 @@ class PrivacyMemorySystem:
             if row is None or row['state'] != 'active':
                 return False
             session = self._session(ctx, action, row['compartment'])
+            from .permissions import permission_gate
+            if not permission_gate(self, ctx, session, action, row):
+                return False
             visited = set(visited or ())
             if resource_id in visited:
                 return False
             visited.add(resource_id)
             # Exact directed bindings select every applicable policy, never vectors.
-            policies = [json.loads(p[0]) for p in self.db.execute(
+            policies = []
+            for p in self.db.execute(
                 'SELECT p.body,e.assignment_id FROM access_edges e JOIN policies p ON p.id=e.policy_id '
                 'LEFT JOIN assignments a ON a.id=e.assignment_id '
-                "WHERE e.memory_id=? AND (e.assignment_id='' OR a.state='active')", (resource_id,))
-                if not p[1] or self._assignment_live(p[1], session, action)]
+                "WHERE e.memory_id=? AND (e.assignment_id='' OR a.state='active')", (resource_id,)):
+                body=json.loads(p[0])
+                # Irrelevant assignments cannot allow or deny this request.
+                # Preserve applicable denies as well as allows before doing
+                # expensive evidence/delegation liveness checks.
+                relevant=any(self._rule_matches(rule,ctx,action,row,session)
+                             for rule in body.get('allows',[])+body.get('denies',[]))
+                if not p[1] or (relevant and self._assignment_live(p[1],session,action)):
+                    policies.append(body)
             base = self.db.execute('SELECT body FROM policies WHERE id=?', (row['policy_id'],)).fetchone()
             if not base or not policies:
                 return False
@@ -390,6 +506,12 @@ class PrivacyMemorySystem:
             # Policy references are inspectable opaque bindings; authoritative
             # rule bodies and captured ceilings are control-plane data.
             view.pop('policy_ceiling',None)
+            if view['attributes'].get('permission_view') and 'manage_policy' not in self._session(ctx,'read')[1]:
+                view['attributes'] = {}
+                view['policy_id'] = 'permission-view'
+                view['compartment'] = 'permission-view'
+                view['dependencies'] = []
+                view['payload'] = {'text':view['payload'].get('text','')}
             return view
 
     def create(self, ctx, resource_id, kind, payload, *, policy_id, compartment,
@@ -472,7 +594,11 @@ class PrivacyMemorySystem:
             note='note:'+view
             self.create(ctx,note,'memory',{'text':selected,'semantic':{},'source_view_id':view},
                         policy_id=policy_id,compartment=source['compartment'],attributes=attributes or source['attributes'],dependencies=[view])
-            self.index(ctx,note)
+            # Immutable views can be republished when an assignment gains a new
+            # field. Retain their existing embedding in the same pinned space.
+            if not self.db.execute('SELECT 1 FROM representations WHERE id=? AND space=?',
+                                   (note,self.embedder.space_id)).fetchone():
+                self.index(ctx,note)
             return note
 
     def _source_live(self, resource_id, seen=None):
@@ -528,7 +654,7 @@ class PrivacyMemorySystem:
             facets = list(dict.fromkeys([query] + facets))[:6]
             vectors = self.embedder.encode(facets)
             ranked = []
-            current_query = bool(re.search(r'\b(current|active|now|latest|still|updated)\b', query, re.I))
+            current_query = bool(re.search(r'\b(current(?:ly)?|active|now|latest|still|updated|plan|next|before|after)\b', query, re.I))
             for rid, vector in candidates:
                 if len(vector) != len(vectors[0]):
                     raise ValueError('Representation space mismatch')
@@ -568,6 +694,14 @@ class PrivacyMemorySystem:
                     if len(selected) >= budget: break
                     for record in sorted(ranked, key=lambda r:(-r['scores'][index],r['view']['id'])):
                         if select(record): break
+                # Current plans often span several recent instructions whose
+                # wording differs from the question. Reserve a small part of
+                # the authorized budget for source recency, then fill by score.
+                if current_query and budget >= 8:
+                    recent = 0
+                    for record in sorted(ranked,key=lambda r:(-r['sequence'],-r['score'],r['view']['id'])):
+                        if recent >= min(4,budget//3) or len(selected) >= budget:break
+                        if record['sequence'] and select(record):recent += 1
                 for record in ranked:
                     if len(selected) >= budget: break
                     select(record)
@@ -577,7 +711,7 @@ class PrivacyMemorySystem:
                 self.require(ctx, rid)
                 result.append({'id': rid, 'score': record['score'], 'text': view['payload'].get('text',''),
                                'kind': view['kind'], 'semantic': view['payload'].get('semantic', {}),
-                               'source': view['attributes'], 'current': True})
+                               'source': {} if view['attributes'].get('permission_view') else view['attributes'], 'current': True})
             return result
 
     def _current(self, resource_id, seen=None):
@@ -604,6 +738,8 @@ class PrivacyMemorySystem:
                 cursor = row[0]
                 if cursor == old_id: raise ValueError('Cyclic revision')
             self.db.execute('INSERT INTO revisions VALUES (?,?)',(old_id,new_id))
+            from .permissions import invalidate_evidence
+            invalidate_evidence(self, {old_id})
             self._tickets.clear()
 
     def link(self, ctx, edge_id, source, target, predicate, *, policy_id, compartment, dependencies=()):
@@ -676,7 +812,13 @@ class PrivacyMemorySystem:
 
     def evolve(self, ctx, processor, new_ids, *, job_id, k=4, max_attempts=3):
         from .evolution import evolve
-        return evolve(self,ctx,processor,new_ids,job_id=job_id,k=k,max_attempts=max_attempts)
+        started=time.monotonic()
+        try:
+            return evolve(self,ctx,processor,new_ids,job_id=job_id,k=k,max_attempts=max_attempts)
+        finally:
+            with self.transaction():
+                self.db.execute('INSERT INTO pipeline_timings VALUES (?,?,?) ON CONFLICT(job_id,stage) DO UPDATE SET seconds=seconds+excluded.seconds',
+                                (job_id,'evolution_total',time.monotonic()-started))
 
     def apply_evolution(self, ctx, job_id, input_ids, proposal, processor_id):
         ticket=self._tickets.pop(id(proposal),None)
@@ -732,10 +874,16 @@ class PrivacyMemorySystem:
             return [self.read(recipient_ctx,rid) for rid in resource_ids]
 
     def delete(self, ctx, resource_id):
+        return self.delete_many(ctx,[resource_id])
+
+    def delete_many(self, ctx, resource_ids):
+        """Authorize roots first; erase the dependency closure in one transaction."""
+        resource_ids=list(dict.fromkeys(resource_ids))
+        if not resource_ids:return 0
         with self.transaction():
-            self.require(ctx,resource_id,'delete')
+            for resource_id in resource_ids:self.require(ctx,resource_id,'delete')
             self._tickets.clear()
-            affected = {resource_id}
+            affected = set(resource_ids)
             changed = True
             rows = list(self.db.execute('SELECT id,dependencies FROM resources WHERE state!=\'deleted\''))
             while changed:
@@ -747,6 +895,8 @@ class PrivacyMemorySystem:
                 self.db.execute('INSERT OR IGNORE INTO tombstones VALUES (?,?,?)',(rid,ctx.principal_id,time.time()))
                 self.db.execute('UPDATE resources SET state=\'deleted\',payload=\'{}\',attributes=\'{}\' WHERE id=?',(rid,))
                 self.db.execute('DELETE FROM representations WHERE id=?',(rid,))
+            from .permissions import invalidate_evidence
+            invalidate_evidence(self, affected)
             return len(affected)
 
     def event(self, ctx, event_id):

@@ -1,0 +1,46 @@
+{
+  "code_digest": "f93d36072d20f5ed09b51f06fc3a610db5516c826b11cbdc37dd3def2f36b66d",
+  "regression": {
+    "tests": 483,
+    "subtests": 43,
+    "failures": 0,
+    "errors": 0,
+    "artifact": "regression-v13-frozen.xml"
+  },
+  "generic_workflow": {
+    "audit.json": {
+      "all_sources_complete": true,
+      "no_active_control_holds": true,
+      "revocation_published": true,
+      "owner_access_survives_revocation": true,
+      "coordinator_access_revoked": true,
+      "passed": true
+    },
+    "scope-audit.json": {
+      "two_active_coordinator_queries": true,
+      "confidential_contact_absent_from_context": true,
+      "budget_absent_from_context": true,
+      "passed": true
+    }
+  },
+  "late_field_denial": {
+    "initial_access_empty": true,
+    "initial_logistics_available": true,
+    "logistics_survive_later_field_denial": true,
+    "private_budget_absent": true,
+    "helper_grant_still_active": true,
+    "explicit_revocation_committed": true,
+    "helper_access_revoked": true,
+    "owner_access_survives": true,
+    "all_sources_complete": true,
+    "no_active_control_holds": true,
+    "passed": true
+  },
+  "offline_resume": {
+    "checkpoints": 4,
+    "revisions": [],
+    "semantic_quality_evidence": false
+  },
+  "live_run": "candidate-13",
+  "live_run_status": "in progress; final first25 comparison pending"
+}

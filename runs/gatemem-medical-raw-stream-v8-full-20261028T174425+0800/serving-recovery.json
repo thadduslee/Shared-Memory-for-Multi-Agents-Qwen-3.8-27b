@@ -1,0 +1,39 @@
+{
+  "recorded_at": "2026-10-28T18:41:33.327136+08:00",
+  "kind": "serving-backend-recovery",
+  "failure": "XGrammar native fatal at earley_parser.cc:209, unsupported element type 5; main vLLM engine exited",
+  "failed_source": "t061",
+  "completed_sources_before_resume": 60,
+  "source_jobs_before_resume": {
+    "complete": 60,
+    "processor_error": 1
+  },
+  "previous_backend": "auto (XGrammar)",
+  "recovery_backend": "guidance",
+  "vllm_version": "0.26.0",
+  "xgrammar_version": "0.2.3",
+  "llguidance_version": "1.7.6",
+  "model_weights_changed": false,
+  "engine_or_adapter_code_changed": false,
+  "schema_or_prompt_changed": false,
+  "saved_predictions_replayed": false,
+  "note": "Serving backend changes may affect generated output. Recorded as infrastructure recovery; original manifest and committed predictions retained.",
+  "diagnostic_directory": "/home/thaddus/a-mem-variant/analysis/transport-recovery-v8-20261028",
+  "pending_source_recovery": {
+    "source": "t061",
+    "status": "complete",
+    "backend": "guidance",
+    "prompt_hash_matches_failed_request": true,
+    "model_elapsed_s": 86.23179208207875,
+    "usage": {
+      "prompt_tokens": 23815,
+      "total_tokens": 26015,
+      "completion_tokens": 2200,
+      "prompt_tokens_details": null
+    },
+    "job_attempts": 4,
+    "published_changes": 5,
+    "original_checkpoint_predictions_replayed": 0,
+    "evolution": "Normal runner resumes source replay and performs t061 evolution with its existing deterministic job ID."
+  }
+}

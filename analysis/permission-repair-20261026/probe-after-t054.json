@@ -1,0 +1,55 @@
+{
+  "before": false,
+  "turn": "t054",
+  "seconds": 17.402064168825746,
+  "usage": {
+    "prompt_tokens": 19346,
+    "total_tokens": 19645,
+    "completion_tokens": 299,
+    "prompt_tokens_details": null
+  },
+  "payload_chars": 62229,
+  "proposal": {
+    "revision": 53,
+    "considered_restrictions": [
+      "res-001",
+      "res-002",
+      "res-003",
+      "res-004",
+      "res-005",
+      "res-006",
+      "res-007",
+      "res-008"
+    ],
+    "operations": [
+      {
+        "op": "observe_participation",
+        "basis": "observation",
+        "id": "act-052",
+        "participant": "nurse_alvarez",
+        "subject": "patient_elena_park",
+        "activity": "clinical_physician_consultation",
+        "status": "tentative",
+        "explanation": "Nurse documents the medication plan resulting from the clinician's consultation.",
+        "evidence": {
+          "activity": [
+            "permission-source:5ee4332fac4621dd88da1a4b30963b77abe1e0a8953ff588e49b4623f402c0db"
+          ],
+          "basis": [
+            "permission-source:5ee4332fac4621dd88da1a4b30963b77abe1e0a8953ff588e49b4623f402c0db"
+          ],
+          "participant": [
+            "permission-source:5ee4332fac4621dd88da1a4b30963b77abe1e0a8953ff588e49b4623f402c0db"
+          ],
+          "status": [
+            "permission-source:5ee4332fac4621dd88da1a4b30963b77abe1e0a8953ff588e49b4623f402c0db"
+          ],
+          "subject": [
+            "permission-source:5ee4332fac4621dd88da1a4b30963b77abe1e0a8953ff588e49b4623f402c0db"
+          ]
+        }
+      }
+    ]
+  },
+  "host_validation": "accepted"
+}

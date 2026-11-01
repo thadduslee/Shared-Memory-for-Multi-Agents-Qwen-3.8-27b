@@ -1,0 +1,100 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 13,
+    "scored_checkpoints": 13,
+    "expected_boundaries": 567,
+    "completed_boundaries": 11,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 144,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 13,
+    "n_utility": 7,
+    "n_utility_scored": 7,
+    "n_privacy": 6,
+    "n_privacy_scored": 6,
+    "n_privacy_context_scored": 6,
+    "n_privacy_e2e_scored": 6,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.7692307692307693,
+    "utility_accuracy": 0.5714285714285714,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.2857142857142857,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [
+    {
+      "previous_code_digest": "90224dfcdd1ddedd1ee7b2ecdee6ed08c31ccea7bec335d024d8f9bf7a8256c3",
+      "code_digest": "d3992bb1aa56a3738eac240848cf09b510a3083e1e82f4b488a68443b664d47f",
+      "at": "2026-10-28T16:22:25.671143+00:00",
+      "preserved_predictions": 7,
+      "completed_boundaries": 6
+    }
+  ],
+  "mixed_implementation": true,
+  "evolution": {
+    "jobs": {
+      "applied": 93
+    },
+    "attempts": 93,
+    "repaired_jobs": 0,
+    "model_rejections": 0
+  },
+  "pipeline_seconds": {
+    "evolution_total": 1184.799,
+    "permission_total": 6809.599,
+    "source_ingest": 0.576,
+    "source_total": 7995.07
+  },
+  "governance": {
+    "candidate_versions": 194,
+    "decisions": 194,
+    "recipient_decisions": 1248,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 144,
+      "running": 1
+    },
+    "attempts": 155,
+    "record_versions": 208,
+    "runtime_assignments": 16,
+    "indexed_resources": 374,
+    "coverage_adjustments": 1,
+    "processing_seconds": 7540.407,
+    "model_seconds": 7424.461,
+    "mean_seconds_per_source": 52.364,
+    "measured_attempts": 154,
+    "prompt_tokens": 3943567,
+    "completion_tokens": 171408
+  }
+}

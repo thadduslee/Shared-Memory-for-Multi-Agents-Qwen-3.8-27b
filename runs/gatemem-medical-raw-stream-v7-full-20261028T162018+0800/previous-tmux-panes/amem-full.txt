@@ -1,0 +1,135 @@
+thaddus@maplecg-fisher:~/a-mem$ cd /home/thaddus/a-mem
+
+export AMEM_JUDGE_BASE_URL="https://openrouter.ai/api/v1"
+export AMEM_JUDGE_MODEL="openai/gpt-4.1"
+
+export AMEM_JUDGE_API_KEY="$(
+python3 - <<'PY'
+import os
+from evaluation.gatemem_medical.runner import load_environment
+
+load_environment(".env")
+  --run-dir runs/privacy-two-store-gpt41-fullssing}"
+----------------------------------------------------------------------
+Ran 69 tests in 1.502s
+
+OK
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
+Loading weights: 100%|█| 103/103 [00:00<00:00, 7662.39i
+/home/thaddus/a-mem/agentic_memory/privacy/processors.py:76: FutureWarning: The `get_
+sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+  'dimensions': self.model.get_sentence_embedding_dimension(),
+Embedding: embedding:70fea8fd9a5e8d38b2e92a2c8c1be7bd30d6f12c8e1eb9e3b7c22fcdeb3126df
+ dimension 384
+memory-and-answer Qwen/Qwen3.8-27B available
+judge openai/gpt-4.1 available
+Evaluation log: /home/thaddus/a-mem/runs/evaluation-20261023T130929Z.log
+Loading weights: 100%|██████████| 103/103 [00:00<00:00, 7196.50it/s]
+/home/thaddus/a-mem/agentic_memory/privacy/processors.py:76: FutureWarning: The `get_
+sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+  'dimensions': self.model.get_sentence_embedding_dimension(),
+boundary 1/567: ingest 54 new turns; ask 1 original queries
+committed 1/579 predictions; active artifacts {'policy_guard': 2, 'observation': 54,
+'memory': 65, 'observation_view': 23, 'enrichment': 11, 'edge': 10}
+boundary 2/567: ingest 13 new turns; ask 1 original queries
+committed 2/579 predictions; active artifacts {'policy_guard': 2, 'observation': 67,
+'memory': 79, 'observation_view': 27, 'enrichment': 19, 'edge': 17}
+boundary 3/567: ingest 16 new turns; ask 2 original queries
+committed 4/579 predictions; active artifacts {'policy_guard': 2, 'observation': 83,
+'memory': 107, 'observation_view': 43, 'enrichment': 31, 'edge': 29}
+boundary 4/567: ingest 5 new turns; ask 1 original queries
+committed 5/579 predictions; active artifacts {'policy_guard': 2, 'observation': 88,
+'memory': 114, 'observation_view': 46, 'enrichment': 39, 'edge': 35}
+boundary 5/567: ingest 20 new turns; ask 1 original queries
+committed 6/579 predictions; active artifacts {'policy_guard': 2, 'observation': 108,
+ 'memory': 138, 'observation_view': 54, 'enrichment': 51, 'edge': 46}
+boundary 6/567: ingest 4 new turns; ask 1 original queries
+committed 7/579 predictions; active artifacts {'policy_guard': 2, 'observation': 112,
+ 'memory': 147, 'observation_view': 59, 'enrichment': 62, 'edge': 56}
+boundary 7/567: ingest 8 new turns; ask 1 original queries
+committed 8/579 predictions; active artifacts {'policy_guard': 2, 'observation': 120,
+ 'memory': 152, 'observation_view': 59, 'enrichment': 66, 'edge': 60}
+boundary 8/567: ingest 10 new turns; ask 1 original queries
+committed 9/579 predictions; active artifacts {'policy_guard': 2, 'observation': 130,
+ 'memory': 163, 'observation_view': 61, 'enrichment': 78, 'edge': 68}
+boundary 9/567: ingest 3 new turns; ask 1 original queries
+committed 10/579 predictions; active artifacts {'policy_guard': 2, 'observation': 133
+, 'memory': 171, 'observation_view': 66, 'enrichment': 89, 'edge': 78}
+boundary 10/567: ingest 1 new turns; ask 1 original queries
+committed 11/579 predictions; active artifacts {'policy_guard': 2, 'observation': 134
+, 'memory': 174, 'observation_view': 68, 'enrichment': 98, 'edge': 85}
+boundary 11/567: ingest 10 new turns; ask 2 original queries
+committed 13/579 predictions; active artifacts {'policy_guard': 2, 'observation': 144
+, 'memory': 190, 'observation_view': 76, 'enrichment': 106, 'edge': 93}
+boundary 12/567: ingest 8 new turns; ask 1 original queries
+committed 14/579 predictions; active artifacts {'policy_guard': 2, 'observation': 152
+, 'memory': 200, 'observation_view': 81, 'enrichment': 118, 'edge': 103}
+boundary 13/567: ingest 1 new turns; ask 2 original queries
+committed 16/579 predictions; active artifacts {'policy_guard': 2, 'observation': 153
+, 'memory': 201, 'observation_view': 81, 'enrichment': 120, 'edge': 105}
+boundary 14/567: ingest 8 new turns; ask 1 original queries
+committed 17/579 predictions; active artifacts {'policy_guard': 2, 'observation': 154
+, 'memory': 199, 'observation_view': 79, 'enrichment': 72, 'edge': 58}
+boundary 15/567: ingest 3 new turns; ask 1 original queries
+committed 18/579 predictions; active artifacts {'policy_guard': 2, 'observation': 157
+, 'memory': 203, 'observation_view': 80, 'enrichment': 80, 'edge': 67}
+boundary 16/567: ingest 2 new turns; ask 1 original queries
+committed 19/579 predictions; active artifacts {'policy_guard': 2, 'observation': 159
+, 'memory': 205, 'observation_view': 81, 'enrichment': 88, 'edge': 73}
+boundary 17/567: ingest 7 new turns; ask 1 original queries
+committed 20/579 predictions; active artifacts {'policy_guard': 2, 'observation': 166
+, 'memory': 213, 'observation_view': 83, 'enrichment': 98, 'edge': 81}
+boundary 18/567: ingest 5 new turns; ask 1 original queries
+committed 21/579 predictions; active artifacts {'policy_guard': 2, 'observation': 171
+, 'memory': 220, 'observation_view': 86, 'enrichment': 106, 'edge': 87}
+boundary 19/567: ingest 5 new turns; ask 1 original queries
+committed 22/579 predictions; active artifacts {'policy_guard': 2, 'observation': 176
+, 'memory': 229, 'observation_view': 90, 'enrichment': 117, 'edge': 95}
+boundary 20/567: ingest 7 new turns; ask 1 original queries
+committed 23/579 predictions; active artifacts {'policy_guard': 2, 'observation': 183
+, 'memory': 237, 'observation_view': 92, 'enrichment': 131, 'edge': 108}
+boundary 21/567: ingest 8 new turns; ask 1 original queries
+committed 24/579 predictions; active artifacts {'policy_guard': 2, 'observation': 191
+, 'memory': 254, 'observation_view': 101, 'enrichment': 143, 'edge': 117}
+boundary 22/567: ingest 7 new turns; ask 1 original queries
+committed 25/579 predictions; active artifacts {'policy_guard': 2, 'observation': 198
+, 'memory': 260, 'observation_view': 102, 'enrichment': 151, 'edge': 123}
+boundary 23/567: ingest 9 new turns; ask 1 original queries
+committed 26/579 predictions; active artifacts {'policy_guard': 2, 'observation': 207
+, 'memory': 271, 'observation_view': 104, 'enrichment': 166, 'edge': 136}
+boundary 24/567: ingest 11 new turns; ask 2 original queries
+committed 28/579 predictions; active artifacts {'policy_guard': 2, 'observation': 218
+, 'memory': 288, 'observation_view': 110, 'enrichment': 178, 'edge': 147}
+boundary 25/567: ingest 52 new turns; ask 1 original queries
+committed 29/579 predictions; active artifacts {'policy_guard': 2, 'observation': 52,
+ 'memory': 62, 'observation_view': 22, 'enrichment': 8, 'edge': 8}
+boundary 26/567: ingest 8 new turns; ask 1 original queries
+committed 30/579 predictions; active artifacts {'policy_guard': 2, 'observation': 60,
+ 'memory': 80, 'observation_view': 32, 'enrichment': 20, 'edge': 20}
+boundary 27/567: ingest 19 new turns; ask 1 original queries
+committed 31/579 predictions; active artifacts {'policy_guard': 2, 'observation': 79,
+ 'memory': 108, 'observation_view': 45, 'enrichment': 32, 'edge': 31}
+boundary 28/567: ingest 5 new turns; ask 1 original queries
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/thaddus/a-mem/evaluation/gatemem_medical/__main__.py", line 3, in <modu
+le>
+    raise SystemExit(main())
+  File "/home/thaddus/a-mem/evaluation/gatemem_medical/runner.py", line 227, in main
+    adapter.ingest_batch(event,turns,None if args.no_evolution else llm)
+  File "/home/thaddus/a-mem/evaluation/gatemem_medical/adapter.py", line 287, in inge
+st_batch
+    self.core.evolve(self.service,evolution_processor,ids,job_id=job)
+  File "/home/thaddus/a-mem/agentic_memory/privacy/system.py", line 689, in evolve
+    self.apply_evolution(ctx, job_id, input_ids, result, processor.processor_id)
+  File "/home/thaddus/a-mem/agentic_memory/privacy/system.py", line 705, in apply_evo
+lution
+    raise AccessDenied('Unauthorized evolution target or field')
+agentic_memory.privacy.system.AccessDenied: Unauthorized evolution target or field
+thaddus@maplecg-fisher:~/a-mem$

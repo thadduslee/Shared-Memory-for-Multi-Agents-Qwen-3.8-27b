@@ -1,0 +1,67 @@
+{
+  "activity": {
+    "a_elena_linda_logistics": {
+      "id": "a_elena_linda_logistics",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "activity": "Provide Linda with appointment times and parking details for Elena's visit",
+      "status": "established",
+      "validity": {}
+    }
+  },
+  "assignment": {
+    "as_elena_linda_logistics": {
+      "id": "as_elena_linda_logistics",
+      "participant": "family_linda_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "appointment_times, parking_details",
+      "status": "active",
+      "basis": "task",
+      "activity_id": "a_elena_linda_logistics",
+      "validity": {
+        "end_activity": "a_elena_linda_logistics"
+      }
+    },
+    "self-use:516c4470f88ff49054cfb5c5": {
+      "id": "self-use:516c4470f88ff49054cfb5c5",
+      "participant": "patient_elena_park",
+      "subject": "patient_elena_park",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "information_scope": "self-use: Provide Linda with appointment times and parking details for Elena's visit",
+      "status": "active",
+      "basis": "explicit",
+      "authority": "patient_elena_park",
+      "self_use_activity": "a_elena_linda_logistics",
+      "validity": {
+        "end_activity": "a_elena_linda_logistics"
+      }
+    }
+  },
+  "restriction": {
+    "r_elena_linda_clinical": {
+      "id": "r_elena_linda_clinical",
+      "issuer": "patient_elena_park",
+      "participants": [
+        "family_linda_park"
+      ],
+      "subject": "patient_elena_park",
+      "information_scope": "clinical_results, medications, clinical_notes",
+      "actions": [
+        "search",
+        "read",
+        "derive"
+      ],
+      "effect": "deny",
+      "validity": {}
+    }
+  }
+}

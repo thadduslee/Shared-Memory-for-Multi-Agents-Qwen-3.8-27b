@@ -1,0 +1,59 @@
+{
+  "method": "Fresh isolated raw-dialogue subset; real local model, HashEmbedder; no official benchmark or score rewrite.",
+  "model": "Qwen/Qwen3.8-27B",
+  "profile": "pairs",
+  "model_calls": 10,
+  "max_calls": 18,
+  "http_attempts": 10,
+  "prompt_tokens": 34301,
+  "completion_tokens": 5951,
+  "elapsed_seconds": 232.324,
+  "cases": {
+    "outreach": {
+      "error": "PermissionRepairExhausted: Permission update paused after 3 rejected proposals: Task resolution must evaluate the current reply: include new_source_id in evidence",
+      "completed_turns": [
+        "t097"
+      ],
+      "source_turns": 7,
+      "processing_seconds": 55.587,
+      "active_assignments": [],
+      "worker_bound_turns": [],
+      "retrieved_text": [],
+      "pending_jobs": [
+        "permission-job:0c778c730a00f9b98dd0117c5f6426d9df907b004875c5ccfaa6e361177994f0"
+      ],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 3,
+      "focused_reassessments": 0,
+      "history_rounds": 0
+    },
+    "counseling": {
+      "completed_turns": [
+        "t116",
+        "t117",
+        "t144"
+      ],
+      "source_turns": 3,
+      "processing_seconds": 176.692,
+      "active_assignments": [
+        {
+          "id": "task-grant:64e312684f42bb97d124e8df",
+          "subject": "patient_elena_park",
+          "scope": "Patient's confirmation of starting doxylamine and pyridoxine and current nausea/vomiting status for the nausea plan medication check",
+          "bindings": 1
+        }
+      ],
+      "worker_bound_turns": [
+        "t117"
+      ],
+      "retrieved_text": [
+        "Yes. I started them. Nausea is better and I haven't vomited."
+      ],
+      "pending_jobs": [],
+      "forbidden_family_retrieval_count": 0,
+      "rejected_proposals": 2,
+      "focused_reassessments": 1,
+      "history_rounds": 0
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "model": "Qwen/Qwen3.8-27B",
+  "precision": "fp8-online",
+  "official_benchmark": false,
+  "initial_access_empty": true,
+  "turns": [
+    {
+      "turn_id": "t001",
+      "seconds": 4.726833673194051,
+      "calls": 1
+    },
+    {
+      "turn_id": "t002",
+      "seconds": 7.96805552765727,
+      "calls": 1
+    },
+    {
+      "turn_id": "t003",
+      "seconds": 4.486439265310764,
+      "calls": 1
+    },
+    {
+      "turn_id": "t004",
+      "seconds": 2.6469162702560425,
+      "calls": 1
+    },
+    {
+      "turn_id": "t005",
+      "seconds": 25.5158418295905,
+      "calls": 2
+    },
+    {
+      "turn_id": "t006",
+      "seconds": 16.3257744750008,
+      "calls": 2
+    },
+    {
+      "turn_id": "t007",
+      "seconds": 3.872338310815394,
+      "calls": 1
+    },
+    {
+      "turn_id": "t008",
+      "seconds": 58.30222013685852,
+      "calls": 2
+    }
+  ],
+  "predictions": [],
+  "mean_seconds": 15.480552436085418,
+  "median_seconds": 6.347444600425661,
+  "max_seconds": 58.30222013685852,
+  "permission_jobs": {
+    "complete": 8
+  },
+  "processing": {
+    "source_events": 8,
+    "extraction_receipts": 8,
+    "extraction_complete": true,
+    "incomplete_extractions": 0,
+    "rejected_relationships": 0,
+    "live_candidates": 5,
+    "bound_candidates": 0,
+    "active_assignments": 1,
+    "failure_holds": 0,
+    "scoped_control_holds": 0,
+    "binding_decisions": 4,
+    "pending_binding_reviews": 0,
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 9,
+        "elapsed_s": 116.06279126089066
+      },
+      "incremental_repair": {
+        "calls": 2,
+        "elapsed_s": 7.396540944464505
+      }
+    },
+    "authorization_diagnoses": {},
+    "no_assignment_decisions": 0,
+    "excluded_binding_decisions": 3
+  }
+}

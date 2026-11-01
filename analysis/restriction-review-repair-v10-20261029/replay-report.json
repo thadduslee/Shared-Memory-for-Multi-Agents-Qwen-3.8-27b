@@ -1,0 +1,36 @@
+{
+  "source": "t008",
+  "outcomes": [
+    {
+      "attempt": 1,
+      "accepted": false,
+      "reason": "Each binding must assess every current restriction",
+      "details": {
+        "path": "operations[0].restriction_decisions",
+        "assignment_id": "asg_elena_self_use",
+        "source_id": "permission-source:982c359bb3cd798f8862289cea89ae905650a21064820593032608b10a79ae66",
+        "required_restriction_ids": [
+          "res_elena_pregnancy_callback",
+          "res_linda_clinical"
+        ],
+        "missing_restriction_ids": [
+          "res_elena_pregnancy_callback"
+        ],
+        "unexpected_restriction_ids": [],
+        "repair": "Assess each restriction in the FINAL proposed state, including restrictions created in this same response, regardless of operation order. Supply an explicit applicability decision and live evidence, or omit this binding."
+      }
+    },
+    {
+      "attempt": 2,
+      "accepted": true,
+      "operation_types_unchanged": true
+    },
+    {
+      "attempt": 3,
+      "accepted": true,
+      "operation_types_unchanged": true
+    }
+  ],
+  "model_calls": 0,
+  "run_databases_modified": false
+}

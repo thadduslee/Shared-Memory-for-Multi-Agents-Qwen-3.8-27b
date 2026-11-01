@@ -1,0 +1,131 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 0,
+    "scored_checkpoints": 0,
+    "expected_boundaries": 567,
+    "completed_boundaries": 0,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 30,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 0,
+    "n_utility": 0,
+    "n_utility_scored": 0,
+    "n_privacy": 0,
+    "n_privacy_scored": 0,
+    "n_privacy_context_scored": 0,
+    "n_privacy_e2e_scored": 0,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": null,
+    "privacy_leakage_rate": null,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": null,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [
+    {
+      "previous_code_digest": "b93f430cbd088310576155ace27746bd41e2830e4bba47a2356388d89515935d",
+      "code_digest": "d44e9d4aecc2bfe7d388ea22ca6ce79ab0a88a23085aff0de80fd9c74ffb1065",
+      "at": "2026-10-29T03:04:36.389834+00:00",
+      "preserved_predictions": 0,
+      "completed_boundaries": 0
+    }
+  ],
+  "mixed_implementation": true,
+  "recovery": {
+    "at": "2026-10-29T03:11:26.423906+00:00",
+    "state": "blocked",
+    "stage": "permission permission-job:e822eb520bbf11b792abe6364cb9fb820f000c806bdca02e80a0d2f0a63f235c",
+    "failures": 1,
+    "error_type": "PermissionRepairExhausted",
+    "error": "Permission update paused after 3 rejected proposals: Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases",
+    "contract_failure": false,
+    "details": {
+      "job_id": "permission-job:e822eb520bbf11b792abe6364cb9fb820f000c806bdca02e80a0d2f0a63f235c",
+      "rejections": 3,
+      "limit": 3,
+      "last_validation": {
+        "accepted": false,
+        "details": {},
+        "elapsed_s": 21.859,
+        "error": "PermissionProposalRejected",
+        "model_elapsed_s": 21.84807296190411,
+        "reason": "Binding quote must be a unique exact substring of its live source; use complete text for repeated phrases",
+        "usage": {
+          "completion_tokens": 560,
+          "prompt_tokens": 12458,
+          "prompt_tokens_details": null,
+          "total_tokens": 13018
+        }
+      },
+      "repair": "Inspect the saved proposal and validation. Use an explicitly reviewed repair/version; automatic retries cannot reset this budget."
+    },
+    "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 10
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "permission_total": 389.479,
+    "source_ingest": 0.068,
+    "source_total": 389.555
+  },
+  "governance": {
+    "candidate_versions": 13,
+    "decisions": 13,
+    "recipient_decisions": 97,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 29,
+      "rejected": 1
+    },
+    "attempts": 35,
+    "record_versions": 20,
+    "runtime_assignments": 3,
+    "indexed_resources": 10,
+    "coverage_adjustments": 20,
+    "processing_seconds": 581.984,
+    "model_seconds": 580.834,
+    "mean_seconds_per_source": 19.399,
+    "measured_attempts": 35,
+    "prompt_tokens": 321728,
+    "completion_tokens": 14117
+  }
+}

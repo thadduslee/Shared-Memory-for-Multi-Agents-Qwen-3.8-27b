@@ -1,0 +1,64 @@
+{
+  "updated_at": "2026-11-01T10:36:53.590369+00:00",
+  "requested_checkpoints": 579,
+  "status": "running",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 19,
+    "scored_checkpoints": 19,
+    "expected_boundaries": 567,
+    "completed_boundaries": 16,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 166,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 19,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 9,
+    "n_privacy_scored": 9,
+    "n_privacy_context_scored": 9,
+    "n_privacy_e2e_scored": 9,
+    "n_safety": 1,
+    "n_safety_scored": 1,
+    "n_safety_context_scored": 1,
+    "n_safety_e2e_scored": 1,
+    "action_accuracy": 0.7894736842105263,
+    "utility_accuracy": 0.5555555555555556,
+    "privacy_leakage_rate": 0.1111111111111111,
+    "deletion_leakage_rate": 0.0,
+    "privacy_answer_leakage_rate": 0.1111111111111111,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.1111111111111111,
+    "deletion_e2e_leakage_rate": 0.0,
+    "over_refusal_rate": 0.1111111111111111,
+    "compliance_utility_score": 0.49382716049382713,
+    "compliance_utility_e2e_score": 0.49382716049382713,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "summary_complete": false,
+  "source_jobs": {
+    "complete": 172,
+    "running": 1
+  },
+  "source_timings": {
+    "count": 172,
+    "mean_seconds": 22.164002978026346
+  },
+  "checkpoint_counts": {
+    "predictions": 19,
+    "scored": 19
+  }
+}

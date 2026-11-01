@@ -1,0 +1,107 @@
+{
+  "semantics": "Nine host authorization checks on three saved resources, in a pinned read-only snapshot. No real embedding, inference, or full neighbor search. Diagnostic in-process reuse of an identical permission ledger; production invalidation is unimplemented.",
+  "fixture_time": "2026-03-08T09:30:00+00:00",
+  "profiled_first_decision": true,
+  "baseline": {
+    "seconds": 2.6807492040097713,
+    "decisions": [
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "derive",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "derive",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "derive",
+        "allowed": true
+      }
+    ]
+  },
+  "fixed_snapshot_ledger_reuse": {
+    "seconds": 0.060835668817162514,
+    "decisions": [
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:b22c6a6300cae08642fcdcbfd937d815c311f27ddb939778404620d0b13262fb",
+        "action": "derive",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "note:permission-view:f5c119299daac86f66267dcbdb1132299783036994d2044fa668d2bdcdac882f",
+        "action": "derive",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "search",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "read",
+        "allowed": true
+      },
+      {
+        "id": "enrichment:permission-job:89f2601a66b83df5d65de150a2a1ff06c57491f8ebdab3c13b4f593812ec03f4:evolve:1",
+        "action": "derive",
+        "allowed": true
+      }
+    ]
+  },
+  "ledger_load_seconds": 0.0637310091406107,
+  "same_decisions": true
+}

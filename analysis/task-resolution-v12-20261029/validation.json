@@ -1,0 +1,18 @@
+{
+  "security_tests_passed": 273,
+  "evaluator_tests_passed": 53,
+  "task_resolution_regressions": 35,
+  "protected_original_artifacts_unchanged": true,
+  "code_sha256": {
+    "agentic_memory/privacy/task_tracking.py": "29da0d20b9c973a182b0cd29fc0cd58c56780f45755f8f106bbc5fd993e67acf",
+    "agentic_memory/privacy/permissions.py": "241527f95a759da86abc93bd68a8381c81284f473f7fe3e681c6c03e7b52cc18",
+    "agentic_memory/privacy/storage.py": "2eb334b946996bcee8ce09bb7e46c2d82ca32c04dd4b9c2e814ce7595c9f49a4",
+    "agentic_memory/privacy/permission_state.py": "9c35aeb74f2db3dd5e5568c37782529096338335bbeb39bee35de985b37fb60b",
+    "evaluation/gatemem_medical/inference_adapter.py": "e961bf835711ae86552e8c1778739a6211e28a16bdc7dcde5d0ef1047440b904",
+    "evaluation/gatemem_medical/runner.py": "8b09e3fb5c218c42029d706971c51b99a356387ab4dcbe5b722cd4312e517d49",
+    "security_tests/test_task_resolution.py": "0f57cca80802a1165305d8e24a500262655d76139864b30a2504e9f6f669b9ec"
+  },
+  "live_evidence": "live-smoke-07: both narrow grants and corresponding patient facts retrieved; neither original full checkpoint corrected.",
+  "post_live_change": "Exact active-policy reuse in task_tracking.py; tested for duplicate suppression, expiry and revoked-grant exclusion; not live-model rerun.",
+  "latency": "16 actual HTTP calls for 10 selected raw turns, 480.874 seconds; no controlled v11/v12 live A/B."
+}
