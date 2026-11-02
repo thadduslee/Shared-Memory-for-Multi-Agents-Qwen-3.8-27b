@@ -37,6 +37,7 @@ def main():
     core.register_processor(host,model)
     bootstrap=PermissionBootstrap(participants={},resources={},authorities={},source_identities={'chat':[]},
         discover_self_owned_participants=('chat',),read_pipeline_actions=('search','derive'),
+        owner_read_actions=('search','read','derive') if int(args.version.split('-',1)[0])>=19 else (),
         task_convention='An authenticated subject controls their own information. Particular subject acceptance of '
         'an actual worker service permits only necessary information for that service. Specific field exclusions constrain access. '
         'Names, jobs, roles, authorship and bare ownership alone grant no requester read access.')
@@ -49,7 +50,9 @@ def main():
         result=updater.update(job['job_id'])
         # Match the application's trusted source-driven maintenance schedule;
         # include its extra calls and wall time rather than hiding that cost.
-        maintained=updater.flush_bindings(max_batches=1)
+        attempts=core.db.execute('SELECT attempts FROM permission_jobs WHERE id=?',(job['job_id'],)).fetchone()[0]
+        maintained=({'batches':0,'changes':[],'status':'deferred_source_budget'}
+            if int(args.version.split('-',1)[0])>=19 and attempts>=2 else updater.flush_bindings(max_batches=1))
         timings.append({'turn':n,'seconds':time.monotonic()-start,'maintenance_batches':maintained['batches']})
         print('source',n,result['status'],round(timings[-1]['seconds'],3),flush=True)
     def evidence(actor,question):

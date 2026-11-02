@@ -32,6 +32,33 @@ class ProcessorConfigurationFailure(ProcessorFailure):
     retryable = False
 
 
+class ProcessorBudgetFailure(ProcessorConfigurationFailure):
+    """Provider credit/key allowance requires a checkpointed budget pause."""
+
+
+class ProcessorDeadlineFailure(ProcessorConfigurationFailure):
+    """The host wall-time budget expired; do not restart the same request."""
+
+
+def portable_schema(value):
+    """Project only unsupported uniqueness grammar; validate the full schema locally.
+
+    Property names are data, so a field literally named uniqueItems is preserved.
+    """
+    if isinstance(value,list):return [portable_schema(v) for v in value]
+    if not isinstance(value,dict):return value
+    result={}
+    for key,item in value.items():
+        if key=='uniqueItems':continue
+        if key in {'enum','const','default','examples'}:
+            result[key]=deepcopy(item)
+            continue
+        if key in {'properties','$defs','definitions'}:
+            result[key]={name:portable_schema(spec) for name,spec in item.items()}
+        else:result[key]=portable_schema(item)
+    return result
+
+
 def compact_note_references(payload,schema):
     """Serialize evolution references compactly, before the core issues a ticket."""
     aliases={n['id']:f'm{i}' for i,n in enumerate(payload['notes'],1)}
@@ -215,6 +242,8 @@ class CompletionProcessor:
     last_response_model: str | None = None
     last_provider: str | None = None
     last_wire_key_ordering: bool = False
+    last_effective_limits: dict | None = None
+    transport_attempts: int = 0
 
     def complete(self, system, payload, *, schema=None):
         self.usage=None
@@ -222,6 +251,7 @@ class CompletionProcessor:
         self.last_response_model=None
         self.last_provider=None
         self.last_wire_key_ordering=False
+        self.transport_attempts=0
         call_started=time.monotonic()
         restore=lambda value:value
         if (schema and set(schema.get('properties',{}))=={'updates','edges'}
@@ -246,6 +276,14 @@ class CompletionProcessor:
             except ValueError:raise ProcessorConfigurationFailure('AMEM_INCREMENTAL_MAX_TOKENS must be a positive integer') from None
             if incremental_limit<=0:raise ProcessorConfigurationFailure('AMEM_INCREMENTAL_MAX_TOKENS must be a positive integer')
             output_limit=min(output_limit,incremental_limit)
+        from .workflow_v20 import enabled
+        v20=enabled(payload.get('permission_version',''))
+        if v20:
+            stage=payload.get('stage','')
+            ceiling=512 if stage in {'policy_classification','query_policy'} else 4096 if stage in {'answer','answer_render','judge'} else 2048
+            output_limit=min(output_limit,ceiling)
+        self.last_effective_limits={'stage':payload.get('stage','query'),'max_tokens':output_limit,
+                                    'timeout_seconds':self.timeout}
         body = {'model': self.model,
                 'messages': [{'role': 'system', 'content': system},
                              {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}],
@@ -270,9 +308,17 @@ class CompletionProcessor:
         family=str(payload.get('permission_version','')).split('-',1)[0]
         local_schema=bool(schema and family.isdigit() and int(family)>=17)
         if local_schema:
-            mode=os.getenv('AMEM_SOURCE_SCHEMA_MODE','strict').strip().lower()
-            if mode not in {'strict','json'}:
-                raise ProcessorConfigurationFailure('AMEM_SOURCE_SCHEMA_MODE must be strict or json')
+            stage=payload.get('stage')
+            mode_key=('AMEM_JUDGE_SCHEMA_MODE' if v20 and stage=='judge' else
+                      'AMEM_REVIEW_SCHEMA_MODE' if v20 and stage in {'incremental_binding_repair',
+                          'binding_maintenance','attribution_recovery','extraction_recovery',
+                          'query_policy','policy_classification'} else 'AMEM_SOURCE_SCHEMA_MODE')
+            mode=os.getenv(mode_key,'strict').strip().lower()
+            if mode not in {'strict','json','portable'}:
+                raise ProcessorConfigurationFailure(mode_key+' must be strict, portable or json')
+            self.last_effective_limits['schema_mode']=mode
+            if mode=='portable':
+                body['response_format']['json_schema']['schema']=portable_schema(body['response_format']['json_schema']['schema'])
             if mode=='json':
                 # The provider supplies JSON; the SAME full grammar is checked
                 # locally before canonical authority validation/publication.
@@ -289,16 +335,24 @@ class CompletionProcessor:
             else:body['chat_template_kwargs'] = {'enable_thinking': False}
         if self.model.startswith('deepseek/'):
             body['reasoning'] = {'effort': 'low'}
+        headers = {'Content-Type': 'application/json'}
+        if self.api_key:
+            headers['Authorization'] = 'Bearer ' + self.api_key
         request = urllib.request.Request(self.base_url.rstrip('/') + '/chat/completions',
-                                         data=json.dumps(body).encode(),
-                                         headers={'Content-Type': 'application/json',
-                                                  'Authorization': 'Bearer ' + self.api_key})
+                                         data=json.dumps(body).encode(), headers=headers)
         for attempt in range(3):
             try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                deadline=getattr(self,'_deadline',None)
+                remaining=deadline-time.monotonic() if deadline is not None else self.timeout
+                if remaining<=0:raise ProcessorDeadlineFailure('Host processing deadline expired')
+                self.transport_attempts+=1
+                self.last_effective_limits['timeout_seconds']=min(self.timeout,remaining)
+                with urllib.request.urlopen(request, timeout=min(self.timeout,remaining)) as response:
                     value = json.load(response)
                 self.usage = value.get('usage', {})
                 self.last_response_model=value.get('model')
+                if getattr(self,'_deadline',None) is not None and time.monotonic()>self._deadline:
+                    raise ProcessorDeadlineFailure('Provider result arrived after the host deadline')
                 self.last_provider=value.get('provider')
                 choices=value.get('choices') or []
                 content=choices[0].get('message',{}).get('content') if choices else None
@@ -309,7 +363,10 @@ class CompletionProcessor:
                     raise ProcessorConfigurationFailure(f'{self.processor_id}: unexpected response model; expected {self.model}')
                 self.last_elapsed_seconds=time.monotonic()-call_started
                 if value['choices'][0].get('finish_reason')=='length':
-                    raise ProcessorContractFailure(f'{self.processor_id}: structured response exceeded token budget')
+                    failure=ProcessorContractFailure(f'{self.processor_id}: structured response exceeded token budget')
+                    failure.details={'max_tokens':output_limit,'finish_reason':'length',
+                        'instruction':'Return a complete compact JSON response; shorten reasons and omit prose.'}
+                    raise failure
                 result=restore(parse_object(value['choices'][0]['message']['content']))
                 if local_schema:
                     if int(family)>=18:
@@ -368,7 +425,7 @@ class CompletionProcessor:
                             detail=error.validator
                             if error.validator=='additionalProperties':detail+='; allowed keys='+','.join(error.schema.get('properties',{}))
                             if error.validator=='required':detail+='; required keys='+','.join(error.schema.get('required',[]))
-                            if error.validator=='enum' and path.rsplit('/',1)[-1] in {'k','intent','d','via','timing','kind'}:
+                            if error.validator=='enum' and (v20 or path.rsplit('/',1)[-1] in {'k','intent','d','via','timing','kind'}):
                                 detail+='; allowed='+','.join(map(str,error.schema['enum']))
                             issues.append(path+': '+detail)
                         failure=ProcessorContractFailure('Structured output failed local schema validation: '+' | '.join(issues))
@@ -388,7 +445,7 @@ class CompletionProcessor:
                         error=json.loads(exc.read(16384)).get('error',{})
                         if isinstance(error,dict):detail=str(error.get('message',''))[:1000]
                     except (ValueError,AttributeError,OSError):pass
-                    failure=ProcessorFailure if exc.code in {429,500,502,503,504} else ProcessorConfigurationFailure
+                    failure=ProcessorBudgetFailure if exc.code==402 else ProcessorFailure if exc.code in {429,500,502,503,504} else ProcessorConfigurationFailure
                     raise failure(f'{self.processor_id}: HTTP {exc.code}'+
                                   (': '+detail if detail else '')) from None
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
@@ -398,7 +455,12 @@ class CompletionProcessor:
                 raise ProcessorContractFailure(f'{self.processor_id}: invalid structured response') from None
             finally:
                 self.last_elapsed_seconds=time.monotonic()-call_started
-            time.sleep(min(2 ** attempt, 4))
+            delay=min(2 ** attempt,4)
+            deadline=getattr(self,'_deadline',None)
+            if deadline is not None:
+                remaining=deadline-time.monotonic()
+                if remaining<=delay:raise ProcessorDeadlineFailure('Insufficient time for a provider retry')
+            time.sleep(delay)
 
 
 class ScriptedProcessor:

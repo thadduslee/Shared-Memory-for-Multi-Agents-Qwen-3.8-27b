@@ -62,6 +62,9 @@ class EvolutionQueue:
             try:
                 outcome=c.evolve(self.context,processor,[r['resource_id'] for r in batch],job_id=claimed)
             except (ProcessorFailure,ModelContractError) as exc:
+                from agentic_memory.privacy.processors import ProcessorBudgetFailure
+                from agentic_memory.privacy.workflow_v20 import enabled
+                if isinstance(exc,ProcessorBudgetFailure) and enabled(getattr(processor,'_permission_version','')):raise
                 with c.transaction():
                     terminal=isinstance(exc,ModelContractError) or not getattr(exc,'retryable',True)
                     c.db.execute('UPDATE evolution_queue SET status=?,error=? WHERE batch_id=?',

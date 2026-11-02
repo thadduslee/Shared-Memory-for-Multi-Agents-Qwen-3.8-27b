@@ -1,0 +1,167 @@
+{
+  "updated_at": "2026-11-02T04:27:42.086507+00:00",
+  "status": "stopped",
+  "runner_pid": 583208,
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 1,
+    "scored_checkpoints": 0,
+    "expected_boundaries": 567,
+    "completed_boundaries": 0,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 54,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 0,
+    "n_utility": 0,
+    "n_utility_scored": 0,
+    "n_privacy": 0,
+    "n_privacy_scored": 0,
+    "n_privacy_context_scored": 0,
+    "n_privacy_e2e_scored": 0,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": null,
+    "privacy_leakage_rate": null,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": null,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "complete": false,
+  "workflow_v20": {
+    "latency_seconds": {
+      "model_call": {
+        "count": 107,
+        "total": 1112.535719923675,
+        "mean": 10.397530092744626,
+        "p50": 9.006082871928811,
+        "p90": 19.030138393864036,
+        "p95": 19.77119046356529,
+        "max": 40.45835161861032
+      },
+      "host_recovery": {
+        "count": 7,
+        "total": 22.26610148884356,
+        "mean": 3.1808716412633657,
+        "p50": 5.010515953414142,
+        "p90": 5.012178771197796,
+        "p95": 5.012178771197796,
+        "max": 5.012178771197796
+      },
+      "host_maintenance": {
+        "count": 33,
+        "total": 6.241963271982968,
+        "mean": 0.18915040218130205,
+        "p50": 0.18476888444274664,
+        "p90": 0.21673743147403002,
+        "p95": 0.44667768850922585,
+        "max": 0.5817790767177939
+      },
+      "answer_request": {
+        "count": 1,
+        "total": 4.979337887838483,
+        "mean": 4.979337887838483,
+        "p50": 4.979337887838483,
+        "p90": 4.979337887838483,
+        "p95": 4.979337887838483,
+        "max": 4.979337887838483
+      },
+      "judge_request": {
+        "count": 3,
+        "total": 96.5185631243512,
+        "mean": 32.17285437478373,
+        "p50": 36.82120851799846,
+        "p90": 40.45835161861032,
+        "p95": 40.45835161861032,
+        "max": 40.45835161861032
+      },
+      "source_including_host": {
+        "count": 54,
+        "total": 1042.8851911807433,
+        "mean": 19.31268872556932,
+        "p50": 18.514640933834016,
+        "p90": 30.084276284091175,
+        "p95": 30.09972245246172,
+        "max": 30.115810324437916
+      },
+      "source_foreground": {
+        "count": 54,
+        "total": 1014.7410905640572,
+        "mean": 18.79150167711217,
+        "p50": 18.08621513377875,
+        "p90": 30.08294795639813,
+        "p95": 30.09890366345644,
+        "max": 30.115022553130984
+      }
+    },
+    "model_calls_by_phase": {
+      "foreground": 96,
+      "host": 6,
+      "answer": 2,
+      "judge": 3
+    },
+    "model_tokens": {
+      "prompt_tokens": 864815,
+      "completion_tokens": 34481
+    },
+    "model_cost": 0.0,
+    "unreported_usage_calls": 20,
+    "transport_retries": 0,
+    "max_foreground_model_calls_per_source": 2,
+    "recovery_jobs": {
+      "complete": 1,
+      "needs_review": 3
+    },
+    "total_work_seconds": 1144.300288084507,
+    "provider_preflight_calls": 0,
+    "provider_preflight_cost": 0,
+    "all_provider_reported_cost": 0.0,
+    "metric_semantics": {
+      "source_latency": "Foreground source processing including foreground maintenance; host work reported separately.",
+      "total_work_seconds": "Source foreground + host recovery/maintenance + answer-request + judge + enrichment wall time; model-call time and query-time maintenance are nested, not added twice.",
+      "model_cost": "Reported provider usage only; unreported_usage_calls includes failures without billing receipts."
+    }
+  },
+  "source_latency": {
+    "count": 54,
+    "mean": 18.79150167711217,
+    "max": 30.115022553130984
+  },
+  "permission_jobs": {
+    "complete": 52,
+    "quarantined": 6
+  },
+  "recovery_queue": {
+    "complete": 1,
+    "needs_review": 3
+  },
+  "checkpoints": {
+    "predicted": 1,
+    "scored": 0
+  },
+  "exit": {
+    "exit_code": 1,
+    "finished_at": "2026-11-02T04:27:36.037786+00:00"
+  }
+}

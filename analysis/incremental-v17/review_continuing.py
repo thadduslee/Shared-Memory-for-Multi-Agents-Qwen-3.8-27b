@@ -27,6 +27,22 @@ def main():
         if a['participant']==a['subject'] and scope.startswith(prefix):
             activity=scope[len(prefix):].split('. Includes continuing requirements',1)[0]
             a['information_scope']=self_activity_scope(activity,continuing=True);changed.append(str(index))
+            # Recover the exact worker selected by the original accepted call;
+            # do not infer service links from roles, medicine names or scores.
+            for origin in rows:
+                for op in (origin.get('response') or {}).get('p',[]):
+                    if op.get('o')!='activity' or op.get('via')!='response' or op.get('work')!=activity:continue
+                    sources={s['id']:s for s in origin['payload'].get('sources',[])}
+                    subject=sources.get(op['e']);worker=sources.get(op['q'])
+                    if not subject or not worker or not any(r['text']==subject['text'] for r in a['authorization_context']):continue
+                    current=next(r for r in a['authorization_context'] if r['text']==subject['text'])
+                    question=next((r for r in a['authorization_context'] if r['text']==worker['text']),None)
+                    if question is None:question={'id':'review-question-'+str(index),'participant':op['p'],'text':worker['text']}
+                    a['accepted_service']={'worker':op['p'],'worker_source_id':question['id'],
+                        'subject_source_id':current['id']}
+                    a['authorization_context']=[{k:v for k,v in r.items() if k!='context_only'} for r in [current,question]]
+                    break
+                if 'accepted_service' in a:break
     slots={str(i):obj({'r':{'type':'string','minLength':1,'maxLength':80},
         'd':enum(['allow','outside','unattributed','unattributed_in_scope']),
         'deny':{'type':'array','items':{'type':'string'}}}) for i in range(len(payload['pair_context']))}

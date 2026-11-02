@@ -1,0 +1,90 @@
+{
+  "purpose": "Six-source compatibility probe, not official benchmark scores",
+  "directory": "/tmp/amem-v20-source-preflight-mkie7oot",
+  "source_turns": 6,
+  "permission_jobs": {
+    "complete": 1,
+    "quarantined": 6
+  },
+  "processing": {
+    "source_events": 6,
+    "extraction_receipts": 6,
+    "extraction_complete": false,
+    "unattributed_candidates": 0,
+    "incomplete_extractions": 0,
+    "rejected_relationships": 0,
+    "live_candidates": 0,
+    "bound_candidates": 0,
+    "active_assignments": 3,
+    "failure_holds": 5,
+    "scoped_control_holds": 5,
+    "binding_decisions": 0,
+    "pending_binding_reviews": 0,
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 7,
+        "elapsed_s": 178.3440386308357
+      }
+    },
+    "authorization_diagnoses": {},
+    "no_assignment_decisions": 0,
+    "excluded_binding_decisions": 0
+  },
+  "timing": {
+    "latency_seconds": {
+      "model_call": {
+        "count": 7,
+        "total": 178.30000173207372,
+        "mean": 25.471428818867675,
+        "p50": 29.720671132206917,
+        "p90": 29.753143549896777,
+        "p95": 29.753143549896777,
+        "max": 29.753143549896777
+      },
+      "host_recovery": {
+        "count": 1,
+        "total": 9.230317594483495,
+        "mean": 9.230317594483495,
+        "p50": 9.230317594483495,
+        "p90": 9.230317594483495,
+        "p95": 9.230317594483495,
+        "max": 9.230317594483495
+      },
+      "source_including_host": {
+        "count": 6,
+        "total": 178.6578177092597,
+        "mean": 29.776302951543283,
+        "p50": 29.77003492694348,
+        "p90": 29.791139092296362,
+        "p95": 29.791139092296362,
+        "max": 29.791139092296362
+      },
+      "source_foreground": {
+        "count": 6,
+        "total": 169.4215444335714,
+        "mean": 28.2369240722619,
+        "p50": 29.76922557502985,
+        "p90": 29.790467407554388,
+        "p95": 29.790467407554388,
+        "max": 29.790467407554388
+      }
+    },
+    "model_calls_by_phase": {
+      "foreground": 6,
+      "host": 1
+    },
+    "model_tokens": {
+      "prompt_tokens": 7249,
+      "completion_tokens": 419
+    },
+    "model_cost": 0.0,
+    "unreported_usage_calls": 6,
+    "transport_retries": 3,
+    "max_foreground_model_calls_per_source": 1,
+    "recovery_jobs": {
+      "pending": 5
+    },
+    "total_work_seconds": 9.230317594483495
+  },
+  "passed": false
+}

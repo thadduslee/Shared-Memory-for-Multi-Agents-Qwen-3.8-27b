@@ -20,7 +20,7 @@ from urllib.parse import urlsplit
 from agentic_memory.privacy import PrivacyMemorySystem,AccessDenied
 from agentic_memory.privacy.system import digest,encoded
 from agentic_memory.privacy.answering import answer_request,validate_answer_output
-from agentic_memory.privacy.processors import LocalEmbedder,HashEmbedder,CompletionProcessor,ScriptedProcessor,ModelContractError,openrouter_routing_preferences
+from agentic_memory.privacy.processors import LocalEmbedder,HashEmbedder,CompletionProcessor,ScriptedProcessor,ModelContractError,openrouter_routing_preferences,ProcessorBudgetFailure
 from .adapter import MedicalFixtureAdapter,load_data,schedule,visible_query
 from .inference_adapter import InferenceFixtureAdapter,EmptyPermissionProcessor
 from .input_boundary import episode_header,source_turn
@@ -50,7 +50,7 @@ def processors(offline=False):
         timeout=float(os.getenv('AMEM_TIMEOUT','300')),max_tokens=8192)
     judge=CompletionProcessor('judge:independent',os.environ['AMEM_JUDGE_BASE_URL'],
         os.getenv('AMEM_JUDGE_MODEL','Qwen/Qwen3-14B'),os.getenv('AMEM_JUDGE_API_KEY',''),
-        timeout=float(os.getenv('AMEM_TIMEOUT','300')),max_tokens=2048)
+        timeout=float(os.getenv('AMEM_TIMEOUT','300')),max_tokens=int(os.getenv('AMEM_JUDGE_MAX_TOKENS','2048')))
     return embedder,llm,judge
 
 
@@ -230,6 +230,41 @@ def export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,offline):
             buckets['first_50'].extend(values[:50]);buckets['51_to_100'].extend(values[50:100]);buckets['after_100'].extend(values[100:])
         permission_stats['latency_by_episode_position']={k:{'count':len(v),'mean':sum(v)/len(v) if v else None}
             for k,v in buckets.items()}
+    if core.db.execute("SELECT 1 FROM privacy.sqlite_master WHERE name='workflow_timings'").fetchone():
+        from agentic_memory.privacy.workflow_v20 import timing_summary
+        report['workflow_v20']=timing_summary(core)
+        preflight_path=run_dir/'provider-preflight.jsonl'
+        preflights=[json.loads(line) for line in preflight_path.read_text().splitlines()] if preflight_path.exists() else []
+        preflight_cost=sum((r.get('usage') or {}).get('cost',0) or 0 for r in preflights)
+        report['workflow_v20']['provider_preflight_calls']=len(preflights)
+        report['workflow_v20']['provider_preflight_cost']=preflight_cost
+        report['workflow_v20']['all_provider_reported_cost']=report['workflow_v20']['model_cost']+preflight_cost
+        latest_extractions={r['source_id']:r['status'] for r in core.db.execute(
+            'SELECT source_id,status FROM fact_extractions ORDER BY rowid')}
+        report['memory_processing']['historical_extraction_jobs']=report['memory_processing']['extraction_jobs']
+        report['memory_processing']['extraction_jobs']={status:sum(s==status for s in latest_extractions.values())
+            for status in set(latest_extractions.values())}
+        report['permission_inference']['historical_incomplete']=not report['permission_inference']['complete']
+        unresolved=core.db.execute("SELECT count(*) FROM permission_jobs WHERE status NOT IN ('complete','superseded','quarantined') AND id NOT LIKE 'host-recovery:%'").fetchone()[0]
+        report['permission_inference']['complete']=not (unresolved or permission_stats['active_scoped_control_holds'])
+        report['memory_processing']['ready_for_answers']=(report['permission_inference']['complete'] and not pending
+            and all(s=='complete' for s in latest_extractions.values()))
+        unknown=sum(not json.loads(r[0]).get('subjects') for r in core.db.execute(
+            "SELECT body FROM fact_candidates WHERE state='active'"))
+        report['memory_processing']['unattributed_candidates']=unknown
+        if unknown:report['memory_processing']['ready_for_answers']=False
+        report['degraded']=not report['memory_processing']['ready_for_answers']
+        source_seconds=report.get('pipeline_seconds',{}).get('source_total',0)
+        report['workflow_v20']['total_work_seconds']+=(source_seconds+report.get('pipeline_seconds',{}).get('evolution_total',0)
+            +sum(r.get('seconds',0) for r in preflights))
+        report['workflow_v20']['metric_semantics']={
+            'source_latency':'Foreground source processing including foreground maintenance; host work reported separately.',
+            'total_work_seconds':'Source foreground + host recovery/maintenance + answer-request + judge + enrichment wall time; model-call time and query-time maintenance are nested, not added twice.',
+            'model_cost':'Reported provider usage only; unreported_usage_calls includes failures without billing receipts.'}
+        report['permission_inference']['latency_seconds']['p95']=(
+            report['workflow_v20']['latency_seconds'].get('source_foreground',{}).get('p95'))
+        for values in permission_stats.get('latency_by_episode_position',{}).values():
+            values['basis']='foreground; source_including_host reported in workflow_v20'
     write_json(run_dir/'summary.json',report)
     write_json(run_dir/'boundary_results.json',done)
     return report
@@ -246,12 +281,13 @@ def main(argv=None):
     parser.add_argument('--preflight',action='store_true')
     parser.add_argument('--plan',action='store_true')
     parser.add_argument('--offline',action='store_true',help='Explicit functional smoke mode: fake processors; no model-quality claims')
+    parser.add_argument('--allow-paid-api',action='store_true',help='Explicit opt-in for a v20 live run; omit for local-only validation')
     parser.add_argument('--max-boundaries',type=int,help='Additional boundaries this invocation; omitted means the full schedule')
     parser.add_argument('--max-checkpoints',type=int,help='Stop after this many chronological official predictions (including prior predictions on resume)')
     parser.add_argument('--no-evolution',action='store_true',help='Ablation only; full evolution is on by default')
     parser.add_argument('--permission-mode',choices=['inference','baseline'],default='inference',
                         help='Raw-stream inference (default) or metadata-assisted oracle baseline (not a raw-stream benchmark)')
-    parser.add_argument('--permission-version',default='17',help='17: selective memory, explicit controls and deferred forgetting (default); 16 and earlier: historical inference contracts')
+    parser.add_argument('--permission-version',default='19',help='19: trusted personal OWNS read access with explicit grants for other readers (default); earlier versions retain historical inference contracts')
     parser.add_argument('--episode-limit',type=int,help='Evaluate the first N episodes by ID; report exact coverage of that subset')
     args=parser.parse_args(argv)
     if args.max_checkpoints is not None and args.max_checkpoints<1:parser.error('--max-checkpoints must be positive')
@@ -273,6 +309,11 @@ def main(argv=None):
             'query_boundaries':sum(bool(e['checkpoint_ids']) for e in events),
             'source_turns':sum(len(e['turns']) for e in episodes),'new_data_at_every_boundary':True},indent=2))
         return 0
+    from agentic_memory.privacy.workflow_v20 import enabled
+    if enabled(args.permission_version) and not args.offline and not args.allow_paid_api:
+        parser.error('V20 paid API calls are disabled. Use --offline for local checks; --allow-paid-api requires separate authorization.')
+    if enabled(args.permission_version) and args.permission_mode!='inference':
+        parser.error('The v20 workflow requires raw-stream inference mode.')
     embedder,llm,judge=processors(args.offline)
     if args.preflight:
         print('Embedding:',embedder.space_id,'dimension',len(embedder.encode(['memory architecture'])[0]),flush=True)
@@ -321,6 +362,24 @@ def main(argv=None):
             manifest.update(permission_workflow='combined-incremental',initial_requester_grants=0,
                             max_semantic_calls_per_turn=2,opaque_model_identities=True)
             manifest['incremental_max_tokens']=int(os.getenv('AMEM_INCREMENTAL_MAX_TOKENS','2048' if int(family)>=16 else '1024'))
+        if int(family)>=19:
+            manifest.update(personal_access_policy='trusted-personal-owns-across-tasks-v1',
+                ownership_actions=['search','read','derive'],
+                max_semantic_calls_per_turn_including_maintenance=2)
+        if int(family)>=20:
+            manifest['judge_schema_mode']=os.getenv('AMEM_JUDGE_SCHEMA_MODE','strict')
+            manifest['review_schema_mode']=os.getenv('AMEM_REVIEW_SCHEMA_MODE','strict')
+            manifest['judge_max_tokens']=min(getattr(judge,'max_tokens',2048),4096)
+            manifest['evolution_schedule']='after-answers-one-bounded-batch-no-final-drain-v20'
+            manifest['workflow_v20']={'foreground_calls':2,'recovery_attempts_per_source':2,
+                'source_target_mean_s':15,'source_target_p90_s':30,
+                'pending_wait_s':5,'answer_target_p90_s':20,
+                'publication_reserve_s':.25,
+                'policy_tokens':512,'answer_tokens':4096,
+                'judge_tokens':manifest['judge_max_tokens'],
+                'host_schedule':'one-batch-between-source-turns-v1',
+                'comparison_policy':'all-disclosed-subjects-required',
+                'cache_version':'semantic-authority-v20'}
     original_manifest,revisions=reconcile_manifest(journal,manifest,resume=args.resume,
                                                    previous_code_digest=args.resume_code_revision)
     # Preserve both the original experiment identity and its explicit lineage.
@@ -331,6 +390,20 @@ def main(argv=None):
     retry=RecoveryController(run_dir)
     core=PrivacyMemorySystem(run_dir/'memory.sqlite',embedder)
     scorer=GateMemScorer(args.gatemem_repo,judge)
+    if enabled(args.permission_version):
+        scorer.workflow_version=args.permission_version
+        scorer.repair_path=run_dir/'judge-repair.json'
+        def audit_judge(checkpoint,seconds,processor,error):
+            compartment='encounter:'+digest(checkpoint['episode_id'])[:24]
+            with core.transaction():
+                details={'stage':'judge','phase':'judge','usage':getattr(processor,'usage',None),
+                    'transport_attempts':getattr(processor,'transport_attempts',1),
+                    'limits':getattr(processor,'last_effective_limits',None),'error':error}
+                core.db.execute('INSERT INTO workflow_timings(compartment,stage,seconds,body) VALUES (?,?,?,?)',
+                    (compartment,'model_call',seconds,encoded(details)))
+                core.db.execute('INSERT INTO workflow_timings(compartment,stage,seconds,body) VALUES (?,?,?,?)',
+                    (compartment,'judge_request',seconds,'{}'))
+        scorer.audit=audit_judge
     by_id={e['episode_id']:e for e in episodes};by_query={q['checkpoint_id']:q for q in checkpoints}
     adapters={};count=0
     def get_adapter(eid):
@@ -401,10 +474,19 @@ def main(argv=None):
                 if 'encounter:'+digest(eid)[:24] in pending:
                     adapter=get_adapter(eid)
                     adapter.trusted_time({})
-                    adapter.flush_evolution(llm,max_batches=None,flush=True)
+                    adapter.flush_evolution(llm,max_batches=1 if enabled(args.permission_version) else None,flush=True)
         report=export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,args.offline)
         print(json.dumps(report,indent=2),flush=True)
         return 0
+    except ProcessorBudgetFailure:
+        export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,args.offline)
+        print('Run paused_budget; state saved. Restore provider allowance and resume with the same configuration.',flush=True)
+        return 75
+    except ModelContractError as exc:
+        if not enabled(args.permission_version):raise
+        export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,args.offline)
+        print('Run paused_contract; state and predictions saved. '+str(exc)+'; inspect recovery.json.',flush=True)
+        return 76
     except BaseException:
         export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,args.offline)
         raise

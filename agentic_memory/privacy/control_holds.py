@@ -13,7 +13,17 @@ def rows(core, compartment):
     result=[]
     for r in core.db.execute('SELECT * FROM permission_control_holds WHERE compartment=? ORDER BY id',(compartment,)):
         h=dict(r)
-        resolution=json.loads(h['body']).get('resolution',{})
+        body=json.loads(h['body'])
+        reassessment=body.get('host_reassessment',{})
+        if h['state']=='host_resolved' and reassessment:
+            job=core.db.execute("SELECT status,source_id,version,validation FROM permission_jobs WHERE id=? AND compartment=?",
+                (reassessment.get('job_id'),compartment)).fetchone()
+            sid=reassessment.get('source_id')
+            from .workflow_v20 import enabled
+            if (job and job['status']=='complete' and job['source_id']==sid and enabled(job['version'])
+                    and json.loads(job['validation'] or '{}').get('control_complete') is True
+                    and sid and core._source_live(sid) and core._current(sid)):continue
+        resolution=body.get('resolution',{})
         sid=resolution.get('source_id')
         if h['state']=='resolved' and sid and core._source_live(sid) and core._current(sid):continue
         result.append(h)

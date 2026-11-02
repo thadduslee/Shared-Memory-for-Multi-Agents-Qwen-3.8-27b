@@ -1,0 +1,223 @@
+{
+  "read_only": true,
+  "native_predictions_changed": false,
+  "scope_changed_slots": [
+    "5",
+    "11",
+    "12",
+    "13",
+    "14"
+  ],
+  "decisions": [
+    {
+      "slot": "0",
+      "reader": "p6",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Ibuprofen stop instruction is within medication review scope",
+        "d": "allow"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is within medication review scope.",
+        "d": "allow"
+      }
+    },
+    {
+      "slot": "1",
+      "reader": "p10",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside ED/ultrasound clinical scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside ED/ultrasound clinical scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "2",
+      "reader": "p1",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside check-in/symptom scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside check-in/symptom scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "3",
+      "reader": "p7",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside lab drawing scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside lab drawing scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "4",
+      "reader": "p5",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside billing setup scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside billing setup scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "5",
+      "reader": "p2",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside ED/ultrasound activity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Self-service: p10's responsive instruction for accepted service.",
+        "d": "allow"
+      }
+    },
+    {
+      "slot": "6",
+      "reader": "p6",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside bleeding severity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside bleeding severity scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "7",
+      "reader": "p6",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside pain score scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside pain score scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "8",
+      "reader": "p6",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside symptom assessment scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside symptom assessment scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "9",
+      "reader": "p7",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside urine sample scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside urine sample scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "10",
+      "reader": "p6",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside sulfa allergy scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Ibuprofen instruction is outside allergy review scope.",
+        "d": "outside"
+      }
+    },
+    {
+      "slot": "11",
+      "reader": "p2",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside check-in/symptom activity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Self-service: p1's responsive instruction for accepted service.",
+        "d": "allow"
+      }
+    },
+    {
+      "slot": "12",
+      "reader": "p2",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside sulfa allergy activity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Self-service: p6's responsive instruction for accepted service.",
+        "d": "allow"
+      }
+    },
+    {
+      "slot": "13",
+      "reader": "p2",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside lab drawing activity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Self-service: p7's responsive instruction for accepted service.",
+        "d": "allow"
+      }
+    },
+    {
+      "slot": "14",
+      "reader": "p2",
+      "subject": "p2",
+      "fact_id": "segment_f1",
+      "before": {
+        "r": "Medication instruction is outside billing setup activity scope",
+        "d": "outside"
+      },
+      "after": {
+        "r": "Self-service: p5's responsive instruction for accepted service.",
+        "d": "allow"
+      }
+    }
+  ]
+}

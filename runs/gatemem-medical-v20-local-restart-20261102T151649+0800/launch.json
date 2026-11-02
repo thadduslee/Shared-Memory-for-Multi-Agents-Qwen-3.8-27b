@@ -1,0 +1,55 @@
+{
+  "prepared_at": "2026-11-02T07:16:49.350294+00:00",
+  "runner_arguments": [
+    "--permission-version",
+    "20",
+    "--allow-paid-api",
+    "--env-file",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-restart-20261102T151649+0800/local.env",
+    "--run-dir",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-restart-20261102T151649+0800"
+  ],
+  "command": [
+    "/home/thaddus/gatemem/.venv-nb/bin/python",
+    "-u",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-restart-20261102T151649+0800/frozen-source/analysis/workflow-v20/local_session.py",
+    "worker",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-restart-20261102T151649+0800"
+  ],
+  "frozen_source": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-restart-20261102T151649+0800/frozen-source",
+  "endpoint": "http://localhost:19000/v1",
+  "models": {
+    "memory": "qwen3.8:27b",
+    "judge": "qwen3.6:35b"
+  },
+  "judge_is_separate_model": true,
+  "openrouter_calls": false,
+  "embedding_device": "cpu",
+  "permission_version": "20",
+  "source_schema_mode": "json",
+  "full_local_schema_validation": true,
+  "startup_readiness": {
+    "timeout_seconds": 5,
+    "max_tokens": 32,
+    "max_retry_delay_seconds": 60,
+    "source_admission": "Only after both models respond to bounded probes."
+  },
+  "review_schema_mode": "portable",
+  "judge_schema_mode": "strict",
+  "judge_max_tokens": 4096,
+  "schema_reason": "Large source grammars are slow and reject uniqueItems. Source JSON retains full local validation; small review grammars project uniqueness locally; judge uses its own strict schema.",
+  "expected": {
+    "episodes": 21,
+    "checkpoints": 579,
+    "source_turns": 4294,
+    "boundaries": 567
+  },
+  "comparison_limitations": [
+    "Provider and judge differ from v19; not a controlled model-matched comparison.",
+    "Local endpoint billing, if any, is not OpenRouter billing."
+  ],
+  "live_opt_in_flag": "--allow-paid-api is the existing runner live-call guard; URLs select localhost only.",
+  "tmux_session": "gatemem-v20-local-20261102T120810+0800",
+  "previous_attempt": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120810+0800",
+  "restart_reason": "Judge contract failure and bounded-review/source latency fixes; startup admission now waits for local service readiness."
+}

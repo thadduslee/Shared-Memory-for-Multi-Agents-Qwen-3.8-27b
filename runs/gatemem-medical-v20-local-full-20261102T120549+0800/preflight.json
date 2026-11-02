@@ -1,0 +1,17 @@
+{
+  "endpoint": "http://localhost:19000/v1",
+  "structured_schema_probes": [
+    {
+      "model": "qwen3.8:27b",
+      "seconds": 0.852,
+      "valid_json": true,
+      "reasoning_disabled": true
+    },
+    {
+      "model": "gemma4:26b",
+      "seconds": 4.297,
+      "valid_json": true
+    }
+  ],
+  "note": "Authorized local probes; no OpenRouter requests."
+}

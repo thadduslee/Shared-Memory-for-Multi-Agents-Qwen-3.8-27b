@@ -9,7 +9,7 @@ import json
 import os
 from pathlib import Path
 
-from agentic_memory.privacy.processors import CompletionProcessor
+from agentic_memory.privacy.processors import CompletionProcessor,ProcessorBudgetFailure
 from . import runner
 
 MEMORY_MODEL='qwen/qwen3.8-27b'
@@ -50,11 +50,15 @@ def main(argv=None):
     parser.add_argument('--run-dir',type=Path)
     parser.add_argument('--preflight',action='store_true')
     parser.add_argument('--resume',action='store_true')
-    parser.add_argument('--permission-version',default='17')
+    parser.add_argument('--permission-version',default='19')
     parser.add_argument('--max-checkpoints',type=int)
+    parser.add_argument('--allow-paid-api',action='store_true',help='Explicit authorization for v20 paid preflight and evaluation')
     args=parser.parse_args(argv)
     if not args.preflight and not args.run_dir:parser.error('--run-dir is required')
     if args.resume and args.preflight:parser.error('--resume requires an actual run')
+    from agentic_memory.privacy.workflow_v20 import enabled
+    if enabled(args.permission_version) and not args.allow_paid_api:
+        parser.error('V20 paid API calls, including preflight, are disabled until explicitly authorized with --allow-paid-api.')
     os.umask(0o077)
     configure(args.env_file)
     if args.run_dir:
@@ -63,7 +67,18 @@ def main(argv=None):
             parser.error('Use a fresh run directory or explicitly resume; historical runs are not overwritten')
         args.run_dir.mkdir(parents=True,exist_ok=True,mode=0o700)
         args.run_dir.chmod(0o700)
-    receipts=preflight()
+    try:receipts=preflight()
+    except ProcessorBudgetFailure as exc:
+        if args.run_dir:
+            event={'at':datetime.now(timezone.utc).isoformat(),'state':'paused_budget','stage':'provider preflight',
+                'error_type':type(exc).__name__,'reason':'Provider allowance exhausted before evaluation; no predictions changed.'}
+            runner.write_json(args.run_dir/'recovery.json',event)
+            with (args.run_dir/'recovery-events.jsonl').open('a') as out:out.write(json.dumps(event)+'\n')
+        print('paused_budget: restore provider allowance before retrying preflight.',flush=True)
+        return 75
+    if enabled(args.permission_version) and args.run_dir:
+        with (args.run_dir/'provider-preflight.jsonl').open('a') as out:
+            for receipt in receipts:out.write(json.dumps(receipt)+'\n')
     if args.preflight:return 0
     launch={'at':datetime.now(timezone.utc).isoformat(),'base_url':BASE_URL,
         'models':{'memory':MEMORY_MODEL,'judge':JUDGE_MODEL},'permission_version':args.permission_version,
@@ -79,6 +94,7 @@ def main(argv=None):
         '--permission-mode','inference','--permission-version',args.permission_version]
     if args.max_checkpoints is not None:command+=['--max-checkpoints',str(args.max_checkpoints)]
     if args.resume:command.append('--resume')
+    if args.allow_paid_api:command.append('--allow-paid-api')
     return runner.main(command)
 
 

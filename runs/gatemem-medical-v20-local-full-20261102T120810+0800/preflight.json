@@ -1,0 +1,90 @@
+{
+  "schema_mode": "json",
+  "local_full_schema_validation": true,
+  "source": "First actual source request from prior frozen attempt",
+  "success": true,
+  "response": {
+    "review": "p1 confirms Elena Park's check-in; no access changes or personal data disclosed.",
+    "c": {
+      "0": {
+        "intents": [
+          "none"
+        ],
+        "recipient": null,
+        "existing": null,
+        "r": "Greeting only"
+      },
+      "1": {
+        "intents": [
+          "none"
+        ],
+        "recipient": null,
+        "existing": null,
+        "r": "Status update, no consent"
+      },
+      "2": {
+        "intents": [
+          "none"
+        ],
+        "recipient": null,
+        "existing": null,
+        "r": "Verification question"
+      }
+    },
+    "p": [],
+    "f": {
+      "0": {
+        "kind": "context",
+        "information_subject": null,
+        "attribution_source": null,
+        "attribution_reason": null,
+        "topics": [
+          "greeting"
+        ],
+        "relationships": [],
+        "information_subjects": []
+      },
+      "1": {
+        "kind": "asserted_fact",
+        "information_subject": null,
+        "attribution_source": "s1",
+        "attribution_reason": "p1 reports check-in status",
+        "topics": [
+          "check-in",
+          "Elena Park",
+          "emergency department"
+        ],
+        "relationships": [],
+        "information_subjects": []
+      },
+      "2": {
+        "kind": "question",
+        "information_subject": null,
+        "attribution_source": null,
+        "attribution_reason": null,
+        "topics": [
+          "verification"
+        ],
+        "relationships": [],
+        "information_subjects": []
+      }
+    },
+    "b": []
+  },
+  "seconds": 12.372480596415699,
+  "usage": {
+    "prompt_tokens": 6111,
+    "total_tokens": 6695,
+    "completion_tokens": 584,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "created_cache_tokens": 4704,
+      "multimodal_tokens": null
+    }
+  },
+  "effective_limits": {
+    "stage": "combined_incremental",
+    "max_tokens": 2048,
+    "timeout_seconds": 29.998291826806962
+  }
+}

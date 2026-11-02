@@ -1,0 +1,11 @@
+{
+  "change": "Omit empty Authorization header; retain Bearer header for configured keys.",
+  "tests": 84,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "command": "pytest security_tests/test_compact_permissions_v18.py security_tests/test_completion_limits.py security_tests/test_evolution.py security_tests/test_selective_memory_v17.py security_tests/test_structured_output_order.py evaluation/gatemem_medical/tests/test_v20_provider.py -q",
+  "note": "Additional provider regression validation after the prior 637-test implementation suite. JSON mode still enforces full local schema validation.",
+  "source_sha256": "fd4d427f3e8697508a0e15e14fa5d3a76c99a32fd5ec0eb1fab6b9d944587017",
+  "live_run": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120810+0800"
+}

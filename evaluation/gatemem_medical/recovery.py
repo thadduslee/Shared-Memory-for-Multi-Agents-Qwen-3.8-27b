@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 
 from agentic_memory.privacy.permissions import PermissionProposalRejected, PermissionRevisionConflict
-from agentic_memory.privacy.processors import ProcessorFailure, ModelContractError
+from agentic_memory.privacy.processors import ProcessorFailure, ModelContractError, ProcessorBudgetFailure
 
 
 class RecoveryController:
@@ -60,14 +60,22 @@ class RecoveryController:
                 result=operation()
             except self.errors as exc:
                 failures+=1
+                if isinstance(exc,ProcessorBudgetFailure):
+                    self._record({'state':'paused_budget','stage':stage,'failures':failures,
+                        'error_type':type(exc).__name__,'error':str(exc)[:1500],
+                        'reason':'Provider credit/key allowance exhausted; checkpoint saved. Resume after restoring budget.'})
+                    self.progress(f'  paused_budget: {stage}; restore provider allowance and resume this run',flush=True)
+                    raise
                 if isinstance(exc,ModelContractError):contract_failures+=1
                 if (isinstance(exc,PermissionProposalRejected) or not getattr(exc,'retryable',True) or
                         contract_failures>=self.max_contract_failures):
-                    self._record({'state':'blocked','stage':stage,'failures':failures,
+                    judge_contract=stage.startswith('judge ') and isinstance(exc,ModelContractError)
+                    self._record({'state':'paused_contract' if judge_contract else 'blocked','stage':stage,'failures':failures,
                         'error_type':type(exc).__name__,'error':str(exc)[:1500],
                         'contract_failure':isinstance(exc,ModelContractError),
                         'details':getattr(exc,'details',{}),
-                        'reason':'Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review.'})
+                        'reason':('Judge contract failed; prediction saved and checkpoint remains unscored.' if judge_contract else
+                            'Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review.')})
                     self.progress(f'  paused: {stage}: {exc}; inspect recovery.json',flush=True)
                     raise
                 delay=min(5*2**min(failures-1,3),30)
@@ -75,12 +83,17 @@ class RecoveryController:
                     'error_type':type(exc).__name__,'error':str(exc)[:1500],
                     'contract_failure':isinstance(exc,ModelContractError),
                     'retry_at':(datetime.now(timezone.utc)+timedelta(seconds=delay)).isoformat()})
+                consequence='prediction saved; scoring pending' if stage.startswith('judge ') else 'source/query remains blocked'
                 self.progress(f'  recovery: {stage}: {type(exc).__name__}: {str(exc)[:1000]}; '
-                              f'waiting {delay}s before retry {failures}; source/query remains blocked',flush=True)
+                              f'waiting {delay}s before retry {failures}; {consequence}',flush=True)
                 self.sleep(delay)
             else:
-                if failures:
-                    self._record({'state':'running','stage':stage,'recovered_after_failures':failures})
+                paused=False
+                path=self.run_dir/'recovery.json'
+                if path.exists():paused=json.loads(path.read_text()).get('state')=='paused_budget'
+                if failures or paused:
+                    self._record({'state':'running','stage':stage,'recovered_after_failures':failures,
+                                  **({'resumed_after_budget_pause':True} if paused else {})})
                     self.progress(f'  recovery: {stage}: recovered after {failures} failures',flush=True)
                 return result
 

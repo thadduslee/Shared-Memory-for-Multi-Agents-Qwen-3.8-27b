@@ -1,0 +1,41 @@
+{
+  "prepared_at": "2026-11-02T04:05:49.244797+00:00",
+  "runner_arguments": [
+    "--permission-version",
+    "20",
+    "--allow-paid-api",
+    "--env-file",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120549+0800/local.env",
+    "--run-dir",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120549+0800"
+  ],
+  "command": [
+    "/home/thaddus/gatemem/.venv-nb/bin/python",
+    "-u",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120549+0800/frozen-source/analysis/workflow-v20/local_session.py",
+    "worker",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120549+0800"
+  ],
+  "frozen_source": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v20-local-full-20261102T120549+0800/frozen-source",
+  "endpoint": "http://localhost:19000/v1",
+  "models": {
+    "memory": "qwen3.8:27b",
+    "judge": "gemma4:26b"
+  },
+  "judge_is_separate_model": true,
+  "openrouter_calls": false,
+  "embedding_device": "cpu",
+  "permission_version": "20",
+  "expected": {
+    "episodes": 21,
+    "checkpoints": 579,
+    "source_turns": 4294,
+    "boundaries": 567
+  },
+  "comparison_limitations": [
+    "Provider and judge differ from v19; not a controlled model-matched comparison.",
+    "Local endpoint billing, if any, is not OpenRouter billing."
+  ],
+  "live_opt_in_flag": "--allow-paid-api is the existing runner live-call guard; URLs select localhost only.",
+  "tmux_session": "gatemem-v20-local-20261102T120549+0800"
+}

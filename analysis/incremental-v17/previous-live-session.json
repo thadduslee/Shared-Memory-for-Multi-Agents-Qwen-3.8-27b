@@ -1,0 +1,26 @@
+{
+  "session": "gatemem-v17-full-20261101T231136+0800",
+  "run_dir": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v17-openrouter-full-20261101T231136+0800",
+  "windows": {
+    "evaluation": "live per-source and checkpoint output",
+    "results": "coverage, latency, scores and process status"
+  },
+  "started_at": "2026-11-01T23:11:36.962369+08:00",
+  "source_schema_mode": "json",
+  "provider_order": [
+    "ModelRun"
+  ],
+  "command": [
+    "env",
+    "PYTHONPATH=.",
+    "AMEM_SOURCE_SCHEMA_MODE=json",
+    "AMEM_OPENROUTER_PROVIDER_ORDER=ModelRun",
+    "/home/thaddus/gatemem/.venv-nb/bin/python",
+    "-u",
+    "analysis/incremental-v17/full_session.py",
+    "run",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v17-openrouter-full-20261101T231136+0800"
+  ],
+  "full_real_model_evaluation": true,
+  "user_authorized_openrouter": true
+}

@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-02T07:27:53.732205+00:00",
+  "ready": true,
+  "checks": [
+    {
+      "role": "LLM",
+      "model": "qwen3.8:27b",
+      "timeout_seconds": 5,
+      "ready": true,
+      "usage": {
+        "prompt_tokens": 21,
+        "total_tokens": 27,
+        "completion_tokens": 6,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "response_model": "qwen3.8:27b",
+      "seconds": 1.644474672153592
+    },
+    {
+      "role": "JUDGE",
+      "model": "qwen3.6:35b",
+      "timeout_seconds": 5,
+      "ready": true,
+      "usage": {
+        "prompt_tokens": 21,
+        "total_tokens": 27,
+        "completion_tokens": 6,
+        "prompt_tokens_details": null
+      },
+      "response_model": "qwen3.6:35b",
+      "seconds": 1.5916536897420883
+    }
+  ]
+}

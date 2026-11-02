@@ -2,11 +2,14 @@
 
 A novel agentic memory system for LLM agents that can dynamically organize memories in an agentic way.
 
-The raw-stream privacy runtime defaults to selective incremental memory (v17):
-explicit recipient intent and worker fields, distinct communication preferences,
-scoped/deferred forgetting, retained unrelated access reviews, incremental
-publication, and evidence-backed answer completeness. See the
-[v17 implementation and verification guide](analysis/incremental-v17/README.md).
+The raw-stream privacy runtime defaults to version 19. Its explicit, opt-in OWNS
+policy permits personal owners to read their own attributed facts across tasks;
+other readers need separate scoped grants. The medical adapter and standalone
+example enable this policy. General integrations configure `personal_owners`
+and `owner_read_actions`, or attest personal resources through the existing
+authenticated discovery connector. Administrator authority never implies ownership.
+Restrictions, revocation, forgetting and final answer authorization still apply.
+See the [ownership policy and validation status](analysis/incremental-v17/V19.md).
 Historical inference versions remain explicitly selectable; use a fresh store
 for the new contract. Existing evaluation artifacts are preserved.
 
@@ -274,6 +277,10 @@ See [the standalone runbook](evaluation/gatemem_medical/RUNBOOK.md) for the full
 579-query / 567-boundary medical experiment, model-service startup, tmux,
 resuming, artifacts, and deployment limits. The new evaluator does not execute
 the old Auto Research online system.
+
+The opt-in [v20 workflow](analysis/workflow-v20/README.md) adds bounded host
+recovery, independent attribution checks, accepted-service scopes and query
+deadlines. V19 remains the default; v20 paid evaluation requires explicit opt-in.
 
 ```bash
 cd /home/thaddus/a-mem

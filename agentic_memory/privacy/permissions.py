@@ -62,6 +62,10 @@ class PermissionBootstrap:
     # An accepted task can authorize the subject's own responsive information.
     # This creates an empty assignment, never automatic information bindings.
     self_use_actions: tuple = ()
+    # Trusted personal resource -> owner edges. Administrator authority is not
+    # ownership. Discovery attests only each new actor's own personal resource.
+    personal_owners: dict = field(default_factory=dict)
+    owner_read_actions: tuple = ()
     # Explicit source-adapter convention for a read mediated by this assistant.
     # The generic kernel still treats read/search/derive as separate actions.
     read_pipeline_actions: tuple = ()
@@ -75,6 +79,12 @@ class PermissionBootstrap:
             raise ValueError('Unsupported task actions')
         if not set(self.self_use_actions)<= {'search','read','derive'}:
             raise ValueError('Self-use is limited to search, read and derive')
+        if not set(self.owner_read_actions)<= {'search','read','derive'}:
+            raise ValueError('Ownership is limited to search, read and derive')
+        if (not isinstance(self.personal_owners,dict) or
+                any(s not in self.resources or p not in self.participants
+                    for s,p in self.personal_owners.items())):
+            raise ValueError('Ownership requires known personal resources and owners')
         if not set(self.read_pipeline_actions)<= {'search','derive'}:
             raise ValueError('Mediated read can add only search and approved processing')
         if self.timezone: ZoneInfo(self.timezone)
@@ -430,7 +440,10 @@ def permission_gate(core, ctx, session, action, row):
     if _host(core,ctx,compartment): return True
     # Skipped exhausted turns are terminal for ingestion, but retain this hold:
     # their unprocessed text may contain a revocation or another permission limit.
-    if core.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')",(compartment,)).fetchone():
+    from .workflow_v20 import enabled
+    configuration=core.db.execute('SELECT version FROM permission_configurations WHERE compartment=? ORDER BY rowid DESC LIMIT 1',(compartment,)).fetchone()
+    child_filter=" AND id NOT LIKE 'host-recovery:%'" if configuration and enabled(configuration[0]) else ''
+    if core.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')"+child_filter,(compartment,)).fetchone():
         return False
     attrs=json.loads(row['attributes'])
     from .control_holds import blocks
@@ -527,7 +540,7 @@ def invalidate_evidence(core, source_ids):
 
 
 class PermissionUpdater:
-    def __init__(self, core, ctx, compartment, bootstrap: PermissionBootstrap, processor, *, version='17'):
+    def __init__(self, core, ctx, compartment, bootstrap: PermissionBootstrap, processor, *, version='19'):
         if not isinstance(version,str) or not version or len(version)>120:raise ValueError('A bounded explicit permission version is required')
         bootstrap.validate()
         core._session(ctx,'manage_policy');core._session(ctx,'ingest',compartment)
@@ -540,6 +553,8 @@ class PermissionUpdater:
             raise ValueError('Incremental inference starts with empty requester permissions')
         if self.incremental and bootstrap.self_use_actions:
             raise ValueError('Version 15 requires model-proposed self grants; self_use_actions must be empty')
+        if bootstrap.owner_read_actions and (not family.isdigit() or int(family)<19):
+            raise ValueError('Explicit personal ownership requires permission version 19 or later')
         self.sliding_window = family.isdigit() and int(family)>=11
         self.simple = family.isdigit() and int(family)>=13
         self.durable_facts = family.isdigit() and int(family)>=14
@@ -565,10 +580,21 @@ class PermissionUpdater:
                 from . import incremental_v18
                 self.prompt_version=incremental_v18.PROMPT_VERSION
                 self.instruction=incremental_v18.INSTRUCTION
+            if int(family)>=19:
+                from .ownership import INSTRUCTION as ownership_instruction
+                self.prompt_version='permission-inference-v19-explicit-personal-ownership-v1'
+                if bootstrap.owner_read_actions:self.instruction+=ownership_instruction
+            if int(family)>=20:
+                from .workflow_v20 import PROMPT_VERSION as v20_prompt, INSTRUCTION as v20_instruction
+                self.prompt_version=v20_prompt
+                self.instruction+=v20_instruction
         if self.track_tasks:self.instruction=tasks.instruction(self.instruction)
         self.learner=AuthorizationLearner(core,ctx,processor)
         body=asdict(bootstrap)
         with core.transaction():
+            if family.isdigit() and int(family)>=20:
+                from .workflow_v20 import setup
+                setup(self)
             old=core.db.execute('SELECT * FROM permission_bootstrap WHERE compartment=?',(compartment,)).fetchone()
             configuration=core.db.execute('SELECT body FROM permission_configurations WHERE compartment=? AND version=?',(compartment,version)).fetchone()
             if old and old['issuer']!=ctx.principal_id:
@@ -635,6 +661,8 @@ class PermissionUpdater:
             if pid not in body['resources']:
                 body['resources'][pid]={}
                 body['authorities'][pid]={cap:[pid] for cap in ('permission','restrict','delegate')}
+                if self.bootstrap.owner_read_actions:
+                    body['personal_owners'][pid]=pid
             members=body['source_identities'][identity]
             if pid not in members:members.append(pid)
         return PermissionBootstrap(**body)
@@ -676,7 +704,9 @@ class PermissionUpdater:
             family=self.version.split('-',1)[0]
             if family.isdigit() and int(family)>=17:
                 self.process_scheduled_forgetting()
-            pending=c.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined')",(self.compartment,)).fetchone()
+            from .workflow_v20 import enabled
+            child_filter=" AND id NOT LIKE 'host-recovery:%'" if enabled(self) else ''
+            pending=c.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined')"+child_filter,(self.compartment,)).fetchone()
             if pending: raise AccessDenied('Complete or reassess the preceding source event first')
             existing=c.db.execute('SELECT id FROM resources WHERE id=?',(source_id,)).fetchone()
             if existing:
@@ -752,6 +782,9 @@ class PermissionUpdater:
 
     def pending_jobs(self):
         self.core._session(self.ctx,'manage_policy')
+        from .workflow_v20 import enabled
+        if enabled(self):
+            return [r[0] for r in self.core.db.execute("SELECT id FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined') AND id NOT LIKE 'host-recovery:%' ORDER BY rowid",(self.compartment,))]
         return [r[0] for r in self.core.db.execute("SELECT id FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined') ORDER BY rowid",(self.compartment,))]
 
     def skip_exhausted(self, job_id, *, max_attempts=3):
@@ -786,15 +819,19 @@ class PermissionUpdater:
                 status='quarantined'
             c.db.execute("UPDATE permission_jobs SET status=?,validation=?,changes='[]' WHERE id=?",
                          (status,encoded(validation),job_id))
+            from .workflow_v20 import enabled, enqueue
+            if enabled(self):enqueue(self,job_id)
             c._tickets.clear()
             return {'status':status,'changes':[]}
 
     def _check_repair_budget(self, job_id, max_attempts):
         rejected=[]
+        from .workflow_v20 import enabled
         for row in self.core.db.execute(
                 'SELECT validation FROM permission_attempts WHERE job_id=? ORDER BY attempt', (job_id,)):
             validation=json.loads(row[0] or '{}')
-            if (validation.get('error') in {'PermissionProposalRejected','ProcessorContractFailure','ModelContractError'}
+            if ((enabled(self) and validation.get('exception_type')!='ProcessorBudgetFailure') or
+                    validation.get('error') in {'PermissionProposalRejected','ProcessorContractFailure','ModelContractError'}
                     or (self.simple and validation.get('error')=='PermissionRevisionConflict')):
                 rejected.append(validation)
         if len(rejected) >= max_attempts:
@@ -812,7 +849,19 @@ class PermissionUpdater:
         if self.incremental:
             from .incremental import run
             self._routing_scratch=None
-            try:return run(self,job_id,max_attempts=min(2,max_attempts))
+            try:
+                from .workflow_v20 import enabled, limits, source_scope, publication_lock, SOURCE_SECONDS, PUBLICATION_RESERVE_SECONDS
+                if enabled(self):
+                    from .processors import ProcessorDeadlineFailure,ProcessorFailure
+                    try:
+                        with limits(self.processor,seconds=SOURCE_SECONDS-PUBLICATION_RESERVE_SECONDS), publication_lock(self), source_scope(self.processor,job_id):
+                            return run(self,job_id,max_attempts=min(2,max_attempts))
+                    except ProcessorFailure as exc:
+                        if not isinstance(exc,ProcessorDeadlineFailure) and not exc.retryable:raise
+                        if hasattr(self,'_recovering_source'):raise
+                        from .workflow_v20 import defer_source
+                        return defer_source(self,job_id,exc)
+                return run(self,job_id,max_attempts=min(2,max_attempts))
             finally:self._routing_scratch=None
         from .processors import ModelContractError
         if type(max_attempts) is not int or not 1<=max_attempts<=5:
@@ -867,8 +916,19 @@ class PermissionUpdater:
         if not self.incremental:raise ValueError('Batched binding maintenance requires version 15')
         from .incremental import flush_bindings
         self._routing_scratch=None
-        try:return flush_bindings(self,max_batches=max_batches)
+        try:
+            from .workflow_v20 import enabled,limits,publication_lock,SOURCE_SECONDS
+            if enabled(self):
+                with limits(self.processor,seconds=SOURCE_SECONDS),publication_lock(self):
+                    return flush_bindings(self,max_batches=max_batches)
+            return flush_bindings(self,max_batches=max_batches)
         finally:self._routing_scratch=None
+
+    def service_pending(self, *, seconds=5.0, requester_id=None, query=None, controls=True):
+        """V20 trusted host tick; bounded recovery/maintenance, not a query grant."""
+        from .workflow_v20 import enabled, service_pending
+        if not enabled(self):raise ValueError('Host recovery requires permission version 20')
+        return service_pending(self,seconds=seconds,requester_id=requester_id,query=query,controls=controls)
 
     def replay_rejected(self, job_id, *, proposal_digest):
         """Explicit host-reviewed replay under fixed code; never calls the LLM.
@@ -1193,6 +1253,9 @@ class PermissionUpdater:
         new=deepcopy(state)
         erasures=[]
         touched=set()
+        if self.bootstrap.owner_read_actions:
+            from .ownership import compile_grants
+            compile_grants(self,bootstrap,new,touched)
         pending_activities={}
         withheld_assignments=set()
         def refs(values, *, committed=False, factual=False):
@@ -1689,12 +1752,14 @@ class PermissionUpdater:
                 continue  # No field may be installed through an unconfirmed grant.
             a=new['assignment'].get(op['assignment_id'])
             if not a or a['status'] not in {'proposed','active'}:fail('Binding requires a live/proposed assignment')
+            from .ownership import trusted as trusted_ownership
+            owned=trusted_ownership(self,a,bootstrap)
             if self.sliding_window:
                 op['evidence']['authorization']=list(a['evidence']['information_scope'])
             selectors(op['source_id'],op['spans']);claim(op,'necessity');text(op['necessity'])
             claim(op,'source_id')
-            claim(op,'authorization')
-            if not set(op['evidence']['authorization']) & set(a['evidence']['information_scope']):
+            if not owned:claim(op,'authorization')
+            if not owned and not set(op['evidence']['authorization']) & set(a['evidence']['information_scope']):
                 fail('Binding authorization must cite the assignment original scope evidence, not just the new fact',
                      {'assignment_id':op['assignment_id'],
                       'required_authorization_sources':a['evidence']['information_scope']})
@@ -1868,6 +1933,10 @@ class PermissionUpdater:
                      'policy_hash':digest(asdict(self.bootstrap)),'validated_job':job_id}
             if a['status']!='active' or not a['bindings']:
                 c.db.execute('UPDATE assignments SET state=? WHERE id=?',(a['status'],runtime_id))
+                # An unbound ownership edge is supported by host configuration,
+                # not a source-consent receipt. It has no readable targets.
+                if a.get('ownership') and not sources:
+                    continue
                 if a['status'] in {'revoked','suspended','expired'}:
                     governor.record(self.ctx,candidate([]),state=a['status'],receipt=receipt,source_job=job_id)
                 elif a['status']=='proposed':

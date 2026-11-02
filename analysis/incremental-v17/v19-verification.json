@@ -1,0 +1,38 @@
+{
+  "suite": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "584",
+    "time": "146.008",
+    "timestamp": "2026-11-02T00:47:14.423852+08:00",
+    "hostname": "maplecg-fisher"
+  },
+  "runtime_digests_match": true,
+  "runtime_files": 43,
+  "fresh_live_session": {
+    "session": "gatemem-v19-owns-20261102T005006+0800",
+    "run_dir": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v19-openrouter-full-20261102T005006+0800",
+    "evaluation_window": "evaluation",
+    "results_window": "results",
+    "permission_version": "19",
+    "gate_checkpoints": 2,
+    "expected_checkpoints": 579,
+    "attach": "tmux attach -t gatemem-v19-owns-20261102T005006+0800"
+  },
+  "current_worktree_suite": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "585",
+    "time": "146.822",
+    "timestamp": "2026-11-02T00:53:58.364957+08:00",
+    "hostname": "maplecg-fisher"
+  },
+  "post_freeze_change": "One conditional guard omits the ownership prompt for opt-out callers only; enabled native evaluation uses identical behavior.",
+  "post_freeze_changed_runtime_files": [
+    "agentic_memory/privacy/permissions.py"
+  ]
+}

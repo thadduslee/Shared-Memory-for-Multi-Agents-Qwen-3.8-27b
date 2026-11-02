@@ -1,6 +1,7 @@
 # Selective incremental memory — v17
 
-`PermissionUpdater` and the raw-stream evaluator now default to version 17. Use
+This guide describes historical version 17. The current default is version 19;
+see [the explicit personal OWNS policy](V19.md) and its validation status. Use
 a fresh store; historical inference versions and run directories remain available.
 The legacy `AgenticMemorySystem` is still unguarded. Requesters must use the
 privacy runtime and an authenticated application adapter.

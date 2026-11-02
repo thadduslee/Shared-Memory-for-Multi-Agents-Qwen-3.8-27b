@@ -63,11 +63,14 @@ class Routing:
             vector=self.vectors[pair['candidate_id']]
             scope=state['assignment'][pair['assignment_id']]['information_scope']
             priority=0.
-            if self.updater is not None and int(self.updater.version.split('-',1)[0])>=17:
+            requested=getattr(self.updater,'_review_priority',None)
+            if requested and requested[0]==state['assignment'][pair['assignment_id']]['participant']:
+                priority+=1.
+            if self.updater is not None and 17<=int(self.updater.version.split('-',1)[0])<20:
                 a=state['assignment'][pair['assignment_id']]
                 # Own-subject reviews have the main call. Reserve the focused
                 # call's first slots for independent actual recipient checks.
-                priority=.4 if a['participant']!=a['subject'] else 0.
+                priority+=.4 if a['participant']!=a['subject'] else 0.
             return .7*cosine(vector,self.scope_vectors[scope])+.3*cosine(vector,self.event_vector)+priority
         fresh=[r for r in required if byid[r['candidate_id']]['source_id']==new_source_id]
         old=[r for r in required if byid[r['candidate_id']]['source_id']!=new_source_id]
@@ -104,6 +107,8 @@ class Routing:
 def router(updater,candidates,state,text=None):
     current=getattr(updater,'_routing_scratch',None)
     if current is None:
+        requested=getattr(updater,'_review_priority',None)
+        if text is None and requested:text=requested[1]
         current=Routing(updater,text or '')
         updater._routing_scratch=current
     current.prepare(candidates,state)

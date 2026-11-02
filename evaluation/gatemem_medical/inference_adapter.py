@@ -46,7 +46,7 @@ class EmptyPermissionProcessor(ScriptedProcessor):
 
 
 class InferenceFixtureAdapter(PermissionQueryService):
-    def __init__(self, core, episode, processors, permission_processor, *, permission_version='17', progress=None, retry=None):
+    def __init__(self, core, episode, processors, permission_processor, *, permission_version='19', progress=None, retry=None):
         # Apply the boundary even for callers outside the runner. Never inspect
         # entities or scan turns to bootstrap identities/authority in advance.
         self.core=core;self.eid=episode_header(episode)['episode_id']
@@ -61,10 +61,12 @@ class InferenceFixtureAdapter(PermissionQueryService):
         self.source_timezone='UTC'
         family=permission_version.split('-',1)[0]
         incremental=family.isdigit() and int(family)>=15
+        ownership=family.isdigit() and int(family)>=19
         bootstrap=PermissionBootstrap(participants={},resources={},
             source_identities={self.source_identity:[]},authorities={},
             discover_self_owned_participants=(self.source_identity,),
             self_use_actions=() if incremental else ('search','read','derive'),
+            owner_read_actions=('search','read','derive') if ownership else (),
             read_pipeline_actions=('search','derive'),
             task_convention='Authenticated task performance with particular subject/authority acceptance or trusted workflow corroboration, or an authorized handoff, permits only information necessary to that activity. A subject requesting or accepting help also authorizes their own access to responsive facts and instructions for that specific activity; cite their authenticated request/acceptance as authority for a narrow explicit self-assignment. Specific explicit scope limits constrain inferred task access. Roles, kinship, and ownership alone grant nothing.',
             timezone=self.source_timezone,
@@ -72,11 +74,30 @@ class InferenceFixtureAdapter(PermissionQueryService):
                      'identity_convention':'Only speakers observed in the source prefix are known. Each identity controls its own information resource; this supplies no read grant. Infer subjects, relationships, tasks and permission scope from source text. Identity spelling is not permission evidence.',
                      'mediated_read_convention':'Permission to read a field through this assistant includes searching that same field and processing it through the host-approved answer route. It does not grant writes, exports, forwarding, delegation, or additional fields.',
                      'timestamp_convention':'Naive GateMem timestamps use UTC; no clock is invented for missing timestamps.'})
+        if ownership:
+            from dataclasses import replace
+            bootstrap=replace(bootstrap,
+                task_convention='A personal resource owner may search/read/derive their own attributed information across tasks under the trusted OWNS policy. Other recipients require authenticated authority or accepted work and only necessary fields. Roles, kinship and administrator authority do not confer ownership or read access.',
+                context={**bootstrap.context,'identity_convention':'Only authenticated speakers in the source prefix are known. Each newly attested actor owns only their own personal resource. OWNS grants configured personal read/search/derive across tasks, never access to other actors or shared/company resources. Infer the actual information subject from source evidence; do not assume speaker equals subject.'})
         core.register_processor(self.service,permission_processor)
         self.updater=PermissionUpdater(core,self.service,self.compartment,bootstrap,permission_processor,version=permission_version)
         self.evolution_queue=EvolutionQueue(core,self.service,self.compartment)
 
     def flush_evolution(self, processor, *, max_batches=1, flush=False):
+        from agentic_memory.privacy.workflow_v20 import enabled,limits
+        if enabled(self.updater):
+            old_version=getattr(processor,'_permission_version',None)
+            old_phase=getattr(processor,'_workflow_phase',None)
+            processor._permission_version=self.updater.version
+            processor._workflow_phase='enrichment'
+            try:
+                with limits(processor,seconds=5):
+                    return self.evolution_queue.drain(processor,max_batches=1,flush=flush)
+            finally:
+                if old_version is None:del processor._permission_version
+                else:processor._permission_version=old_version
+                if old_phase is None:del processor._workflow_phase
+                else:processor._workflow_phase=old_phase
         return self.evolution_queue.drain(processor,max_batches=max_batches,flush=flush)
 
     def skipped_permissions(self):
@@ -154,9 +175,25 @@ class InferenceFixtureAdapter(PermissionQueryService):
             # Its cost is included in source_total and reported separately.
             maintenance={'batches':0,'changes':[]}
             family=self.updater.version.split('-',1)[0]
-            if family.isdigit() and int(family)>=17:
-                maintenance=self.retry(lambda:self.updater.flush_bindings(max_batches=1),
-                    'binding maintenance '+result['job_id'])
+            attempts=self.core.db.execute('SELECT attempts FROM permission_jobs WHERE id=?',
+                (result['job_id'],)).fetchone()[0]
+            # V19 shares a two-response source budget with maintenance. Paying
+            # for a third review immediately after a two-call update caused
+            # large late-turn stalls. Overflow remains protected and pending.
+            maintenance_allowed=not (family.isdigit() and int(family)>=19 and attempts>=2)
+            if family.isdigit() and int(family)>=17 and maintenance_allowed:
+                if int(family)>=20:
+                    from agentic_memory.privacy.workflow_v20 import limits,source_scope,SOURCE_SECONDS,PUBLICATION_RESERVE_SECONDS
+                    from agentic_memory.privacy.processors import ProcessorDeadlineFailure
+                    try:
+                        with source_scope(self.updater.processor,result['job_id']),limits(self.updater.processor,seconds=max(0.,SOURCE_SECONDS-PUBLICATION_RESERVE_SECONDS-(time.monotonic()-started))):
+                            maintenance=self.updater.flush_bindings(max_batches=1)
+                    except ProcessorDeadlineFailure:maintenance['status']='deferred_deadline'
+                else:
+                    maintenance=self.retry(lambda:self.updater.flush_bindings(max_batches=1),
+                        'binding maintenance '+result['job_id'])
+            elif not maintenance_allowed:
+                maintenance['status']='deferred_source_budget'
             maintained_at=time.monotonic()
             published['changes'].extend(maintenance['changes'])
             # Permission and fields commit each turn. Optional enrichment is
@@ -172,10 +209,27 @@ class InferenceFixtureAdapter(PermissionQueryService):
                     ('binding_maintenance',maintained_at-permission_at),('source_total',finished-started)]:
                     self.core.db.execute('INSERT INTO pipeline_timings VALUES (?,?,?) ON CONFLICT(job_id,stage) DO UPDATE SET seconds=seconds+excluded.seconds',
                         (result['job_id'],stage,seconds))
+            from agentic_memory.privacy.workflow_v20 import enabled
+            if enabled(self.updater):
+                from agentic_memory.privacy.processors import ProcessorDeadlineFailure,ProcessorFailure
+                from agentic_memory.privacy.workflow_v20 import pending,SOURCE_SECONDS,PUBLICATION_RESERVE_SECONDS
+                adverse=any(j['kind']=='control' and j['status']=='pending' for j in pending(self.updater))
+                host_budget=min(SOURCE_SECONDS if adverse else 5.,max(0.,SOURCE_SECONDS-PUBLICATION_RESERVE_SECONDS-(time.monotonic()-started)))
+                try:self.updater.service_pending(seconds=host_budget)
+                except (ModelContractError,ProcessorDeadlineFailure):
+                    pass  # Durable failed reviews remain unavailable; no unlimited retry.
+                except ProcessorFailure as exc:
+                    if not exc.retryable:raise
+                with self.core.transaction():
+                    self.core.db.execute('INSERT INTO pipeline_timings VALUES (?,?,?) ON CONFLICT(job_id,stage) DO UPDATE SET seconds=seconds+excluded.seconds',
+                        (result['job_id'],'source_with_host',time.monotonic()-started))
             if self.progress:
                 attempts=self.core.db.execute('SELECT attempts FROM permission_jobs WHERE id=?',
                     (result['job_id'],)).fetchone()[0]
-                self.progress(f'  source {turn["turn_id"]}: {time.monotonic()-started:.1f}s; '
+                total=time.monotonic()-started
+                detail=(f'{total:.1f}s including host; foreground {finished-started:.1f}s' if enabled(self.updater)
+                        else f'{total:.1f}s')
+                self.progress(f'  source {turn["turn_id"]}: {detail}; '
                     f'permission {permission_at-ingested_at:.1f}s ({attempts} attempts); '
                     f'maintenance {maintained_at-permission_at:.1f}s ({maintenance["batches"]} batches); '
                     f'enrichment queued {len(ids) if evolution_processor else 0} fields; '

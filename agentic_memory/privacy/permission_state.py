@@ -11,7 +11,7 @@ PROMPT_VERSION = 'permission-inference-v11-sliding-window'
 _FIELDS = {
     'activity': ('id', 'participant', 'requester', 'subject', 'activity', 'status', 'validity'),
     'assignment': ('id', 'participant', 'subject', 'actions', 'information_scope',
-                   'status', 'basis', 'authority', 'activity_id', 'self_use_activity', 'validity'),
+                   'status', 'basis', 'authority', 'activity_id', 'self_use_activity', 'validity', 'accepted_service', 'ownership'),
     'restriction': ('id', 'issuer', 'participants', 'subject', 'information_scope',
                     'actions', 'effect', 'validity', 'source_selectors', 'superseded_by',
                     'status', 'confirmation_required'),
@@ -28,6 +28,8 @@ def access_state(state):
             row = {key: deepcopy(record[key]) for key in fields if key in record}
             if kind == 'assignment':
                 row['has_bound_facts']=bool(record.get('bindings'))
+                if 'accepted_service' in row:
+                    row['accepted_service']={k:v for k,v in row['accepted_service'].items() if k!='task_summary'}
             if kind == 'activity':
                 if record.get('recipient_access'):
                     row['recipient_access']=[{key:item[key] for key in

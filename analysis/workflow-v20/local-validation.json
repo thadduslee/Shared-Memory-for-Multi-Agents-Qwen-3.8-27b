@@ -1,0 +1,63 @@
+{
+  "permission_version": "20",
+  "date": "2026-11-02",
+  "timezone": "Asia/Singapore",
+  "local_tests": {
+    "tests": 637,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 166.861,
+    "report": "local-tests.xml"
+  },
+  "checks": {
+    "python_ast": true,
+    "git_diff_whitespace": true,
+    "shell_syntax": true,
+    "v19_read_only_comparison_self_check": true
+  },
+  "offline_smoke": {
+    "mode": "offline-functional-test",
+    "source_turns": 67,
+    "checkpoints": 2,
+    "scored_checkpoints": 2,
+    "max_foreground_calls_per_source": 1,
+    "paid_calls": 0,
+    "quality_evidence": false,
+    "run_dir": "/tmp/amem-v20-release-smoke"
+  },
+  "live_validation": {
+    "authorized": false,
+    "executed": false,
+    "quality_targets_measured": false,
+    "latency_targets_measured": false
+  },
+  "targets": {
+    "source_mean_seconds": 15,
+    "source_p90_seconds": 30,
+    "answer_p90_seconds": 20,
+    "pending_wait_seconds": 5,
+    "foreground_calls_per_source": 2,
+    "recovery_attempts_shared_per_source": 2,
+    "utility_accuracy": 0.85,
+    "over_refusal_rate": 0.1,
+    "privacy": "no worse than v19 on matching checkpoints, including model context",
+    "deletion_leakage": 0
+  },
+  "original_v19_artifacts": {
+    "run_dir": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v19-openrouter-full-20261102T005006+0800",
+    "hashes": {
+      "summary.json": "22a3c970c18700a9dba2634c96a38ffd8ccc8032e8c9ce0c8416716e69e06028",
+      "scores.jsonl": "ab8a38b08e198c58a5898931b6ffcffc655e4507629780cbef00bb488f9de6e7",
+      "official_predictions.jsonl": "f98cf0a6cf0e47e34f09be5cebdec176aced4270bdb25f08d45b62573ff9c134",
+      "evaluated-source.tar.gz": "ad3abaca234f713616bdd908219b9ce69f16140c3949834785bc66028943e458"
+    },
+    "modified_by_implementation": false
+  },
+  "source_hashes": "source-hashes.json",
+  "limitations": [
+    "Live model quality and latency remain unverified until paid validation is authorized.",
+    "Exhausted or stale historical repairs can remain needs_review; permissions are not widened to avoid refusals.",
+    "Natural-language attribution, service interpretation and comparison detection still depend on model judgments."
+  ]
+}

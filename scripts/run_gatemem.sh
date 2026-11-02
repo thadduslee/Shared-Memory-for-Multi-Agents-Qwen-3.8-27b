@@ -8,8 +8,14 @@ python_bin=${AMEM_PYTHON:-/home/thaddus/gatemem/.venv-nb/bin/python}
 [[ -x "$python_bin" ]] || { echo 'Set AMEM_PYTHON to a Python with sentence-transformers installed.' >&2; exit 1; }
 python3 -m unittest discover -s security_tests -q
 python3 -m unittest discover -s evaluation/gatemem_medical/tests -q
-"$python_bin" -u -m evaluation.gatemem_medical --preflight
 args=("$@")
+offline=false
+for arg in "$@"; do
+  if [[ $arg == --offline || $arg == --plan ]]; then offline=true; fi
+done
+if [[ $offline == false ]]; then
+  "$python_bin" -u -m evaluation.gatemem_medical --preflight "${args[@]}"
+fi
 has_directory=false
 for arg in "$@"; do
   if [[ $arg == --run-dir || $arg == --run-dir=* ]]; then has_directory=true; fi

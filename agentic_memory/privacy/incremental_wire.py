@@ -295,6 +295,8 @@ def contract(query, schema):
     """Expose a small output grammar while retaining the full semantic input."""
     from .incremental import obj,enum,fail
     query=deepcopy(query)
+    from .workflow_v20 import enabled
+    v20=enabled(query.get('permission_version','15'))
     grounded=int(query.get('permission_version','15').split('-',1)[0])>=16
     selective=int(query.get('permission_version','15').split('-',1)[0])>=17
     compact=int(query.get('permission_version','15').split('-',1)[0])>=18
@@ -458,7 +460,7 @@ def contract(query, schema):
                                 'q':enum([question['id']]), 'v':deepcopy(props['v']),
                                 'work':{'type':'string','minLength':1,'maxLength':160},
                                 'r':deepcopy(props['r'])})
-                            if subject not in query['bootstrap']['participants']:
+                            if v20 or subject not in query['bootstrap']['participants']:
                                 grounded_variants.append(service)
                 elif name in {'revoke','suspend','expire'} and 'g' in props:
                     # These operations reference a grant rather than a subject.
@@ -480,6 +482,12 @@ def contract(query, schema):
             if grants:
                 grant_props=grants[0]['properties']
                 for subject in query['bootstrap']['participants']:
+                    if v20 and any(a.get('ownership') and a['participant']==subject==a['subject']
+                            and a['status']=='active' for a in query['permission_state']['assignment'].values()):
+                        # The trusted OWNS path already supplies personal read
+                        # access. Worker acceptance uses the separate service
+                        # operation; no redundant self/worker pair is necessary.
+                        continue
                     receipts=[s['id'] for s in query['sources'] if s['source']['participant']==subject
                               and s['id']==query['new_source_id']]
                     if not receipts:continue
@@ -543,6 +551,11 @@ def contract(query, schema):
                 if compact:
                     classifications[str(segment['index'])]['properties'].pop('subject_basis')
                     classifications[str(segment['index'])]['required'].remove('subject_basis')
+                if v20:
+                    slot=classifications[str(segment['index'])]
+                    slot['properties']['information_subjects']={'type':'array','maxItems':8,'uniqueItems':True,
+                        'items':enum(query['bootstrap']['resources'])}
+                    slot['required'].append('information_subjects')
             compact_schema['properties']['f']=obj(classifications)
             for variant in compact_schema['properties']['p']['items']['anyOf']:
                 props=variant['properties'];name=props['o']['enum'][0]
@@ -551,6 +564,11 @@ def contract(query, schema):
                     existing=set(query['permission_state']['assignment'] if name=='activity' else
                                  query['permission_state']['activity'] if name=='observe' else [])
                     props['i']=enum(['new',*[value for value in old if value in existing]])
+                    if v20 and name=='activity':
+                        actor=next(s['source']['participant'] for s in query['sources'] if s['id']==query['new_source_id'])
+                        own=[aid for aid,a in query['permission_state']['assignment'].items()
+                             if a['participant']==actor and a['subject']==actor and a['status']=='active']
+                        props['i']=enum(['new',*own])
                 if name=='activity' and 'wi' in props:props['wi']=enum(['new'])
                 if name=='service':
                     props['wf']={'type':'array','minItems':1,'maxItems':8,
@@ -567,11 +585,21 @@ def contract(query, schema):
             variants=compact_schema['properties']['p']['items']['anyOf']
             compact_schema['properties']['p']['items']['anyOf']=compact_operation_variants(variants)
     query['response_wire']='compact-v18' if compact else 'compact-v17' if selective else 'compact-v16' if grounded else 'compact-v15'
+    if v20:
+        query['response_wire']='compact-v20'
+        if not maintenance:
+            compact_schema['properties']['b']={'type':'array','maxItems':0,'items':{'type':'object'}}
+            query['binding_review_scope']='independent_focused_call_only'
+            query['legal_operation_references']=[{
+                'operation':v['properties']['o']['enum'][0],
+                'references':{k:p['enum'] for k,p in v['properties'].items()
+                    if k in {'s','p','ps','i','wi','g','e','q','rid','hold'} and 'enum' in p}}
+                for v in compact_schema['properties']['p']['items']['anyOf']]
     if grounded:
         # Source context is already deduplicated in sources/fact_sources. Avoid
         # repeating full original events inside every candidate evidence map.
         query['candidates']=[{k:p[k] for k in
-            ('id','subject','quote','source_id','evidence_kind','relationships') if k in p}
+            ('id','subject','subjects','quote','source_id','evidence_kind','relationships') if k in p}
             for p in query.get('candidates',[])]
         if maintenance and 'pair_context' in query:
             # Keep each selected fact beside that recipient's precise scope and
@@ -642,6 +670,7 @@ def contract(query, schema):
                 fail('Each requested fact-classification slot is required exactly once')
             fact_names={'kind':'k','information_subject':'s','attribution_source':'e',
                         'attribution_reason':'r','topics':'t','relationships':'x'}
+            if v20:fact_names['information_subjects']='ss'
             fact_values=[]
             for i in requested:
                 row=dict(value['f'][str(i)]);basis=row.pop('subject_basis',None)
@@ -650,7 +679,7 @@ def contract(query, schema):
                     continue
                 if (not compact and basis is None) or not row.get('attribution_reason'):
                     fail('Facts require an explicit attribution basis and reason')
-                if basis!='unattributed' and not row.get('attribution_source'):
+                if basis!='unattributed' and not row.get('attribution_source') and (not v20 or row.get('information_subject') is not None):
                     fail('Attributed facts require their actual source receipt')
                 current=sources.get(query['new_source_id'],{}).get('source',{}).get('participant')
                 if not compact and basis=='own_information' and row.get('information_subject')!=current:
@@ -671,7 +700,7 @@ def contract(query, schema):
                 segments.append({'index':i,'kind':kind,'subject':None,'subject_source':None,
                     'subject_quote':None,'topics':[],'relationships':[],'reason':'Model classified source as '+kind+'.'})
             else:
-                if set(f)-{'i','k','s','e','r','t','x'} or not {'i','k','s','r','x'}<=set(f):
+                if set(f)-({'i','k','s','e','r','t','x'}|({'ss'} if v20 else set())) or not {'i','k','s','r','x'}<=set(f):
                     fail('Invalid compact factual segment')
                 evidence=f.get('e',requested[i]['source_id']) if f['s'] is not None else None
                 receipt=sources.get(evidence)
@@ -680,7 +709,7 @@ def contract(query, schema):
                     'subject_quote':quote,'topics':f.get('t',[]),
                     'relationships':[{'kind':r['k'],'target_id':r['f'],
                         'evidence_quote':requested[i]['quote']} for r in f.get('x',[])],
-                    'reason':f['r']})
+                    'reason':f['r'],**({'subjects':f['ss']} if v20 else {})})
         selected=map_operation(value['p'],decode=True);operations=[]
         if selective:
             for index,op in enumerate(selected):
@@ -731,6 +760,10 @@ def contract(query, schema):
                 own={'op':'self','id':op['id'],'subject':op['subject'],
                     'authority_source':receipt,'validity':op['validity'],'work':work,'reason':op['reason']}
                 if compact and paired:own['evidence']=[receipt,op['q']]
+                if compact:
+                    own['_accepted_service']={'worker':op['participant'] if paired else None,
+                        'worker_source_id':op['q'] if paired else None,
+                        'subject_source_id':receipt,'task_summary':work}
                 operations.append(own)
             if paired:
                 linked=[v for v in selected if v.get('op')=='fields' and v.get('id')==op['wi']]
@@ -765,6 +798,7 @@ def contract(query, schema):
             if grounded and op.get('op')=='self':
                 allowed={'op','id','subject','authority_source','validity','work','reason'}
                 if compact and 'evidence' in op:allowed.add('evidence')
+                if compact and '_accepted_service' in op:allowed.add('_accepted_service')
                 if set(op)!=allowed:
                     fail('Self activity selects only its authenticated subject and supported activity',operation_index=operation_index)
                 statement=sources.get(op['authority_source'])
@@ -800,6 +834,15 @@ def contract(query, schema):
                     'Original authorization exclusions constrain every field. Excludes unrelated activities, '
                     'other subjects information, unrelated finances and credentials. An explicit closed field '
                     'list never expands through this rule.')
+                if v20:
+                    scope=('Accepted service: '+work+'. Necessary information for this SAME accepted service, '
+                        'including responsive results, instructions, updates, cancellations, conditions and follow-through. '
+                        'Initial topic hints (not a closed field list): '+'; '.join(worker_fields)+'. '
+                        'Original worker and subject acceptance receipts define the service. Explicit source field lists, '
+                        'exclusions and lifetimes override inferred scope. No unrelated service, other subject, '
+                        'or permission based on title, kinship or a worker summary is included.')
+                    op['_accepted_service']={'worker':op['participant'],'worker_source_id':op['q'],
+                        'subject_source_id':op['authority_source'],'task_summary':work}
                 op.update(op='propose_assignment',basis='explicit',via='response',information_scope=scope)
             if grounded and op.get('op')=='propose_assignment':
                 if not isinstance(op.get('validity'),dict):
@@ -865,6 +908,58 @@ def contract(query, schema):
                 op['evidence']=list(dict.fromkeys([e,*op.get('evidence',[]),*op.get('performance',[]),*op.get('corroboration',[])]))
         return {'control_review':controls,'permission_changes':operations,
             'segments':segments,'binding_reviews':decisions}
+    if v20 and maintenance and indexed_pairs is not None:
+        def partial_bindings(draft):
+            import jsonschema
+            rows=draft.get('b',{}) if isinstance(draft,dict) else {}
+            if not isinstance(rows,dict):return []
+            safe={};valid=set()
+            for key,slot in compact_schema['properties']['b']['properties'].items():
+                try:jsonschema.validate(rows.get(key),slot)
+                except jsonschema.ValidationError:
+                    safe[key]={'d':'unattributed','r':'No validated assessment.'}
+                else:safe[key]=rows[key];valid.add(int(key))
+            decoded=decode({'b':safe})['binding_reviews']
+            return [d for i,d in enumerate(decoded) if i in valid]
+        decode.partial_bindings=partial_bindings
+    if v20 and not maintenance:
+        def controls_only(draft):
+            import jsonschema
+            try:
+                for key in ('review','c','p'):jsonschema.validate(draft[key],compact_schema['properties'][key])
+            except (jsonschema.ValidationError,KeyError,TypeError):
+                fail('Control sections remain unresolved')
+            safe={key:draft[key] for key in ('review','c','p')}
+            safe['b']=[]
+            valid_facts=True
+            try:jsonschema.validate(draft.get('f'),compact_schema['properties']['f'])
+            except jsonschema.ValidationError:valid_facts=False
+            safe['f']=draft['f'] if valid_facts else {
+                key:{'kind':'context','information_subject':None,'information_subjects':[],
+                     'attribution_source':None,'attribution_reason':None,'topics':[],'relationships':[]}
+                for key in compact_schema['properties']['f']['properties']}
+            result=decode(safe)
+            if not valid_facts:result['segments']=[]
+            return result
+        decode.controls_only=controls_only
+        def extract_only(draft):
+            # Validate the factual section independently. Dummy control rows are
+            # used ONLY to decode facts, never returned or published as controls.
+            import jsonschema
+            rows=draft.get('f',{}) if isinstance(draft,dict) else {}
+            if not isinstance(rows,dict):return []
+            safe_f={};valid=set()
+            for key,slot in compact_schema['properties']['f']['properties'].items():
+                try:jsonschema.validate(rows.get(key),slot)
+                except jsonschema.ValidationError:
+                    safe_f[key]={'kind':'context','information_subject':None,'information_subjects':[],
+                        'attribution_source':None,'attribution_reason':None,'topics':[],'relationships':[]}
+                else:safe_f[key]=rows[key];valid.add(int(key))
+            safe={'review':'Independent fact decoding only.', 'p':[], 'b':[], 'f':safe_f,
+                'c':{str(i):{'intents':['none'],'recipient':None,'existing':None,
+                            'r':'Factual decoding only.'} for i in range(len(query['control_segments']))}}
+            return [s for s in decode(safe)['segments'] if s['index'] in valid]
+        decode.extract_only=extract_only
     return query,compact_schema,decode
 
 
@@ -883,6 +978,7 @@ def encode_fixture(value, query=None):
                 for i,p in enumerate(query['pair_context'])}
             bindings={slots[(b['f'],b['g'])]:{k:v for k,v in b.items() if k not in {'f','g','q'}}
                 for b in bindings if (b['f'],b['g']) in slots}
+    if (query or {}).get('binding_review_scope')=='independent_focused_call_only':bindings=[]
     if set(value)=={'binding_reviews'}:return {'b':bindings}
     operations=value['permission_changes']
     correction=(query or {}).get('correction',{})
@@ -927,7 +1023,7 @@ def encode_fixture(value, query=None):
         fact_names={'k':'kind','s':'information_subject','e':'attribution_source',
                     'r':'attribution_reason','t':'topics','x':'relationships'}
         segments={str(f['i']):{fact_names.get(k,k):v for k,v in f.items() if k!='i'} for f in segments}
-        for f in segments.values():
+        for index,f in segments.items():
             f.setdefault('topics',[])
             if f['kind'] not in {'context','question'}:
                 f['subject_basis']='unattributed' if f.get('information_subject') is None else 'third_party_information'
@@ -936,6 +1032,10 @@ def encode_fixture(value, query=None):
                     attribution_reason=None,topics=[],relationships=[])
             if int((query or {}).get('permission_version','15').split('-',1)[0])>=18:
                 f.pop('subject_basis',None)
+            if int((query or {}).get('permission_version','15').split('-',1)[0])>=20:
+                original=next(s for s in value['segments'] if str(s['index'])==index)
+                f['information_subjects']=original.get('subjects',
+                    [f['information_subject']] if f.get('information_subject') else [])
     operations=map_operation(value['permission_changes'])
     for op in operations:
         if int((query or {}).get('permission_version','15').split('-',1)[0])>=16 and op['o']=='grant':

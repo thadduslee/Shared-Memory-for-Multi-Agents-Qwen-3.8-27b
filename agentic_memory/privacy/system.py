@@ -797,13 +797,47 @@ class PrivacyMemorySystem:
         return {'evidence':evidence,'input_ids':list(dict.fromkeys(inputs))}
 
     def process(self, ctx, processor, input_ids, system, payload, *, schema=None):
+        from .workflow_v20 import enabled
+        scoped_version=getattr(processor,'_permission_version',None)
+        if scoped_version and enabled(scoped_version) and 'permission_version' not in payload:
+            payload={**payload,'permission_version':scoped_version,'stage':payload.get('stage','enrichment')}
         self._processing_route(ctx,processor)
         input_ids = list(dict.fromkeys(input_ids))
         with self.transaction():
             for rid in input_ids:
                 self.require(ctx, rid, 'derive', processor.processor_id)
-        response = (processor.complete(system, payload, schema=schema) if schema is not None
-                    else processor.complete(system, payload))
+        started=time.monotonic()
+        failure=None
+        try:
+            response = (processor.complete(system, payload, schema=schema) if schema is not None
+                        else processor.complete(system, payload))
+            deadline=getattr(processor,'_deadline',None)
+            if deadline is not None and time.monotonic()>deadline:
+                from .processors import ProcessorDeadlineFailure
+                raise ProcessorDeadlineFailure('Processor result arrived after the host deadline')
+        except BaseException as exc:
+            failure=type(exc).__name__
+            raise
+        finally:
+            from .workflow_v20 import enabled
+            if enabled(payload.get('permission_version','')) and self.db.execute(
+                    "SELECT 1 FROM privacy.sqlite_master WHERE name='workflow_timings'").fetchone():
+                compartments=self._sessions[ctx.session_id][2]
+                compartment=None
+                if input_ids:
+                    r=self.db.execute('SELECT compartment FROM resources WHERE id=?',(input_ids[0],)).fetchone()
+                    if r:compartment=r[0]
+                if compartment is None and len(compartments)==1:compartment=next(iter(compartments))
+                if compartment:
+                    with self.transaction():
+                        self.db.execute('INSERT INTO workflow_timings(compartment,stage,seconds,body) VALUES (?,?,?,?)',
+                            (compartment,'model_call',time.monotonic()-started,encoded({
+                                'stage':payload.get('stage','query'),
+                                'phase':getattr(processor,'_workflow_phase','foreground'),
+                                'source_job_id':getattr(processor,'_source_job_id',None),
+                                'usage':getattr(processor,'usage',None),
+                                'transport_attempts':getattr(processor,'transport_attempts',1),
+                                'limits':getattr(processor,'last_effective_limits',None),'error':failure})))
         with self.transaction():
             for rid in input_ids:
                 self.require(ctx, rid, 'derive', processor.processor_id)

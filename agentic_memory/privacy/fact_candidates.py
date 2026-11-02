@@ -202,10 +202,20 @@ def _decode_segment(updater, source, new_source_id, sources, spans, d, bootstrap
     # being factual, even if a classifier mislabels the segment.
     question=any(a<right and left<b for left,right in question_spans(source['text']))
     if question or d['kind'] in {'question','context'}:return None
+    from .workflow_v20 import enabled
+    disclosed={}
+    if enabled(updater):
+        values=d.get('subjects',[])
+        if (not isinstance(values,list) or len(values)>8 or len(set(values))!=len(values)
+                or any(s not in bootstrap.resources for s in values)
+                or (subject is not None and subject not in values)
+                or (subject is None and values)):
+            raise PermissionProposalRejected('Complete fact attribution requires all disclosed subject IDs')
+        disclosed={'subjects':values}
     return {'id':candidate_id(updater.compartment,new_source_id,[a,b]),
         'source_id':new_source_id,'spans':[[a,b]],'quote':quote,'subject':subject,
         'subject_evidence':evidence,'evidence_kind':d['kind'],
-        'topics':list(dict.fromkeys(topics)),'relationships':relations,
+        'topics':list(dict.fromkeys(topics)),'relationships':relations,**disclosed,
         'source_ref':{'observation_id':new_source_id,'event_id':source['source']['event_id'],
                       'character_spans':[[a,b]]},
         'context_ref':{'observation_id':new_source_id,'character_spans':[[0,len(source['text'])]]}}
@@ -730,7 +740,9 @@ def metrics(updater):
     candidates=rows(updater)
     state=updater.inspect()
     bound={(b['source_id'],encoded(b['spans'])) for a in state['assignment'].values() for b in a['bindings'] if a['status']=='active'}
-    holds=c.db.execute("SELECT COUNT(*) FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')",(compartment,)).fetchone()[0]
+    from .workflow_v20 import enabled
+    child_filter=" AND id NOT LIKE 'host-recovery:%'" if enabled(updater) else ''
+    holds=c.db.execute("SELECT COUNT(*) FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')"+child_filter,(compartment,)).fetchone()[0]
     from .control_holds import rows as control_holds
     scoped_holds=control_holds(c,compartment)
     holds+=len(scoped_holds)
@@ -752,8 +764,11 @@ def metrics(updater):
             "SELECT id,payload FROM resources WHERE compartment=? AND kind='observation' AND state='active'",(compartment,))
             if c._current(r['id'])}
         pending_bindings=len(pairs(updater,candidates,state,live))
+    from .workflow_v20 import enabled, subjects
+    unknown=sum(not subjects(p) for p in candidates) if enabled(updater) else 0
     return {'source_events':sources,'extraction_receipts':len(extractions),
-        'extraction_complete':len(extractions)==sources and all(s=='complete' for s in extractions),
+        'extraction_complete':len(extractions)==sources and all(s=='complete' for s in extractions) and not unknown,
+        **({'unattributed_candidates':unknown} if enabled(updater) else {}),
         'incomplete_extractions':sum(s=='incomplete' for s in extractions),
         'rejected_relationships':sum(len(json.loads(r[0]).get('relationship_omissions',[])) for r in c.db.execute(
             'SELECT e.body FROM fact_extractions e JOIN permission_jobs j ON j.id=e.job_id WHERE j.compartment=?',(compartment,))),
