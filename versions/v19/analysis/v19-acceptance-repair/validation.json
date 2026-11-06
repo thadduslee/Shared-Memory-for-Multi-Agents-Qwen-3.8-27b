@@ -1,0 +1,43 @@
+{
+  "batch": 2,
+  "base_revision": "ee4cfc1",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "permission_family": "19",
+  "prompt_version": "permission-inference-v19-intent-preserving-service-v1",
+  "code_digest": "0b60d4d7f8164655baf8d3f509704ef152fdef1c3a05338d918bf6aee6fb07ea",
+  "broader_offline": {
+    "passed": 405,
+    "failed": 1,
+    "subtests_passed": 33,
+    "duration_seconds": 160.43,
+    "known_baseline_failure": "security_tests/test_personal_ownership_v19.py::test_generic_integration_can_explicitly_leave_ownership_disabled",
+    "new_acceptance_regressions": 43
+  },
+  "latest_targeted": {
+    "new_acceptance_regressions": 47,
+    "batch1_regressions": 40,
+    "existing_ownership_regressions": 10,
+    "known_baseline_failure_explicitly_deselected": true,
+    "passed": 97,
+    "deselected": 1,
+    "duration_seconds": 95.58
+  },
+  "retrospective": {
+    "prefix_sources": 44,
+    "resolved_worker": "scheduler_tess",
+    "saved_wrong_grant_recipient": "clinician_dr_lin",
+    "silent_intent_drop_rejected": true,
+    "processor_calls": 0,
+    "acl_publications": 0
+  },
+  "original_work_preserved": true,
+  "historical_runs_restarted": false,
+  "paid_evaluations_launched": false,
+  "diff_check": "passed",
+  "migration": {
+    "table": "privacy.permission_intents_v19",
+    "json_contract_version": 1,
+    "idempotent_additive_schema": true,
+    "automatic_replay_of_old_jobs": false
+  }
+}

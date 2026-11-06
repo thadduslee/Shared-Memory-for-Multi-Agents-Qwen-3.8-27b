@@ -19,7 +19,7 @@ def rows(core, compartment):
             job=core.db.execute("SELECT status,source_id,version,validation FROM permission_jobs WHERE id=? AND compartment=?",
                 (reassessment.get('job_id'),compartment)).fetchone()
             sid=reassessment.get('source_id')
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             if (job and job['status']=='complete' and job['source_id']==sid and enabled(job['version'])
                     and json.loads(job['validation'] or '{}').get('control_complete') is True
                     and sid and core._source_live(sid) and core._current(sid)):continue

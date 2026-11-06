@@ -1,0 +1,81 @@
+{
+  "batch": 5,
+  "client_date": "2026-11-03",
+  "base_revision": "30dc075",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "branch": "v19-recipient-revocation",
+  "permission_family": "19",
+  "prompt_version": "permission-inference-v19-disclosed-subjects-v1",
+  "policy_version": "v19-disclosed-subjects:1",
+  "implementation_digest": "e065964480d3329c7d5e1bcbe8408c8700e72a9f729ec4b2987bd7368166eea3",
+  "runtime_file_sha256": {
+    "agentic_memory/privacy/answering.py": "c507267dbfc71cc3d3185cb4ce16be32ef10fda87e9b492ef4f2edbb339f4194",
+    "agentic_memory/privacy/attribution_v19.py": "a042dcd97096de2cb6e32d331fda6ace5345e4b9bd9f38ed0a3a0d9e0a099c6f",
+    "agentic_memory/privacy/fact_candidates.py": "f4d09180b69a2221fde3099f4cfb77985b8b1fcd7f7f4a822aab066c0544ef9b",
+    "agentic_memory/privacy/incremental.py": "d0acd3b28e82a642b3687485d6560b2c8bb1d69f97c2b5742d3ade9b0bb9f5a6",
+    "agentic_memory/privacy/incremental_wire.py": "64d23b9f3f4287f3853b831689598740ace2d9850109f5fa6230a695330ed198",
+    "agentic_memory/privacy/lifecycle.py": "402f46fc42224bb18cf8dd7d7b0eaabe80b828af8e0ed8a001fc192da9d17c71",
+    "agentic_memory/privacy/permissions.py": "81e394c5d0205800e6ece4cb6c508aa50acffe8e3dcc2e2e8214391982c4681b",
+    "agentic_memory/privacy/system.py": "035c1638030db3e3dfb84415896f7f804a46645764ff3fd6390e74788a738f80"
+  },
+  "broader_offline": {
+    "passed": 494,
+    "failed": 1,
+    "subtests_passed": 33,
+    "duration_seconds": 281.78,
+    "known_baseline_failure": "security_tests/test_personal_ownership_v19.py::test_generic_integration_can_explicitly_leave_ownership_disabled",
+    "batch5_regressions_passed": 45,
+    "batch1_regressions_passed": 40,
+    "batch2_regressions_passed": 47,
+    "batch4_regressions_passed": 40,
+    "retained_ownership_regressions_passed": 10
+  },
+  "privacy_replays": [
+    {
+      "case_sha256": "95acedb703f91fa89549ac049616eb91e75e9c7aa6cff7190605e0c9f499eb24",
+      "source_turn": "t052",
+      "attribution_states": [
+        "UNRESOLVED"
+      ],
+      "answer_packet_records": 0,
+      "answer_model_evidence_calls": 0,
+      "action": "refuse",
+      "limits": "Focused ownership-isolation regression, not a full historical authorization reconstruction or changed historical score. Unknown names/context references remain unresolved."
+    },
+    {
+      "case_sha256": "c71fa74c149a5dd168028a942936425296112ab8f664539fe3cbcb20bf7314af",
+      "source_turn": "t020",
+      "attribution_states": [
+        "UNRESOLVED"
+      ],
+      "answer_packet_records": 0,
+      "answer_model_evidence_calls": 0,
+      "action": "refuse",
+      "limits": "Focused ownership-isolation regression, not a full historical authorization reconstruction or changed historical score. Unknown names/context references remain unresolved."
+    }
+  ],
+  "batch4_replay": {
+    "action": "answer",
+    "released_bp_sources": 2,
+    "retained_failed_attempts": 2,
+    "all_required_details_present": true
+  },
+  "verification": [
+    "local offline pytest",
+    "compileall",
+    "git diff --check",
+    "fresh-store ownership-isolation replays",
+    "Batch 4 compatibility replay"
+  ],
+  "original_checkout_modified_by_batch5": false,
+  "historical_runs_modified": false,
+  "historical_runs_restarted": false,
+  "paid_evaluations_launched": false,
+  "external_model_calls": 0,
+  "v20_v21_workflows_imported": false,
+  "staff_task_access_expanded": false,
+  "migration": "Fresh store/compartment by default; explicit quarantine_existing on a working copy followed by original-source attribution review and fresh binding review.",
+  "diff": "git diff 30dc075..HEAD",
+  "validation_log_format": "Pytest output with trailing whitespace normalized.",
+  "test_command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest -o addopts='' -q --tb=short security_tests/test_attribution_v19.py security_tests/test_recipient_revocation_v19.py security_tests/test_acceptance_repair_v19.py security_tests/test_personal_ownership_v19.py security_tests/test_scoped_holds_v19.py security_tests/test_incremental_permissions.py security_tests/test_selective_memory_v17.py security_tests/test_compact_permissions_v18.py security_tests/test_governance_and_erasure.py security_tests/test_privacy_core.py security_tests/test_two_store.py security_tests/test_permission_inference.py evaluation/gatemem_medical/tests"
+}

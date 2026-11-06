@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-05T02:59:30.100524+00:00",
+  "reason": "User requested return to SOCLAAS and release GPUs 0,3",
+  "previous_serving": "local vLLM http://127.0.0.1:18000/v1",
+  "new_serving": "SOCLAAS http://localhost:19000/v1",
+  "model_alias": "qwen3.8:27b",
+  "saved_progress": {
+    "predictions": 231,
+    "scored": 231,
+    "complete_boundaries": 219
+  },
+  "backup": "/home/thaddus/v19-evaluations/v19-model-controls-full-soclaas-20261104T103839Z/before-soclaas-return",
+  "tmux_session": "v19-soclaas",
+  "note": "Original predictions, scores, source and permission configuration preserved. This run includes SOCLAAS, local GPU, and SOCLAAS serving phases.",
+  "local_gpu_server_stopped": true,
+  "gpu_release_verified_utc": "2026-11-05T03:00:46.174755+00:00",
+  "gpu_memory_used_mib": {
+    "0": 0,
+    "3": 0
+  }
+}

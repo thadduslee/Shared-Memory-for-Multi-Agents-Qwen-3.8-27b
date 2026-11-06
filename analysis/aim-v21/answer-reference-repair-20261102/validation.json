@@ -1,0 +1,53 @@
+{
+  "prepared_at": "2026-11-02T20:11:36.262311+08:00",
+  "run_dir": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800",
+  "invocation_dir": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800/invocations/answer-reference-repair-20261102T201136+0800",
+  "revision_source": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800/source-revisions/answer-reference-repair-20261102T201136+0800",
+  "previous_code_digest": "8f53735acee702f784c6d47c6328e5435920727a3c6752d2a0cf297a72d5a16a",
+  "code_digest": "6901e0e84ab5a03c78bfd7650f0b6268019b125afa99efb7d0b75e01994aafa5",
+  "changed_runtime_files": [
+    "agentic_memory/privacy/processors.py"
+  ],
+  "original_frozen_source_preserved": true,
+  "checkpoint_before_resume": {
+    "official_predictions": 0,
+    "scored_checkpoints": 0,
+    "boundaries": [
+      [
+        1,
+        "ingested"
+      ]
+    ]
+  },
+  "resume_launcher": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800/invocations/answer-reference-repair-20261102T201136+0800/resume.py",
+  "command": [
+    "/home/thaddus/gatemem/.venv-nb/bin/python",
+    "-u",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800/invocations/answer-reference-repair-20261102T201136+0800/resume.py",
+    "run",
+    "--resume",
+    "--resume-code-revision",
+    "8f53735acee702f784c6d47c6328e5435920727a3c6752d2a0cf297a72d5a16a"
+  ],
+  "purpose": "Repair citation validation order; preserve model, data, permissions, source history and official records.",
+  "permission_attempts_before_resume": 99,
+  "permission_jobs_before_resume": {
+    "complete": 53,
+    "quarantined": 5
+  },
+  "validated_at": "2026-11-02T12:13:42.595644+00:00",
+  "regressions": {
+    "tests": 712,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "regression_seconds": 171.317,
+  "regression_report": "/home/thaddus/a-mem-variant/analysis/aim-v21/answer-reference-repair-20261102/regression.xml",
+  "regression_report_sha256": "edce12861bf8edf413a8c52d859d180cd2576d8a90226d132dfe6845fc480bbb",
+  "saved_answer_transport_replays_passed": 3,
+  "checkpoint_backup": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-gpu234-full-20261102T182855+0800/invocations/answer-reference-repair-20261102T201136+0800/checkpoint-before-resume",
+  "schema_validation": "model-facing aliases before reference restoration, original schema afterward",
+  "retry_reset_scope": "answer med_episode_rewrite_en_001_early_pregnancy_confidential_contact_ckpt_01",
+  "permission_attempt_budgets_reset": false
+}

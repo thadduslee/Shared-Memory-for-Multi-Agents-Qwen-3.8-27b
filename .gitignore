@@ -213,3 +213,11 @@ __marimo__/
 .env
 .env.*
 !.env.example
+
+# Local database state and model traces are not publication artifacts.
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+model-trace.jsonl
+versions/v19/runs/

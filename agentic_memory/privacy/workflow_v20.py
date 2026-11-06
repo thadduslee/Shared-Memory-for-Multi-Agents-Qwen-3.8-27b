@@ -77,7 +77,7 @@ def review_limit(updater):
 
 def enabled(value):
     version = str(getattr(value, 'version', value)).split('-', 1)[0]
-    return version.isdigit() and int(version) >= 20
+    return version == '20'
 
 
 @contextmanager
@@ -446,7 +446,9 @@ def recover_one(updater, item):
              digest([original['request_hash'], item['id'], attempt]), original['inputs'],
              original['model'], original['prompt_version']))
         previous=c.db.execute('SELECT validation FROM permission_attempts WHERE job_id=? ORDER BY attempt DESC LIMIT 1',(jid,)).fetchone()
-        if previous and json.loads(previous[0] or '{}').get('exception_type')=='ProcessorBudgetFailure':
+        prior_validation=json.loads(previous[0] or '{}') if previous else {}
+        if previous and (prior_validation.get('exception_type')=='ProcessorBudgetFailure' or
+                (updater.version.split('-',1)[0]=='21' and prior_validation.get('semantic_response') is False)):
             c.db.execute("UPDATE permission_jobs SET status='pending' WHERE id=? AND status='quarantined'",(jid,))
     updater._recovering_source = original['source_id']
     updater._recovery_original_sequence = original['sequence']

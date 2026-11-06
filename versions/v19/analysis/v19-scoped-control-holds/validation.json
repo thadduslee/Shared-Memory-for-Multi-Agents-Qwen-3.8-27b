@@ -1,0 +1,58 @@
+{
+  "batch": 4,
+  "client_date": "2026-11-03",
+  "base_revision": "2021244",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "branch": "v19-recipient-revocation",
+  "permission_family": "19",
+  "prompt_version": "permission-inference-v19-scoped-control-holds-v1",
+  "policy_version": "v19-scoped-control-holds:1",
+  "implementation_digest": "b16291bbe15a52310d23696bac510a7d6431d56fce9ad6faac40b5d12eb8c568",
+  "runtime_file_sha256": {
+    "agentic_memory/privacy/answering.py": "d9e26c6aee58cbf1c56406857becdf3bfabf8a3843f150e82bf2fbda24d0b2ea",
+    "agentic_memory/privacy/control_holds.py": "b62a4f2b8ce7923b3cd713c3bad7824fdfefbcb66c9aa11e914994baafca8cac",
+    "agentic_memory/privacy/incremental.py": "df7a1c5f0af0d7bab14d210979844b8a8fa034582f3a81704cd2b9c56ff4a97f",
+    "agentic_memory/privacy/permissions.py": "48c1d3b7b3043b145900b428adec972184750116b2c7e19c168596af95e9fba4",
+    "agentic_memory/privacy/scoped_holds_v19.py": "0430d63006bf08e5f79f2209a37bd3552b4f7c07d3868b6b807b5b88bfe6bcc6"
+  },
+  "broader_offline": {
+    "passed": 449,
+    "failed": 1,
+    "subtests_passed": 33,
+    "duration_seconds": 202.77,
+    "known_baseline_failure": "security_tests/test_personal_ownership_v19.py::test_generic_integration_can_explicitly_leave_ownership_disabled",
+    "batch4_regressions_passed": 40,
+    "batch1_regressions_passed": 40,
+    "batch2_regressions_passed": 47,
+    "retained_ownership_regressions_passed": 10
+  },
+  "verification": [
+    "local offline pytest",
+    "compileall",
+    "git diff --check",
+    "card-driven temporary-store replay through PermissionQueryService.answer"
+  ],
+  "replay": {
+    "card_sha256": "0424eb4dad16bbdc2ab22b2c84a04a3d397e13405eecc482cdd77bed9b048553",
+    "processing_state": "quarantined",
+    "retained_failed_attempts": 2,
+    "control_assessment_state": "VALIDATED_NON_CONTROL",
+    "released_bp_sources": 2,
+    "all_required_details_present": true,
+    "answer_service_action": "answer",
+    "external_model_calls": 0,
+    "limits": "Controlled regression with scripted semantic decisions; does not rerun the historical prefix or claim a changed benchmark score."
+  },
+  "preceding_fixes_preserved": true,
+  "original_checkout_modified": false,
+  "original_checkout_revision": "b997519cb94b08cc4f77f08602ec011e380b42e5",
+  "historical_runs_modified": false,
+  "historical_runs_restarted": false,
+  "paid_evaluations_launched": false,
+  "v20_v21_workflows_imported": false,
+  "task_access_expanded": false,
+  "domain_dependency_policy_changed": false,
+  "diff": "git diff 2021244..HEAD",
+  "test_command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest -o addopts= -q --tb=short security_tests/test_scoped_holds_v19.py security_tests/test_recipient_revocation_v19.py security_tests/test_acceptance_repair_v19.py security_tests/test_personal_ownership_v19.py security_tests/test_incremental_permissions.py security_tests/test_selective_memory_v17.py security_tests/test_compact_permissions_v18.py security_tests/test_governance_and_erasure.py security_tests/test_privacy_core.py security_tests/test_two_store.py security_tests/test_permission_inference.py evaluation/gatemem_medical/tests",
+  "validation_log_format": "Pytest output with trailing whitespace normalized."
+}

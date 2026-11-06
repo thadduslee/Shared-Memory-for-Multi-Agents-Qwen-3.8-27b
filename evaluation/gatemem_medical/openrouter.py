@@ -56,9 +56,9 @@ def main(argv=None):
     args=parser.parse_args(argv)
     if not args.preflight and not args.run_dir:parser.error('--run-dir is required')
     if args.resume and args.preflight:parser.error('--resume requires an actual run')
-    from agentic_memory.privacy.workflow_v20 import enabled
+    from agentic_memory.privacy.workflow_features import enabled
     if enabled(args.permission_version) and not args.allow_paid_api:
-        parser.error('V20 paid API calls, including preflight, are disabled until explicitly authorized with --allow-paid-api.')
+        parser.error('V20/V21 paid API calls, including preflight, are disabled until explicitly authorized with --allow-paid-api.')
     os.umask(0o077)
     configure(args.env_file)
     if args.run_dir:

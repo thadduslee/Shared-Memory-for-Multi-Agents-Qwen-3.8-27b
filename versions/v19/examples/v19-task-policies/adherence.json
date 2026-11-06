@@ -1,0 +1,117 @@
+{
+  "id": "adherence-dependencies",
+  "version": "1",
+  "tenant": "example-tenant",
+  "categories": {
+    "adherence": {
+      "description": "adherence for only the named task items",
+      "pattern": "Adherence to {items}: (?:taken|missed)\\.",
+      "dependencies": [
+        "regimen"
+      ]
+    },
+    "regimen": {
+      "description": "regimen for only the named task items",
+      "pattern": "(?:Take|Continue) {items} [0-9.]+ mg (?:nightly|twice daily)\\.",
+      "dependencies": []
+    },
+    "instructions": {
+      "description": "instructions for only the named task items",
+      "pattern": "Instruction for {items}: take with food\\.",
+      "dependencies": [
+        "regimen"
+      ]
+    },
+    "updates": {
+      "description": "updates for only the named task items",
+      "pattern": "Stop {items}\\.",
+      "dependencies": []
+    },
+    "followup": {
+      "description": "followup for only the named task items",
+      "pattern": "Recheck adherence to {items} in [0-9]+ days\\.",
+      "dependencies": []
+    },
+    "social": {
+      "description": "social for only the named task items",
+      "pattern": "Social: .+",
+      "dependencies": []
+    }
+  },
+  "tasks": {
+    "adherence_check": {
+      "objective": "Check adherence to the accepted regimen",
+      "prerequisite_inputs": [
+        "regimen"
+      ],
+      "outputs": [
+        "adherence"
+      ],
+      "resulting_instructions": [
+        "instructions"
+      ],
+      "updates_cancellations": [
+        "updates"
+      ],
+      "follow_through": [
+        "followup"
+      ],
+      "actions": [
+        "read",
+        "search",
+        "derive"
+      ],
+      "max_lifetime_seconds": 86400
+    }
+  },
+  "dialogue": [
+    {
+      "task_category": "adherence_check",
+      "offer_pattern": "I will check adherence for (?P<items>[a-z]+(?: and [a-z]+)*)\\.",
+      "item_separator": " and ",
+      "acceptances": [
+        {
+          "pattern": "Yes, please proceed\\.",
+          "closed_categories": null,
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, status only\\.",
+          "closed_categories": [
+            "adherence"
+          ],
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, no instructions\\.",
+          "closed_categories": null,
+          "excluded_categories": [
+            "instructions"
+          ]
+        },
+        {
+          "pattern": "Yes, medication only\\.",
+          "closed_categories": [
+            "regimen",
+            "updates"
+          ],
+          "excluded_categories": []
+        }
+      ]
+    }
+  ],
+  "terminal_patterns": [
+    {
+      "pattern": "Cancel task {task_id}\\.",
+      "state": "CANCELLED"
+    },
+    {
+      "pattern": "Revoke task {task_id}\\.",
+      "state": "REVOKED"
+    },
+    {
+      "pattern": "Completed task {task_id}\\.",
+      "state": "COMPLETED"
+    }
+  ]
+}

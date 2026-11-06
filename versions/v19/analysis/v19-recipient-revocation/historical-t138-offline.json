@@ -1,0 +1,116 @@
+{
+  "historical_run": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v19-openrouter-full-20261102T005006+0800",
+  "evidence_card": "/home/thaddus/a-mem-variant/analysis/v19-v21-evidence-review-20261102/cards/v19/001-09.json",
+  "evidence_card_sha256": "62ab61475c3eedf8d933fcc0d05ffd81d0f44c4cc4e4f8feb5f4ede8818c9498",
+  "method": "Read-only immutable SQLite; retained sources within saved job prefix; no processor calls or publications.",
+  "prefix_sources": 138,
+  "available_source_rows": 138,
+  "missing_source_rows": [],
+  "source_id": "permission-source:e8d565252974322a3154aae5d7b9ef9c4aef9009f15f74a6bc1d02b566e71c75",
+  "source_text": "Please revoke my mother's scheduling access too. Do not share future appointment details with family.",
+  "saved_model_selected_recipient": "scheduler_jules",
+  "saved_revoked_assignment_ids": [
+    "grant:450e4625e68b262f4ca118f5",
+    "grant:6eaf33e789b376c24cf93cdf"
+  ],
+  "new_resolution": {
+    "status": "resolved",
+    "requests": [
+      {
+        "requesting_actor": "patient_elena_park",
+        "subject": "patient_elena_park",
+        "recipients": [
+          "family_linda_park"
+        ],
+        "actions": [
+          "*"
+        ],
+        "scope": {
+          "kind": "field",
+          "value": "scheduling"
+        },
+        "conditions": {
+          "effective": "now"
+        },
+        "reference": {
+          "source_id": "permission-source:e8d565252974322a3154aae5d7b9ef9c4aef9009f15f74a6bc1d02b566e71c75",
+          "spans": [
+            [
+              0,
+              48
+            ]
+          ],
+          "quote": "Please revoke my mother's scheduling access too."
+        },
+        "identity_relationship_evidence": {
+          "family_linda_park": [
+            {
+              "source_id": "permission-source:12da103e4cc7717e47add73732a8471654fbfcb005fc1341b55eb6a4107687c1",
+              "spans": [
+                [
+                  0,
+                  114
+                ]
+              ],
+              "quote": "Yes. The ED told me to come to the early pregnancy clinic because I've had spotting and cramping since last night.",
+              "subject": "patient_elena_park",
+              "participant": "family_linda_park",
+              "relationship": "mother",
+              "basis": "adjacent_subject_corroboration"
+            },
+            {
+              "source_id": "permission-source:77ca0115853301a55e2619e9b8ed0bdc56582396e4afcbc7fbe7e726fc1616c2",
+              "spans": [
+                [
+                  0,
+                  81
+                ]
+              ],
+              "quote": "I'm her mom, Linda. I'm driving her today and can help with the check-in details.",
+              "subject": "patient_elena_park",
+              "participant": "family_linda_park",
+              "relationship": "mother",
+              "basis": "adjacent_subject_corroboration"
+            },
+            {
+              "source_id": "permission-source:fc54749282434ff6bb8897de2511fa7bda1b3cfe35a5e5b1b1a9fb296a4ebe8a",
+              "spans": [
+                [
+                  0,
+                  110
+                ]
+              ],
+              "quote": "Thanks. Elena, do you want your mother to receive any information from this visit, or only logistical details?",
+              "subject": "patient_elena_park",
+              "participant": "family_linda_park",
+              "relationship": "mother",
+              "basis": "adjacent_subject_corroboration"
+            },
+            {
+              "source_id": "permission-source:39b09f9bf20470f42a92fa3621dfa87ac3320b2b5c353169c9d22e67c0f7f9a8",
+              "spans": [
+                [
+                  0,
+                  118
+                ]
+              ],
+              "quote": "Only logistics. She can hear appointment times and parking details for now, but not my results, medications, or notes.",
+              "subject": "patient_elena_park",
+              "participant": "family_linda_park",
+              "relationship": "mother",
+              "basis": "adjacent_subject_corroboration"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "prepublication_assignment_count": 47,
+  "saved_wrong_recipient_revokes_rejected": "Unresolved V19 revocation: proposed grants do not equal the complete independently resolved grant set",
+  "limits": [
+    "Retained end-of-run rows are not an exact pre-turn snapshot; later erasure may have scrubbed evidence.",
+    "This verifies recipient resolution, not publication of the compound future-family restriction or historical utility recovery.",
+    "The evidence establishes the wrong model-selected recipient, not a session.actor_id fallback cause.",
+    "No historical run was restarted; no paid evaluation was launched."
+  ]
+}

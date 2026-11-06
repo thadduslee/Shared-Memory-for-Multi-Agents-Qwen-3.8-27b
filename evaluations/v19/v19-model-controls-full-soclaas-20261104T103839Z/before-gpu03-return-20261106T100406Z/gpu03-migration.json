@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-04T15:55:36.456756+00:00",
+  "reason": "User requested pause and continuation in tmux on GPUs 0 and 3",
+  "previous_serving": "SOCLAAS http://localhost:19000/v1",
+  "new_serving": "local vLLM 0.26.0 http://127.0.0.1:18000/v1",
+  "model_alias": "qwen3.8:27b",
+  "local_snapshot": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+  "dtype": "bfloat16",
+  "gpus": [
+    0,
+    3
+  ],
+  "tensor_parallel_size": 2,
+  "saved_progress": {
+    "predictions": 70,
+    "scored": 70,
+    "complete_boundaries": 66
+  },
+  "backup": "/home/thaddus/v19-evaluations/v19-model-controls-full-soclaas-20261104T103839Z/before-gpu03",
+  "note": "Serving backend/precision can affect generations; original committed predictions and scores retained. This is a mixed-serving continuation. Frozen evaluation source unchanged."
+}

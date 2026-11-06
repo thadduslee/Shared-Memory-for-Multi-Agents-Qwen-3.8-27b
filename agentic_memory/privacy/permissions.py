@@ -440,7 +440,7 @@ def permission_gate(core, ctx, session, action, row):
     if _host(core,ctx,compartment): return True
     # Skipped exhausted turns are terminal for ingestion, but retain this hold:
     # their unprocessed text may contain a revocation or another permission limit.
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     configuration=core.db.execute('SELECT version FROM permission_configurations WHERE compartment=? ORDER BY rowid DESC LIMIT 1',(compartment,)).fetchone()
     child_filter=" AND id NOT LIKE 'host-recovery:%'" if configuration and enabled(configuration[0]) else ''
     if core.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')"+child_filter,(compartment,)).fetchone():
@@ -584,16 +584,20 @@ class PermissionUpdater:
                 from .ownership import INSTRUCTION as ownership_instruction
                 self.prompt_version='permission-inference-v19-explicit-personal-ownership-v1'
                 if bootstrap.owner_read_actions:self.instruction+=ownership_instruction
-            if int(family)>=20:
+            if int(family)==20:
                 from .workflow_v20 import PROMPT_VERSION as v20_prompt, INSTRUCTION as v20_instruction
                 self.prompt_version=v20_prompt
                 self.instruction+=v20_instruction
+        if family=='21':
+            from .workflow_v21 import PROMPT_VERSION as v21_prompt, INSTRUCTION as v21_instruction
+            self.prompt_version=v21_prompt
+            self.instruction+=v21_instruction
         if self.track_tasks:self.instruction=tasks.instruction(self.instruction)
         self.learner=AuthorizationLearner(core,ctx,processor)
         body=asdict(bootstrap)
         with core.transaction():
-            if family.isdigit() and int(family)>=20:
-                from .workflow_v20 import setup
+            if family in {'20','21'}:
+                from .workflow_features import setup
                 setup(self)
             old=core.db.execute('SELECT * FROM permission_bootstrap WHERE compartment=?',(compartment,)).fetchone()
             configuration=core.db.execute('SELECT body FROM permission_configurations WHERE compartment=? AND version=?',(compartment,version)).fetchone()
@@ -704,7 +708,7 @@ class PermissionUpdater:
             family=self.version.split('-',1)[0]
             if family.isdigit() and int(family)>=17:
                 self.process_scheduled_forgetting()
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             child_filter=" AND id NOT LIKE 'host-recovery:%'" if enabled(self) else ''
             pending=c.db.execute("SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined')"+child_filter,(self.compartment,)).fetchone()
             if pending: raise AccessDenied('Complete or reassess the preceding source event first')
@@ -782,7 +786,7 @@ class PermissionUpdater:
 
     def pending_jobs(self):
         self.core._session(self.ctx,'manage_policy')
-        from .workflow_v20 import enabled
+        from .workflow_features import enabled
         if enabled(self):
             return [r[0] for r in self.core.db.execute("SELECT id FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined') AND id NOT LIKE 'host-recovery:%' ORDER BY rowid",(self.compartment,))]
         return [r[0] for r in self.core.db.execute("SELECT id FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','skipped','quarantined') ORDER BY rowid",(self.compartment,))]
@@ -819,18 +823,18 @@ class PermissionUpdater:
                 status='quarantined'
             c.db.execute("UPDATE permission_jobs SET status=?,validation=?,changes='[]' WHERE id=?",
                          (status,encoded(validation),job_id))
-            from .workflow_v20 import enabled, enqueue
+            from .workflow_features import enabled, enqueue
             if enabled(self):enqueue(self,job_id)
             c._tickets.clear()
             return {'status':status,'changes':[]}
 
     def _check_repair_budget(self, job_id, max_attempts):
         rejected=[]
-        from .workflow_v20 import enabled
+        from .workflow_features import enabled
         for row in self.core.db.execute(
                 'SELECT validation FROM permission_attempts WHERE job_id=? ORDER BY attempt', (job_id,)):
             validation=json.loads(row[0] or '{}')
-            if ((enabled(self) and validation.get('exception_type')!='ProcessorBudgetFailure') or
+            if ((self.version.split('-',1)[0]=='20' and validation.get('exception_type')!='ProcessorBudgetFailure') or
                     validation.get('error') in {'PermissionProposalRejected','ProcessorContractFailure','ModelContractError'}
                     or (self.simple and validation.get('error')=='PermissionRevisionConflict')):
                 rejected.append(validation)
@@ -861,6 +865,10 @@ class PermissionUpdater:
                         if hasattr(self,'_recovering_source'):raise
                         from .workflow_v20 import defer_source
                         return defer_source(self,job_id,exc)
+                if self.version.split('-',1)[0]=='21':
+                    # Accounting only: no deadline or timeout-driven deferral.
+                    with source_scope(self.processor,job_id):
+                        return run(self,job_id,max_attempts=min(2,max_attempts))
                 return run(self,job_id,max_attempts=min(2,max_attempts))
             finally:self._routing_scratch=None
         from .processors import ModelContractError
@@ -924,8 +932,12 @@ class PermissionUpdater:
             return flush_bindings(self,max_batches=max_batches)
         finally:self._routing_scratch=None
 
-    def service_pending(self, *, seconds=5.0, requester_id=None, query=None, controls=True):
-        """V20 trusted host tick; bounded recovery/maintenance, not a query grant."""
+    def service_pending(self, *, seconds=5.0, requester_id=None, query=None, controls=True, max_batches=1, source_slot=False):
+        """Trusted host recovery; V21 bounds batches, V20 bounds elapsed time."""
+        from .workflow_v21 import enabled as v21
+        if v21(self):
+            from .workflow_v21 import service_pending
+            return service_pending(self,max_batches=max_batches,controls=controls,source_slot=source_slot)
         from .workflow_v20 import enabled, service_pending
         if not enabled(self):raise ValueError('Host recovery requires permission version 20')
         return service_pending(self,seconds=seconds,requester_id=requester_id,query=query,controls=controls)

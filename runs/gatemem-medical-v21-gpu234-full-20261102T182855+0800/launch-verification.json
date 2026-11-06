@@ -1,0 +1,94 @@
+{
+  "at": "2026-11-02T10:38:38.676034+00:00",
+  "checks": {
+    "v21_selected": true,
+    "frozen_validated_runtime": true,
+    "memory_model_correct": true,
+    "dedicated_judge": true,
+    "source_deadline_absent": true,
+    "answer_deadline_absent": true,
+    "full_evolution_enabled": true,
+    "runner_live": true,
+    "soclaas_worker_stopped": true
+  },
+  "process": {
+    "status": "running",
+    "supervisor_pid": 3184772,
+    "runner_pid": 3185366,
+    "started_at": "2026-11-02T10:36:48.415467+00:00",
+    "tmux_session": "gatemem-v21-gpu234-20261102T182855+0800"
+  },
+  "gpu_placement": {
+    "2": {
+      "worker_pid": 3162299,
+      "uuid": "GPU-94c63fc6-07a9-aad6-a462-8ad987ed3e4f",
+      "role": "memory TP0"
+    },
+    "3": {
+      "worker_pid": 3162300,
+      "uuid": "GPU-a16017a1-1498-40aa-e4ee-f0cd0a63100b",
+      "role": "memory TP1"
+    },
+    "4": {
+      "engine_pid": 3133566,
+      "uuid": "GPU-699f49c9-1751-8f80-decc-a67645d2380f",
+      "role": "judge"
+    }
+  },
+  "verified_by": "nvidia-smi GPU UUID and compute process enumeration",
+  "vllm_version": "0.26.0",
+  "provider_preflight": [
+    {
+      "at": "2026-11-02T10:36:47.088848+00:00",
+      "role": "LLM",
+      "model": "qwen3.8:27b",
+      "response_model": "qwen3.8:27b",
+      "seconds": 3.9848733311519027,
+      "usage": {
+        "prompt_tokens": 94,
+        "total_tokens": 103,
+        "completion_tokens": 9,
+        "prompt_tokens_details": null
+      },
+      "effective_limits": {
+        "stage": "policy_classification",
+        "max_tokens": 96,
+        "timeout_seconds": 300,
+        "schema_mode": "portable"
+      }
+    },
+    {
+      "at": "2026-11-02T10:36:48.414429+00:00",
+      "role": "JUDGE",
+      "model": "Qwen/Qwen3-14B",
+      "response_model": "Qwen/Qwen3-14B",
+      "seconds": 1.3253923309966922,
+      "usage": {
+        "prompt_tokens": 30,
+        "total_tokens": 36,
+        "completion_tokens": 6,
+        "prompt_tokens_details": null
+      },
+      "effective_limits": {
+        "stage": "query",
+        "max_tokens": 96,
+        "timeout_seconds": 300
+      }
+    }
+  ],
+  "permission_jobs": {
+    "complete": 2,
+    "running": 1
+  },
+  "completed_source_seconds": [
+    28.850491664372385,
+    34.21268822811544
+  ],
+  "expected": {
+    "episodes": 21,
+    "source_turns": 4294,
+    "checkpoints": 579,
+    "boundaries": 567
+  },
+  "scope": "Launch and placement validation only; no steady-state latency, utility or leakage claims."
+}

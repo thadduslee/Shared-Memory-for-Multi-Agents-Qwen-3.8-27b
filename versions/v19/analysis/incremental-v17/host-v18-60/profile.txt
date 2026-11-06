@@ -1,0 +1,33 @@
+         1150586 function calls (1033659 primitive calls) in 0.887 seconds
+
+   Ordered by: cumulative time
+   List reduced from 553 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.887    0.887 /home/thaddus/a-mem-variant/security_tests/test_incremental_permissions.py:159(turn)
+        1    0.001    0.001    0.885    0.885 /home/thaddus/a-mem-variant/agentic_memory/privacy/permissions.py:808(update)
+        1    0.002    0.002    0.883    0.883 /home/thaddus/a-mem-variant/agentic_memory/privacy/incremental.py:921(run)
+        6    0.014    0.002    0.190    0.032 /home/thaddus/a-mem-variant/agentic_memory/privacy/incremental.py:205(pairs)
+86726/1942    0.100    0.000    0.187    0.000 /usr/lib/python3.10/copy.py:128(deepcopy)
+        4    0.001    0.000    0.183    0.046 /home/thaddus/a-mem-variant/agentic_memory/privacy/permissions.py:1161(_validate)
+ 7461/283    0.026    0.000    0.183    0.001 /usr/lib/python3.10/copy.py:227(_deepcopy_dict)
+    20897    0.171    0.000    0.171    0.000 {method 'execute' of 'sqlite3.Connection' objects}
+     1036    0.007    0.000    0.162    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/fact_candidates.py:121(live)
+        1    0.003    0.003    0.160    0.160 /home/thaddus/a-mem-variant/agentic_memory/privacy/permissions.py:1808(_publish)
+11188/1918    0.014    0.000    0.148    0.000 /usr/lib/python3.10/copy.py:201(_deepcopy_list)
+     7684    0.006    0.000    0.128    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/system.py:29(encoded)
+     7705    0.013    0.000    0.122    0.000 /usr/lib/python3.10/json/__init__.py:183(dumps)
+     3155    0.005    0.000    0.120    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/system.py:88(snapshot_read)
+        5    0.000    0.000    0.117    0.023 /home/thaddus/a-mem-variant/agentic_memory/privacy/governance.py:75(activate)
+        3    0.000    0.000    0.109    0.036 /home/thaddus/a-mem-variant/agentic_memory/privacy/incremental.py:854(validate_bindings)
+       26    0.005    0.000    0.106    0.004 /home/thaddus/a-mem-variant/agentic_memory/privacy/fact_candidates.py:135(rows)
+     7705    0.012    0.000    0.102    0.000 /usr/lib/python3.10/json/encoder.py:182(encode)
+     2232    0.005    0.000    0.097    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/lifecycle.py:60(matches)
+    11865    0.015    0.000    0.092    0.000 /usr/lib/python3.10/json/__init__.py:299(loads)
+        5    0.001    0.000    0.090    0.018 /home/thaddus/a-mem-variant/agentic_memory/privacy/governance.py:29(record)
+     7705    0.087    0.000    0.087    0.000 /usr/lib/python3.10/json/encoder.py:204(iterencode)
+      392    0.003    0.000    0.077    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/system.py:496(_resource)
+      364    0.001    0.000    0.077    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/fact_candidates.py:362(applicable)
+      458    0.001    0.000    0.074    0.000 /home/thaddus/a-mem-variant/agentic_memory/privacy/system.py:492(require)
+
+

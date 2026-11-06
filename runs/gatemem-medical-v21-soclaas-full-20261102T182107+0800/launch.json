@@ -1,0 +1,51 @@
+{
+  "prepared_at": "2026-11-02T18:21:07.932183+08:00",
+  "runner_arguments": [
+    "--permission-version",
+    "21",
+    "--allow-paid-api",
+    "--env-file",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-soclaas-full-20261102T182107+0800/local.env",
+    "--run-dir",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-soclaas-full-20261102T182107+0800"
+  ],
+  "tmux_session": "gatemem-v21-soclaas-20261102T182107+0800",
+  "python": "/home/thaddus/gatemem/.venv-nb/bin/python",
+  "endpoint": "http://localhost:19000/v1",
+  "models": {
+    "memory": "qwen3.8:27b",
+    "judge": "qwen3.6:35b"
+  },
+  "permission_version": "21",
+  "base_scheduling": "19",
+  "source_deadline_seconds": null,
+  "answer_deadline_seconds": null,
+  "provider_request_timeout_seconds": 300,
+  "source_schema_mode": "json",
+  "review_schema_mode": "portable",
+  "judge_schema_mode": "strict",
+  "judge_max_tokens": 4096,
+  "frozen_source": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-soclaas-full-20261102T182107+0800/frozen-source",
+  "embedding_device": "cpu",
+  "evolution": true,
+  "reranker": false,
+  "openrouter_calls": false,
+  "expected": {
+    "episodes": 21,
+    "source_turns": 4294,
+    "checkpoints": 579,
+    "boundaries": 567
+  },
+  "comparison_limitations": [
+    "SOCLAAS provider and Qwen judge differ from the V19 OpenRouter/GPT-4.1 reference."
+  ],
+  "live_opt_in": "Existing --allow-paid-api guard authorizes this requested live run; both configured URLs are localhost only.",
+  "validated_code_digest": "8f53735acee702f784c6d47c6328e5435920727a3c6752d2a0cf297a72d5a16a",
+  "launcher_sha256": "62239538b876ad096dab8452f91d1ead6f6a5e6c80c169f6823e6dbaeec6e5a5",
+  "command": [
+    "/home/thaddus/gatemem/.venv-nb/bin/python",
+    "-u",
+    "/home/thaddus/a-mem-variant/runs/gatemem-medical-v21-soclaas-full-20261102T182107+0800/launch.py",
+    "run"
+  ]
+}

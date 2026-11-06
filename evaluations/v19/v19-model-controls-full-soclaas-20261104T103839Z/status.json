@@ -1,0 +1,56 @@
+{
+  "state": "complete",
+  "updated_utc": "2026-11-06T14:38:41.411957+00:00",
+  "tmux_session": "v19-gpu03",
+  "gpus": [
+    0,
+    3
+  ],
+  "serving": "local-vllm",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 579,
+    "scored_checkpoints": 579,
+    "expected_boundaries": 567,
+    "completed_boundaries": 567,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 4294,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 579,
+    "n_utility": 210,
+    "n_utility_scored": 210,
+    "n_privacy": 192,
+    "n_privacy_scored": 192,
+    "n_privacy_context_scored": 192,
+    "n_privacy_e2e_scored": 192,
+    "n_safety": 177,
+    "n_safety_scored": 177,
+    "n_safety_context_scored": 177,
+    "n_safety_e2e_scored": 177,
+    "action_accuracy": 0.6563039723661486,
+    "utility_accuracy": 0.7619047619047619,
+    "privacy_leakage_rate": 0.0625,
+    "deletion_leakage_rate": 0.011299435028248588,
+    "privacy_answer_leakage_rate": 0.0625,
+    "deletion_answer_leakage_rate": 0.011299435028248588,
+    "privacy_context_leakage_rate": 0.046875,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0625,
+    "deletion_e2e_leakage_rate": 0.011299435028248588,
+    "over_refusal_rate": 0.1,
+    "compliance_utility_score": 0.7062146892655367,
+    "compliance_utility_e2e_score": 0.7062146892655367,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  }
+}

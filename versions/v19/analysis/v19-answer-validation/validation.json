@@ -1,0 +1,141 @@
+{
+  "client_date": "2026-11-03",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "branch": "v19-recipient-revocation",
+  "base_revision": "5672313d6a1ad89302ffd5ab1a516251128a3655",
+  "permission_family": "19",
+  "contract_version": "v19-answer-evidence:1",
+  "default_mode": "enforce",
+  "runtime_file_sha256": {
+    "agentic_memory/privacy/answer_validation_v19.py": "9d46b024922885879cfe8afca6b74da3e6243e84caa9a389911c92c953c4ddff",
+    "agentic_memory/privacy/answering.py": "74377f1fc245fde235be406d1bfbf2fea54dcb5d50274e6081ed811fa2d812a7",
+    "agentic_memory/privacy/processors.py": "d75be80a9f33dfd92d0c396b492b4d9ae5c775cd86f70c6baa00ee48b12d1f7a",
+    "evaluation/gatemem_medical/inference_adapter.py": "7bc79d71d2c1ae70f19c5480aceb12dce580d5e74b97951e94c4a8a1f5e787fb",
+    "evaluation/gatemem_medical/runner.py": "f2de24bc8e06dbe4860aec6f5a50c2f4a10ebb9daf6f4dee78c6424264e1fa31"
+  },
+  "implementation_digest": "8a0692238743ab8fdcd791bde40f2b2401d6d630f9b8e073aaec49ae8708afe9",
+  "focused_tests": {
+    "passed": 50,
+    "failed": 0,
+    "seconds": 8.48,
+    "command": "PYTHONDONTWRITEBYTECODE=1 /home/thaddus/gatemem/.venv-nb/bin/python -m pytest -p no:cacheprovider -o addopts='' -q security_tests/test_answer_validation_v19.py --tb=short"
+  },
+  "broader_offline": {
+    "passed": 601,
+    "failed": 0,
+    "deselected": 1,
+    "subtests_passed": 33,
+    "seconds": 315.85,
+    "command": "PYTHONDONTWRITEBYTECODE=1 /home/thaddus/gatemem/.venv-nb/bin/python -m pytest -p no:cacheprovider -o addopts='' -q --tb=short security_tests/test_answer_validation_v19.py security_tests/test_task_contracts_v19.py security_tests/test_host_tasks_v19.py security_tests/test_attribution_v19.py security_tests/test_recipient_revocation_v19.py security_tests/test_acceptance_repair_v19.py security_tests/test_personal_ownership_v19.py security_tests/test_scoped_holds_v19.py security_tests/test_incremental_permissions.py security_tests/test_selective_memory_v17.py security_tests/test_compact_permissions_v18.py security_tests/test_governance_and_erasure.py security_tests/test_privacy_core.py security_tests/test_two_store.py security_tests/test_permission_inference.py evaluation/gatemem_medical/tests -k 'not test_generic_integration_can_explicitly_leave_ownership_disabled'",
+    "known_baseline_exclusion": "security_tests/test_personal_ownership_v19.py::test_generic_integration_can_explicitly_leave_ownership_disabled",
+    "notes": [
+      "Two opt-in observer regressions were added after broad-suite collection and passed in the final 50-test focused run.",
+      "Initial broad attempt was invalidated by global disk exhaustion. A task-only RAM-backed replacement passed 595 tests and was removed after its log was copied. After space became available and the graph-neighbor boundary fixture was added, the final disk-backed 601-test suite passed. Only task-generated caches/temporary stores were cleaned; no historical runs or unrelated data were removed."
+    ]
+  },
+  "transport_and_format_tests": {
+    "passed": 19,
+    "failed": 0,
+    "subtests_passed": 2,
+    "seconds": 2.35,
+    "command": "PYTHONDONTWRITEBYTECODE=1 /home/thaddus/gatemem/.venv-nb/bin/python -m pytest -p no:cacheprovider -o addopts='' -q security_tests/test_completion_limits.py security_tests/test_structured_output_order.py --tb=short",
+    "http_mocked": true,
+    "new_cap_tests": 2,
+    "observed_caps": {
+      "generation": 1536,
+      "verifier": 1024,
+      "source": 2048,
+      "legacy": 8192
+    }
+  },
+  "measured_call_count_matrix": [
+    {
+      "evidence_records": 1,
+      "generated_claims": 1,
+      "generation_calls": 1,
+      "verification_calls": 1,
+      "regeneration_calls": 0
+    },
+    {
+      "evidence_records": 5,
+      "generated_claims": 5,
+      "generation_calls": 1,
+      "verification_calls": 1,
+      "regeneration_calls": 0
+    },
+    {
+      "evidence_records": 24,
+      "generated_claims": 24,
+      "generation_calls": 1,
+      "verification_calls": 1,
+      "regeneration_calls": 0
+    },
+    {
+      "evidence_records": 28,
+      "generated_claims": 24,
+      "generation_calls": 1,
+      "verification_calls": 1,
+      "regeneration_calls": 0
+    }
+  ],
+  "default_packet_envelope": "24 authorized seeds plus four authorized graph neighbors; all input IDs reauthorized",
+  "empty_packet": {
+    "generation_calls": 0,
+    "verification_calls": 0,
+    "host_policy_classification_may_run": true
+  },
+  "partial_or_irrelevant_parts": {
+    "additional_batched_host_scope_classification_may_run": true,
+    "policy_calls_metric": "Classifier invocations; fixture stubs do not make actual model calls"
+  },
+  "source_ingestion": "Unchanged two-response V19 source envelope and maintenance deferral",
+  "offline_replays": {
+    "cases": [
+      "003-05",
+      "003-07"
+    ],
+    "results": "replay-results.json",
+    "actions": [
+      "no_memory",
+      "no_memory"
+    ],
+    "model_calls_per_case": 2,
+    "paid_calls": 0,
+    "verification_seconds_mean": 0.02374704508110881,
+    "scope": "Saved authorized packets only, with scripted retrospective relevance verdicts. No hidden/future facts or evaluator verdicts enter production validation."
+  },
+  "quality_measurement": {
+    "real_model_false_acceptance": null,
+    "real_model_false_rejection": null,
+    "offline_positive_controls": 4,
+    "host_observer_available": true,
+    "explanation": "Fixtures supply semantic verdicts; tests verify enforcement and faithful selection, not learned semantic accuracy. Optional private observer records precise drafts/certificates for offline adjudication; feedback cannot change release."
+  },
+  "remaining_validation": [
+    "Matched real-model end-to-end and verifier latency distributions",
+    "Independent relevance/entailment/coverage and current-state adjudication",
+    "False acceptance/rejection including faithful paraphrases and normalization",
+    "Prompt-injection robustness and source-extraction/binding coverage"
+  ],
+  "v19_equivalent_latency_claimed": false,
+  "paid_benchmark_launched": false,
+  "original_checkout_modified": false,
+  "historical_runs_modified": false,
+  "v20_v21_workflows_imported": false,
+  "checks": [
+    "Focused offline tests",
+    "Broader offline compatibility tests",
+    "Mocked transport/format tests",
+    "Saved authorized-packet replays",
+    "compileall",
+    "git diff --check"
+  ],
+  "post_review_adapter_checks": {
+    "passed": 16,
+    "failed": 0,
+    "subtests_passed": 4,
+    "seconds": 12.06,
+    "command": "PYTHONDONTWRITEBYTECODE=1 /home/thaddus/gatemem/.venv-nb/bin/python -m pytest -p no:cacheprovider -o addopts='' -q evaluation/gatemem_medical/tests/test_input_boundary.py evaluation/gatemem_medical/tests/test_inference_adapter.py --tb=short",
+    "note": "V19 enforcement metadata is emitted only for the V19 inference adapter, not the unrelated legacy oracle-baseline path."
+  }
+}

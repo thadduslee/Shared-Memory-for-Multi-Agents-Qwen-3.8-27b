@@ -22,7 +22,7 @@ MAX_RELATIONSHIP_TARGETS = 32
 
 
 def binding_limit(updater):
-    from .workflow_v20 import enabled,review_limit
+    from .workflow_features import enabled,review_limit
     if enabled(updater):return review_limit(updater)
     return 24 if int(updater.version.split('-',1)[0])>=17 else MAX_BINDING_REVIEWS
 INSTRUCTION = '''Process this authenticated event against the committed access state.
@@ -135,7 +135,7 @@ def opaque_schema(schema, mapping, field=None):
 
 
 def review_context(assignment, state):
-    from .workflow_v20 import enabled, semantic_context
+    from .workflow_features import enabled, semantic_context
     if enabled(assignment.get('inference_version','')):
         return semantic_context(assignment,state)
     # Never copy the growing binding history merely to throw it away. This
@@ -178,7 +178,7 @@ def binding_review_live(core, compartment, candidate_id, assignment_id, state):
         ('incremental-reviews:'+compartment,candidate_id+':'+assignment_id)).fetchone()
     if not receipt:return False
     decision=json.loads(receipt['body'])
-    from .workflow_v20 import enabled, whole_fact_allowed
+    from .workflow_features import enabled, whole_fact_allowed
     body=json.loads(candidate['body'])
     return (receipt['snapshot']==pair_key(body,assignment,state)
         and decision.get('in_scope') is True and decision.get('subject_supported') is True
@@ -231,7 +231,7 @@ def pairs(updater, candidates, state, sources):
         for aid,a in assignments.items()} if compact else {}
     for candidate in candidates:
         if not facts.applicable(c, candidate['id']):continue
-        from .workflow_v20 import enabled, subjects
+        from .workflow_features import enabled, subjects
         possible=subjects(candidate) if enabled(updater) else [candidate['subject']]
         if enabled(updater) and not possible:continue
         keys={aid:pair_key(candidate,a,state,context=contexts[aid]) for aid,a in assignments.items()
@@ -264,7 +264,7 @@ def pairs(updater, candidates, state, sources):
 def select_pairs(required, candidates, new_source_id=None, *, updater=None,state=None,visible=None,limit=None):
     """New arrivals first, then oldest unreviewed work. Never discard overflow."""
     if limit is None:limit=binding_limit(updater) if updater is not None else MAX_BINDING_REVIEWS
-    from .workflow_v20 import enabled, reviewable
+    from .workflow_features import enabled, reviewable
     if updater is not None and enabled(updater):required=reviewable(updater,required)
     if updater is not None and int(updater.version.split('-',1)[0])>=16:
         from .incremental_routing import router
@@ -378,7 +378,7 @@ def main_query_view(query,actor):
         for assignment in table.values():
             assignment['reader']=assignment['participant']
             assignment['information_subject']=assignment['subject']
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     if enabled(query.get('permission_version','')):
         result.pop('own_binding_assignments',None)
         result.pop('own_binding_restrictions',None)
@@ -827,7 +827,7 @@ def extraction_plan(updater, job, sources, recent):
     """
     requests=[];aliases={sid:f's{i}' for i,sid in enumerate(recent,1)}
     jobs=[job]
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     jobs.extend(r for r in updater.core.db.execute('''SELECT j.* FROM fact_extractions e
         JOIN permission_jobs j ON j.id=e.job_id WHERE j.compartment=? AND
         e.status='incomplete' AND j.id<>? ORDER BY j.rowid''',(updater.compartment,job['id']))
@@ -913,7 +913,7 @@ def validate_bindings(updater, decisions, required, candidates, canonical, previ
         try:
             if d.get('_invalid_quote'):fail('Binding must quote the exact selected fact prefix')
             if pair not in needed:fail('Binding review names an unknown or unrequested pair')
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             if enabled(updater) and pair not in expected:fail('Binding review was not admitted in this bounded batch')
             if 'visible_candidate_ids' in payload and pair[0] not in payload['visible_candidate_ids']:
                 fail('A binding decision requires the complete candidate and its source context, not an index preview')
@@ -935,7 +935,7 @@ def validate_bindings(updater, decisions, required, candidates, canonical, previ
                 if (restriction['subject']!=grant['subject'] or grant['participant'] not in restriction['participants']
                         or not set(grant['actions']) & set(restriction['actions'])):
                     fail('A restriction on another subject, recipient or action cannot prohibit this pair')
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             primary=byid[pair[0]]['subject']==grant['subject']
             if d['in_scope'] and d['subject_supported'] and not d['blocked_by'] and (not enabled(updater) or primary):
                 op=binding_operation(byid[pair[0]],pair[1],d,preview[0]['restriction'])
@@ -971,7 +971,7 @@ def run(updater, job_id, *, max_attempts=2):
     durable unavailable pairs and never turn into permission holds.
     """
     overall_started=time.monotonic()
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     import json
     from .permissions import proposal_schema, PermissionRepairExhausted, PermissionRevisionConflict
     c=updater.core
@@ -1090,7 +1090,7 @@ def run(updater, job_id, *, max_attempts=2):
         progress=json.loads(saved[0]) if saved else {}
         semantic_attempts=sum(json.loads(r[0] or '{}').get('semantic_response',True)
             for r in c.db.execute('SELECT validation FROM permission_attempts WHERE job_id=?',(job_id,)))
-        if enabled(updater):
+        if updater.version.split('-',1)[0]=='20':
             semantic_attempts=sum(json.loads(r[0] or '{}').get('exception_type')!='ProcessorBudgetFailure'
                 for r in c.db.execute('SELECT validation FROM permission_attempts WHERE job_id=?',(job_id,)))
     started=time.monotonic();model_calls=0;last_error=None
@@ -1191,6 +1191,12 @@ def run(updater, job_id, *, max_attempts=2):
         visible_candidates.update(r['candidate_id'] for r in requests)
         from . import incremental_wire
         narrow=grounded and canonical is not None and not missing
+        if narrow:
+            # A schema failure can happen before the normal post-response path.
+            # Recovery must validate surviving pairs against current candidates,
+            # including when controls were salvaged from the preceding response.
+            candidates=facts.rows(updater,prefix=sources)
+            required=pairs(updater,candidates,preview[0],sources)
         call_query=(binding_query(query,sources) if narrow else
             main_query_view(query,sources[job['source_id']]['source']['participant']) if grounded else query)
         if narrow:
@@ -1213,7 +1219,7 @@ def run(updater, job_id, *, max_attempts=2):
         if control_only:
             wire_instruction+='\nReassess ONLY the original authenticated controls. f={} and b=[]; do not re-extract historical facts. Validated controls and source order still apply.'
         if narrow:wire_instruction=BINDING_REPAIR_INSTRUCTION.replace('at most 12','at most '+str(binding_limit(updater)))
-        from .workflow_v20 import enabled, BINDING_INSTRUCTION
+        from .workflow_features import enabled, BINDING_INSTRUCTION
         if narrow and enabled(updater):wire_instruction=BINDING_INSTRUCTION
         if narrow and int(updater.version.split('-',1)[0])>=18 and not enabled(updater):
             from .incremental_v18 import BINDING_SCOPE_INSTRUCTION
@@ -1242,6 +1248,9 @@ def run(updater, job_id, *, max_attempts=2):
             if not isinstance(response,dict) or set(response)!=set(schema['properties']):fail('Combined response needs all four decision arrays')
             if wire is None:wire=deepcopy(response)
             else:
+                if updater.version.split('-',1)[0]=='21' and canonical is None:
+                    from .workflow_v21 import validate_repair_continuity
+                    validate_repair_continuity(wire,response,last_error)
                 wire['segments']=response['segments']
                 if canonical is None:
                     index=getattr(last_error,'details',{}).get('operation_index')
@@ -1338,9 +1347,10 @@ def run(updater, job_id, *, max_attempts=2):
                     except (ValueError,KeyError,TypeError):pass
             if enabled(updater) and narrow and canonical is not None:
                 from .workflow_v20 import note_binding_failure
-                from .processors import ProcessorBudgetFailure
+                from .processors import ProcessorBudgetFailure, ProcessorFailure, ModelContractError
                 batch={(p['candidate_id'],p['assignment_id']) for p in query['required_pairs']}
-                if not isinstance(exc,ProcessorBudgetFailure):
+                transport_failure=isinstance(exc,ProcessorFailure) and not isinstance(exc,ModelContractError)
+                if not isinstance(exc,ProcessorBudgetFailure) and (updater.version.split('-',1)[0]=='20' or not transport_failure):
                     note_binding_failure(updater,[r for r in required if (r['candidate_id'],r['assignment_id']) in batch
                         and (r['candidate_id'],r['assignment_id']) not in accepted_reviews],type(exc).__name__)
             if enabled(updater) and wire is None and hasattr(decode,'controls_only'):
@@ -1395,7 +1405,7 @@ def run(updater, job_id, *, max_attempts=2):
             from .permissions import PermissionProposalRejected
             from .processors import ModelContractError
             from .processors import ProcessorBudgetFailure
-            if enabled(updater) and isinstance(exc,ProcessorFailure) and not isinstance(exc,ProcessorBudgetFailure) and canonical is not None:break
+            if updater.version.split('-',1)[0]=='20' and isinstance(exc,ProcessorFailure) and not isinstance(exc,ProcessorBudgetFailure) and canonical is not None:break
             if not isinstance(exc,(PermissionProposalRejected,ModelContractError,ValueError,KeyError,TypeError)):raise
     if canonical is None:
         with c.transaction():
@@ -1487,14 +1497,14 @@ def flush_bindings(updater, *, max_batches=1):
         raise ValueError('Use one to one hundred bounded maintenance batches')
     batches=0;changes=[]
     for _ in range(max_batches):
-        from .workflow_v20 import enabled
+        from .workflow_features import enabled
         deadline=getattr(updater.processor,'_deadline',None)
         if enabled(updater) and deadline is not None and deadline-time.monotonic()<2.:
             return {'status':'deferred_deadline','batches':batches,'changes':changes}
         with c.transaction():
             compact=int(updater.version.split('-',1)[0])>=18
             terminal="('complete','superseded','quarantined')" if compact else "('complete','superseded')"
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             child_filter=" AND id NOT LIKE 'host-recovery:%'" if enabled(updater) else ''
             if c.db.execute('SELECT 1 FROM permission_jobs WHERE compartment=? AND status NOT IN '+terminal+child_filter,
                     (updater.compartment,)).fetchone():
@@ -1518,7 +1528,7 @@ def flush_bindings(updater, *, max_batches=1):
             identities.update({p:'resource'+str(i+1) for i,p in enumerate(bootstrap.resources) if p not in identities})
             identities.update({p['id']:'f'+str(i+1) for i,p in enumerate(candidates)})
             identities.update({aid:'g'+str(i+1) for i,aid in enumerate(state['assignment'])})
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             if enabled(updater):
                 identities.update({aid:'own'+str(i+1) for i,(aid,a) in enumerate(state['assignment'].items()) if a.get('ownership')})
             identities.update({rid:'r'+str(i+1) for i,rid in enumerate(state['restriction'])})
@@ -1557,7 +1567,7 @@ def flush_bindings(updater, *, max_batches=1):
                 if compact and not enabled(updater):
                     from .incremental_v18 import BINDING_SCOPE_INSTRUCTION
                     instruction+=BINDING_SCOPE_INSTRUCTION
-                from .workflow_v20 import enabled, BINDING_INSTRUCTION
+                from .workflow_features import enabled, BINDING_INSTRUCTION
                 if enabled(updater):instruction=BINDING_INSTRUCTION
                 if updater.bootstrap.owner_read_actions and not enabled(updater):
                     from .ownership import INSTRUCTION as ownership_instruction
@@ -1573,16 +1583,17 @@ def flush_bindings(updater, *, max_batches=1):
             if not isinstance(response,dict) or set(response)!={'binding_reviews'}:fail('Invalid maintenance review response')
         except Exception as exc:
             from .processors import ProcessorFailure,ModelContractError
-            from .workflow_v20 import enabled, note_binding_failure
+            from .workflow_features import enabled, note_binding_failure
             from .processors import ProcessorBudgetFailure
             survivors=[]
             if enabled(updater) and hasattr(decode,'partial_bindings'):
                 draft=getattr(exc,'details',{}).get('rejected_output')
                 if draft is not None:
                     survivors=remap(decode.partial_bindings(draft),{v:k for k,v in identities.items()})
-            if enabled(updater) and not survivors and not isinstance(exc,ProcessorBudgetFailure):
-                note_binding_failure(updater,required,type(exc).__name__)
             transport=isinstance(exc,ProcessorFailure) and not isinstance(exc,ModelContractError)
+            if (enabled(updater) and not survivors and not isinstance(exc,ProcessorBudgetFailure)
+                    and (updater.version.split('-',1)[0]=='20' or not transport)):
+                note_binding_failure(updater,required,type(exc).__name__)
             with c.transaction():
                 c.db.execute('UPDATE fact_attempts SET body=? WHERE job_id=? AND attempt=?',
                     (encoded({'status':'failed','semantic_response':not transport,'error':type(exc).__name__,

@@ -1,0 +1,58 @@
+{
+  "created_at": "2026-11-02T09:56:39.263553+00:00",
+  "variant": "21",
+  "base_scheduling": "19",
+  "implementation_code_digest": "8f53735acee702f784c6d47c6328e5435920727a3c6752d2a0cf297a72d5a16a",
+  "git_base": "b997519cb94b08cc4f77f08602ec011e380b42e5",
+  "checks": {
+    "regression": {
+      "tests": 692,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "seconds": 171.218,
+      "report": "analysis/aim-v21/regression.xml",
+      "report_sha256": "aed48f18377528e4fc269109d86a11eef8927da4b354b1bac717499076d5a336"
+    },
+    "v21-tests": {
+      "tests": 38,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0,
+      "seconds": 23.654,
+      "report": "analysis/aim-v21/v21-tests.xml",
+      "report_sha256": "87f312f0868722ba1d2d6a48669934c946b751b135edf13f8ba523fea7bfa2d8"
+    }
+  },
+  "regression_command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest security_tests evaluation/gatemem_medical/tests -q --junitxml=analysis/aim-v21/regression.xml",
+  "v21_test_command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest security_tests/test_workflow_v21.py -q --junitxml=analysis/aim-v21/v21-tests.xml",
+  "offline_smoke": {
+    "run_dir": "/tmp/amem-v21-validated-smoke-20261102",
+    "exit_code": 0,
+    "mode": "offline-functional-test",
+    "source_turns": 67,
+    "checkpoints": 2,
+    "manifest_code_matches_current": true,
+    "aggregate_source_deadline_seconds": null,
+    "aggregate_answer_deadline_seconds": null,
+    "purpose": "integration only; scripted processors do not establish utility, privacy rates or model latency"
+  },
+  "historical_diagnosis": {
+    "run": "runs/gatemem-medical-v19-openrouter-full-20261102T005006+0800",
+    "output": "/tmp/v19-v21-final-stage-diagnosis-20261102.json",
+    "read_only": true,
+    "checkpoints": 147,
+    "strict_scores_modified": false,
+    "future_state_used": false
+  },
+  "comparison_negative_control": {
+    "candidate": "/tmp/amem-v21-validated-smoke-20261102",
+    "expected_result": "reject scripted/incomplete candidate as a validated V19 replacement",
+    "previous_fresh_smoke_checked": "/tmp/amem-v21-final-smoke-20261102",
+    "observed_matched_prefix_passed": false
+  },
+  "git_diff_check_passed": true,
+  "external_model_calls_started": false,
+  "live_benchmark_started": false,
+  "empirical_status": "Live utility, refusal, leakage and provider-latency changes remain unmeasured."
+}

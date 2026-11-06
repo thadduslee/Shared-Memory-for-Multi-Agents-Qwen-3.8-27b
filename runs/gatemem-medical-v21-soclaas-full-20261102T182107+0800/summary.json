@@ -1,0 +1,246 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 0,
+    "scored_checkpoints": 0,
+    "expected_boundaries": 567,
+    "completed_boundaries": 0,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 7,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 0,
+    "n_utility": 0,
+    "n_utility_scored": 0,
+    "n_privacy": 0,
+    "n_privacy_scored": 0,
+    "n_privacy_context_scored": 0,
+    "n_privacy_e2e_scored": 0,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": null,
+    "privacy_leakage_rate": null,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": null,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-02T10:27:10.031481+00:00",
+    "state": "running",
+    "stage": "v21 host recovery permission-job:1fcf6f9dea030c56c36caaa4be35e8d2f25d51644cba8bd0d6facc9511bce8cc",
+    "recovered_after_failures": 1
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 6
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 127.88,
+    "permission_total": 700.761,
+    "source_ingest": 0.015,
+    "source_total": 828.659
+  },
+  "governance": {
+    "candidate_versions": 6,
+    "decisions": 6,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 6,
+      "running": 1
+    },
+    "attempts": 11,
+    "record_versions": 9,
+    "skipped_turns": [],
+    "quarantined_turns": [],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 4,
+    "indexed_resources": 6,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.429,
+    "latency_seconds": {
+      "mean": 138.10976269406578,
+      "median": 132.07639683457091,
+      "p90": 212.3261520890519,
+      "max": 212.3261520890519,
+      "p95": 162.57608169596642
+    },
+    "processing_seconds": 699.738,
+    "model_seconds": 699.419,
+    "mean_seconds_per_source": 116.623,
+    "measured_attempts": 10,
+    "prompt_tokens": 52082,
+    "completion_tokens": 4182,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 699.419,
+    "outside_model_seconds": 129.24,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 6,
+        "mean": 138.10976269406578,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      },
+      "51_to_100": {
+        "count": 0,
+        "mean": null,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      },
+      "after_100": {
+        "count": 0,
+        "mean": null,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      }
+    },
+    "historical_incomplete": false
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 6,
+      "pending": 1
+    },
+    "candidate_states": {
+      "active": 7
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 6,
+        "timed_calls": 6,
+        "seconds": 445.69316149968654,
+        "model_seconds": 445.4235585257411,
+        "prompt_tokens": 45419,
+        "completion_tokens": 3296
+      },
+      "incremental_binding_repair": {
+        "calls": 4,
+        "timed_calls": 4,
+        "seconds": 254.04438833519816,
+        "model_seconds": 253.99543297104537,
+        "prompt_tokens": 6663,
+        "completion_tokens": 886
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 6,
+      "scope_or_subject_excluded": 13
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 1,
+    "checkpoints_with_evidence": 0,
+    "checkpoints_without_evidence": 0,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 0,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 0,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false,
+    "historical_extraction_jobs": {
+      "complete": 6,
+      "pending": 1
+    },
+    "unattributed_candidates": 0
+  },
+  "workflow_v21": {
+    "latency_seconds": {
+      "model_call": {
+        "count": 13,
+        "total": 822.3092629862949,
+        "mean": 63.25455869125346,
+        "p50": 69.90779057051986,
+        "p90": 87.57733275089413,
+        "p95": 96.69671723432839,
+        "max": 96.69671723432839
+      },
+      "host_recovery": {
+        "count": 2,
+        "total": 122.76515781972557,
+        "mean": 61.38257890986279,
+        "p50": 52.6558851916343,
+        "p90": 70.10927262809128,
+        "p95": 70.10927262809128,
+        "max": 70.10927262809128
+      },
+      "source_foreground": {
+        "count": 6,
+        "total": 828.6585761643946,
+        "mean": 138.10976269406578,
+        "p50": 127.3431017557159,
+        "p90": 212.3261520890519,
+        "p95": 212.3261520890519,
+        "max": 212.3261520890519
+      }
+    },
+    "model_calls_by_phase": {
+      "foreground": 11,
+      "host": 2
+    },
+    "model_tokens": {
+      "prompt_tokens": 52548,
+      "completion_tokens": 4232
+    },
+    "model_cost": 0.0,
+    "unreported_usage_calls": 2,
+    "transport_retries": 4,
+    "max_foreground_model_calls_per_source": 2,
+    "recovery_jobs": {
+      "complete": 1
+    },
+    "total_work_seconds": 828.6585761643946,
+    "source_seconds": {
+      "count": 6,
+      "mean": 138.10976269406578,
+      "p50": 136.80969191342592,
+      "p95": 162.57608169596642,
+      "max": 212.3261520890519,
+      "over_30_seconds": 6
+    },
+    "hard_turn_deadline_seconds": null,
+    "metric_semantics": {
+      "total_work_seconds": "source including its maintenance + external host work + answer including diagnostics + judge + enrichment; nested model time not added twice"
+    },
+    "scheduling": "v19-two-semantic-responses-including-maintenance",
+    "deduplication": "bounded-same-authority-provenance-only",
+    "stage_diagnostics": {}
+  }
+}

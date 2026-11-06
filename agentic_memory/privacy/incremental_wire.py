@@ -295,7 +295,7 @@ def contract(query, schema):
     """Expose a small output grammar while retaining the full semantic input."""
     from .incremental import obj,enum,fail
     query=deepcopy(query)
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     v20=enabled(query.get('permission_version','15'))
     grounded=int(query.get('permission_version','15').split('-',1)[0])>=16
     selective=int(query.get('permission_version','15').split('-',1)[0])>=17
@@ -1032,7 +1032,7 @@ def encode_fixture(value, query=None):
                     attribution_reason=None,topics=[],relationships=[])
             if int((query or {}).get('permission_version','15').split('-',1)[0])>=18:
                 f.pop('subject_basis',None)
-            if int((query or {}).get('permission_version','15').split('-',1)[0])>=20:
+            if int((query or {}).get('permission_version','15').split('-',1)[0]) in {20,21}:
                 original=next(s for s in value['segments'] if str(s['index'])==index)
                 f['information_subjects']=original.get('subjects',
                     [f['information_subject']] if f.get('information_subject') else [])

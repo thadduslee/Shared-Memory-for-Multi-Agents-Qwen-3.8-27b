@@ -1,0 +1,546 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "bge-m3",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 131072,
+      "context_window": 131072,
+      "max_context_length": 131072,
+      "max_model_len": 131072,
+      "soclaas": {
+        "display_name": "bge-m3",
+        "description": "",
+        "capabilities": [
+          "embeddings"
+        ],
+        "input_microdollars_per_million_tokens": 10000,
+        "output_microdollars_per_million_tokens": 0,
+        "audio_microdollars_per_minute": 0
+      }
+    },
+    {
+      "id": "gemma4:26b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 131072,
+      "context_window": 131072,
+      "max_context_length": 131072,
+      "max_model_len": 131072,
+      "soclaas": {
+        "display_name": "Gemma 4 26B",
+        "description": "Higher-quality general-purpose and multimodal work",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 102059,
+        "output_microdollars_per_million_tokens": 378588,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text"
+        ]
+      }
+    },
+    {
+      "id": "llama3.1:8b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 65536,
+      "context_window": 65536,
+      "max_context_length": 65536,
+      "max_model_len": 65536,
+      "soclaas": {
+        "display_name": "Llama 3.1 8B",
+        "description": "Capable small-model experimentation",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 74250,
+        "output_microdollars_per_million_tokens": 86750,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text"
+        ]
+      }
+    },
+    {
+      "id": "ornith1.5:35b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "soclaas": {
+        "display_name": "Ornith 1.5 35B A3B",
+        "description": "Agentic software engineering and coding workflows",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 100000,
+        "output_microdollars_per_million_tokens": 400000,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "qwen3.5:9b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 65536,
+      "context_window": 65536,
+      "max_context_length": 65536,
+      "max_model_len": 65536,
+      "soclaas": {
+        "display_name": "Qwen 3.5 9B",
+        "description": "Higher-quality general-purpose and multimodal work",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 114438,
+        "output_microdollars_per_million_tokens": 200438,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text"
+        ]
+      }
+    },
+    {
+      "id": "qwen3.6:35b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "soclaas": {
+        "display_name": "Qwen 3.6 35B A3B",
+        "description": "Efficient agentic workflows and advanced coding",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 431662,
+        "output_microdollars_per_million_tokens": 1561467,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "qwen3.8:27b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "reasoning": {
+        "supported_efforts": [
+          "xhigh",
+          "medium",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Qwen 3.8 27B",
+        "description": "High-quality general reasoning and multimodal tasks",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 421648,
+        "output_microdollars_per_million_tokens": 2529343,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "qwen3-coder-next",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "soclaas": {
+        "display_name": "Qwen 3 Coder Next 80B A3B",
+        "description": "Coding agents and software-engineering workflows",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 268918,
+        "output_microdollars_per_million_tokens": 1210491,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text"
+        ]
+      }
+    },
+    {
+      "id": "qwen3-vl:32b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 80000,
+      "context_window": 80000,
+      "max_context_length": 80000,
+      "max_model_len": 80000,
+      "soclaas": {
+        "display_name": "Qwen 3 VL 32B",
+        "description": "Vision-capable model",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 104000,
+        "output_microdollars_per_million_tokens": 416000,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "whisper-large-v3",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 131072,
+      "context_window": 131072,
+      "max_context_length": 131072,
+      "max_model_len": 131072,
+      "soclaas": {
+        "display_name": "Whisper Large v3",
+        "description": "For audio transcription only",
+        "capabilities": [
+          "audio-transcription"
+        ],
+        "input_microdollars_per_million_tokens": 0,
+        "output_microdollars_per_million_tokens": 0,
+        "audio_microdollars_per_minute": 6000
+      }
+    },
+    {
+      "id": "x-test-1",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 1048576,
+      "context_window": 1048576,
+      "max_context_length": 1048576,
+      "max_model_len": 1048576,
+      "reasoning": {
+        "supported_efforts": [
+          "max",
+          "high",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Test GLM 5.3 Flash",
+        "description": "",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 156508,
+        "output_microdollars_per_million_tokens": 505556,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "x-test-2",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 1048576,
+      "context_window": 1048576,
+      "max_context_length": 1048576,
+      "max_model_len": 1048576,
+      "reasoning": {
+        "supported_efforts": [
+          "max",
+          "high",
+          "low",
+          "none"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Test DeepSeek V4.1 Flash 1017",
+        "description": "",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 277486,
+        "output_microdollars_per_million_tokens": 1081750,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "x-test-3",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "reasoning": {
+        "supported_efforts": [
+          "xhigh",
+          "medium",
+          "low",
+          "none"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Test Qwen 3.8 Flash Next",
+        "description": "Testing Qwen 3.8 Flash Next",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 175250,
+        "output_microdollars_per_million_tokens": 425000,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "x-test-4",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 1048576,
+      "context_window": 1048576,
+      "max_context_length": 1048576,
+      "max_model_len": 1048576,
+      "reasoning": {
+        "supported_efforts": [
+          "max",
+          "xhigh",
+          "high",
+          "medium",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Test MiniMax M3.1 Flash",
+        "description": "",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 150000,
+        "output_microdollars_per_million_tokens": 600000,
+        "audio_microdollars_per_minute": 0,
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "coder",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "reasoning": {
+        "supported_efforts": [
+          "xhigh",
+          "medium",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Qwen 3.8 27B",
+        "description": "High-quality general reasoning and multimodal tasks",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 421648,
+        "output_microdollars_per_million_tokens": 2529343,
+        "audio_microdollars_per_minute": 0,
+        "alias_of": "qwen3.8:27b",
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "coding",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "reasoning": {
+        "supported_efforts": [
+          "xhigh",
+          "medium",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Qwen 3.8 27B",
+        "description": "High-quality general reasoning and multimodal tasks",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 421648,
+        "output_microdollars_per_million_tokens": 2529343,
+        "audio_microdollars_per_minute": 0,
+        "alias_of": "qwen3.8:27b",
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "default",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "soclaas": {
+        "display_name": "Qwen 3.6 35B A3B",
+        "description": "Efficient agentic workflows and advanced coding",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 431662,
+        "output_microdollars_per_million_tokens": 1561467,
+        "audio_microdollars_per_minute": 0,
+        "alias_of": "qwen3.6:35b",
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "ornith1.0:35b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "soclaas": {
+        "display_name": "Ornith 1.5 35B A3B",
+        "description": "Agentic software engineering and coding workflows",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 100000,
+        "output_microdollars_per_million_tokens": 400000,
+        "audio_microdollars_per_minute": 0,
+        "alias_of": "ornith1.5:35b",
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    },
+    {
+      "id": "qwen3.6:27b",
+      "object": "model",
+      "created": 0,
+      "owned_by": "soclaas",
+      "context_length": 262144,
+      "context_window": 262144,
+      "max_context_length": 262144,
+      "max_model_len": 262144,
+      "reasoning": {
+        "supported_efforts": [
+          "xhigh",
+          "medium",
+          "low"
+        ]
+      },
+      "supported_parameters": [
+        "reasoning",
+        "reasoning_effort"
+      ],
+      "soclaas": {
+        "display_name": "Qwen 3.8 27B",
+        "description": "High-quality general reasoning and multimodal tasks",
+        "capabilities": [
+          "chat"
+        ],
+        "input_microdollars_per_million_tokens": 421648,
+        "output_microdollars_per_million_tokens": 2529343,
+        "audio_microdollars_per_minute": 0,
+        "alias_of": "qwen3.8:27b",
+        "input_modalities": [
+          "text",
+          "vision"
+        ]
+      }
+    }
+  ]
+}

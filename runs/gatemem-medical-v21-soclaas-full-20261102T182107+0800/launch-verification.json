@@ -1,0 +1,77 @@
+{
+  "at": "2026-11-02T10:25:04.803227+00:00",
+  "checks": {
+    "fresh_v21": true,
+    "validated_source_digest_matches": true,
+    "requested_memory_model": true,
+    "separate_soclaas_judge": true,
+    "same_cached_embedding_as_v19": true,
+    "evolution_enabled": true,
+    "source_deadline_absent": true,
+    "answer_deadline_absent": true,
+    "runner_started": true
+  },
+  "process": {
+    "status": "running",
+    "supervisor_pid": 3094499,
+    "runner_pid": 3101495,
+    "started_at": "2026-11-02T10:23:33.161748+00:00",
+    "tmux_session": "gatemem-v21-soclaas-20261102T182107+0800"
+  },
+  "permission_jobs": {
+    "complete": 1
+  },
+  "provider_preflight": [
+    {
+      "at": "2026-11-02T10:22:50.582962+00:00",
+      "role": "LLM",
+      "model": "qwen3.8:27b",
+      "response_model": "qwen3.8:27b",
+      "seconds": 34.659521313384175,
+      "usage": {
+        "prompt_tokens": 94,
+        "total_tokens": 103,
+        "completion_tokens": 9,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        }
+      },
+      "effective_limits": {
+        "stage": "policy_classification",
+        "max_tokens": 96,
+        "timeout_seconds": 300,
+        "schema_mode": "portable"
+      }
+    },
+    {
+      "at": "2026-11-02T10:23:33.160545+00:00",
+      "role": "JUDGE",
+      "model": "qwen3.6:35b",
+      "response_model": "qwen3.6:35b",
+      "seconds": 42.57741430681199,
+      "usage": {
+        "prompt_tokens": 30,
+        "total_tokens": 36,
+        "completion_tokens": 6,
+        "prompt_tokens_details": null,
+        "completion_tokens_details": {
+          "reasoning_tokens": 0
+        }
+      },
+      "effective_limits": {
+        "stage": "query",
+        "max_tokens": 96,
+        "timeout_seconds": 300
+      }
+    }
+  ],
+  "expected": {
+    "episodes": 21,
+    "source_turns": 4294,
+    "checkpoints": 579,
+    "boundaries": 567
+  },
+  "scope": "Launch verification; model utility and latency evaluation is in progress."
+}

@@ -1,0 +1,86 @@
+{
+  "at": "2026-11-02T11:14:01.843820+00:00",
+  "state": "blocked",
+  "stage": "answer med_episode_rewrite_en_001_early_pregnancy_confidential_contact_ckpt_01",
+  "failures": 3,
+  "error_type": "ProcessorContractFailure",
+  "error": "Structured output failed local schema validation: request_parts/0/evidence_ids/0: enum; allowed=m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12,m13,m14,m15,m16,m17,m18,m19,m20,m21,m22,m23,m24",
+  "contract_failure": true,
+  "details": {
+    "schema_path": [
+      "request_parts",
+      0,
+      "evidence_ids",
+      0
+    ],
+    "rejected_output": {
+      "evidence_roles": {
+        "0": "current",
+        "1": "current",
+        "2": "condition",
+        "3": "unrelated",
+        "4": "unrelated",
+        "5": "unrelated",
+        "6": "unrelated",
+        "7": "unrelated",
+        "8": "unrelated",
+        "9": "unrelated",
+        "10": "unrelated",
+        "11": "unrelated",
+        "12": "unrelated",
+        "13": "unrelated",
+        "14": "unrelated",
+        "15": "unrelated",
+        "16": "unrelated",
+        "17": "unrelated",
+        "18": "unrelated",
+        "19": "unrelated",
+        "20": "unrelated",
+        "21": "unrelated",
+        "22": "unrelated",
+        "23": "unrelated"
+      },
+      "answer_structured": {
+        "current_items": [
+          "Use acetaminophen for pain: 650 milligrams every six hours as needed, keeping the total under 3,000 milligrams in a day."
+        ],
+        "continuing_items": [],
+        "retired_items": [
+          "Stop ibuprofen completely due to bleeding."
+        ],
+        "conditions_and_exceptions": [
+          "Morning nausea is present and has been getting more noticeable this week, but no medication for nausea is specified in the provided evidence."
+        ]
+      },
+      "request_parts": [
+        {
+          "request": "Medications to use right now for pain",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:98846af1de922d009395a4d99c94dd0f71ef445903bb4f88b3efcc5f5c593ed7"
+          ]
+        },
+        {
+          "request": "Medications to use right now for nausea",
+          "status": "missing",
+          "evidence_ids": []
+        },
+        {
+          "request": "Medications to stop",
+          "status": "supported",
+          "evidence_ids": [
+            "note:permission-view:17b22c713ebb26bac991c6e4bd468a95190aaf9f6ff1ba765cad9a0ee984e8b2"
+          ]
+        }
+      ],
+      "action": "answer_redacted",
+      "answer": "For pain, use acetaminophen: 650 milligrams every six hours as needed, keeping the total under 3,000 milligrams in a day. You should stop ibuprofen completely due to the bleeding. I don't have information about a specific medication to use for your nausea.",
+      "used_record_ids": [
+        "note:permission-view:98846af1de922d009395a4d99c94dd0f71ef445903bb4f88b3efcc5f5c593ed7",
+        "note:permission-view:17b22c713ebb26bac991c6e4bd468a95190aaf9f6ff1ba765cad9a0ee984e8b2",
+        "note:permission-view:00a54ce8ba7bff30e9f004d760635581a143980fd51089552d8b008d10dd2e3e"
+      ]
+    }
+  },
+  "reason": "Non-retryable failure or exhausted semantic repairs; source/query remains blocked for review."
+}

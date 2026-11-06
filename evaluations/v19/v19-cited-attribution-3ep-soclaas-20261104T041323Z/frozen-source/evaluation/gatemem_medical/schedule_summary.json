@@ -1,0 +1,31 @@
+{
+  "status": "schedule_validated_only_no_model_run",
+  "source_data_dir": "/home/thaddus/GateMem/bench/data/medical",
+  "ordering_policy": "episode-id-then-turn-position-v2-with-data-tails",
+  "source_sha256": {
+    "episodes.jsonl": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+    "checkpoints.jsonl": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0"
+  },
+  "manifest_sha256": "1d98283b85acb3c06ce3dbe96844c57f88cb9f93e4f27a8b9ffd0b726a1ce519",
+  "episodes": 21,
+  "source_turns": 4294,
+  "checkpoints": 579,
+  "boundaries": 567,
+  "query_boundaries": 549,
+  "ingest_only_boundaries": 18,
+  "ingest_only_turns": 263,
+  "min_new_turns_per_boundary": 1,
+  "max_new_turns_per_boundary": 54,
+  "evaluation_only_category_counts": {
+    "utility": 210,
+    "privacy": 192,
+    "safety": 177
+  },
+  "checks": {
+    "exact_checkpoint_coverage": true,
+    "exact_source_turn_coverage": true,
+    "every_boundary_has_new_data": true,
+    "hidden_annotations_absent_from_query_views": true
+  },
+  "access": "Scheduler/evaluator artifact. Never expose the full manifest or future queries/turns to the agent."
+}

@@ -1,0 +1,36 @@
+{
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "revision": "02a7c8f643f0cdf5697ec3cbc5cf5bbe64705b5b",
+  "session": "v19-full-gpu45-20261103T091300Z",
+  "plan": {
+    "episodes": 21,
+    "checkpoints": 579,
+    "boundaries": 567,
+    "query_boundaries": 549,
+    "source_turns": 4294,
+    "new_data_at_every_boundary": true
+  },
+  "permission_mode": "inference",
+  "permission_version": "19",
+  "answer_validation_mode": "enforce",
+  "evolution": true,
+  "scoring": "same local Qwen/Qwen3.8-27B model, separate calls and scoring prompt",
+  "gpu_mapping": {
+    "memory_answer_and_judge": [
+      4,
+      5
+    ]
+  },
+  "fresh_stores": true,
+  "resume": false,
+  "host_events": false,
+  "dependency_registry": false,
+  "result_directory": "/home/thaddus/v19-evaluations/v19-full-gpu45-20261103T091300Z-compat1/results",
+  "endpoint": "http://127.0.0.1:18145/v1",
+  "decoder_compatibility": "run-local uniqueItems projection for llguidance only; original application schemas and host validation unchanged",
+  "previous_failed_attempt": "/home/thaddus/v19-evaluations/v19-full-gpu45-20261103T091300Z",
+  "serving_hook_hashes": {
+    "schema_refs.py": "36e133a30eb2f050550c84940c9e879d8d9580997ae331eb000e59491db089dc",
+    "sitecustomize.py": "7c3cdf0e9288d7db9abeca824e9c11a909186dec30df9f6d3bb07fdbd1a2c9b1"
+  }
+}

@@ -202,7 +202,7 @@ def _decode_segment(updater, source, new_source_id, sources, spans, d, bootstrap
     # being factual, even if a classifier mislabels the segment.
     question=any(a<right and left<b for left,right in question_spans(source['text']))
     if question or d['kind'] in {'question','context'}:return None
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     disclosed={}
     if enabled(updater):
         values=d.get('subjects',[])
@@ -740,7 +740,7 @@ def metrics(updater):
     candidates=rows(updater)
     state=updater.inspect()
     bound={(b['source_id'],encoded(b['spans'])) for a in state['assignment'].values() for b in a['bindings'] if a['status']=='active'}
-    from .workflow_v20 import enabled
+    from .workflow_features import enabled
     child_filter=" AND id NOT LIKE 'host-recovery:%'" if enabled(updater) else ''
     holds=c.db.execute("SELECT COUNT(*) FROM permission_jobs WHERE compartment=? AND status NOT IN ('complete','superseded','quarantined')"+child_filter,(compartment,)).fetchone()[0]
     from .control_holds import rows as control_holds
@@ -764,7 +764,7 @@ def metrics(updater):
             "SELECT id,payload FROM resources WHERE compartment=? AND kind='observation' AND state='active'",(compartment,))
             if c._current(r['id'])}
         pending_bindings=len(pairs(updater,candidates,state,live))
-    from .workflow_v20 import enabled, subjects
+    from .workflow_features import enabled, subjects
     unknown=sum(not subjects(p) for p in candidates) if enabled(updater) else 0
     return {'source_events':sources,'extraction_receipts':len(extractions),
         'extraction_complete':len(extractions)==sources and all(s=='complete' for s in extractions) and not unknown,

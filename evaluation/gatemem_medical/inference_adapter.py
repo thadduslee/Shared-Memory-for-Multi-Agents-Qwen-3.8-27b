@@ -182,7 +182,15 @@ class InferenceFixtureAdapter(PermissionQueryService):
             # large late-turn stalls. Overflow remains protected and pending.
             maintenance_allowed=not (family.isdigit() and int(family)>=19 and attempts>=2)
             if family.isdigit() and int(family)>=17 and maintenance_allowed:
-                if int(family)>=20:
+                if family=='21':
+                    from agentic_memory.privacy.workflow_features import pending
+                    queued=any(j['status']=='pending' for j in pending(self.updater))
+                    if queued:
+                        recovered=self.retry(lambda:self.updater.service_pending(max_batches=1,source_slot=True),'v21 host recovery '+result['job_id'])
+                        maintenance={'batches':recovered.get('calls',0),'changes':recovered.get('changes',[]),'status':recovered['status']}
+                    else:
+                        maintenance=self.retry(lambda:self.updater.flush_bindings(max_batches=1),'binding maintenance '+result['job_id'])
+                elif int(family)==20:
                     from agentic_memory.privacy.workflow_v20 import limits,source_scope,SOURCE_SECONDS,PUBLICATION_RESERVE_SECONDS
                     from agentic_memory.privacy.processors import ProcessorDeadlineFailure
                     try:

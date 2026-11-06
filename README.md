@@ -1,5 +1,19 @@
 # Agentic Memory 🧠
 
+The completed V19 system and evaluation exports are now bundled alongside the
+root implementation. See [V19 source and reproduction](versions/v19/SNAPSHOT.md)
+and the [V19 results index](evaluations/v19/README.md). The full model-controls
+run completed 579/579 checkpoints with 76.19% utility, 6.25% answer-level privacy
+leakage, and 1.13% answer-level deletion leakage. The report retains its degraded
+processing and incomplete enrichment flags. V19 is isolated under `versions/v19`
+so the existing root implementation can be developed independently.
+
+Version 21 adds the AIM-inspired portable authenticated service, bounded
+privacy/provenance-scoped deduplication, protected stage diagnostics and staged
+retrieval on V19's scheduling. Select `--permission-version 21` in a fresh run.
+It has no aggregate 30-second turn deadline; provider failures remain explicit.
+See [V21 implementation and validation](analysis/aim-v21/README.md).
+
 A novel agentic memory system for LLM agents that can dynamically organize memories in an agentic way.
 
 The raw-stream privacy runtime defaults to version 19. Its explicit, opt-in OWNS

@@ -1,0 +1,52 @@
+{
+  "prepared_at_utc": "2026-11-06T14:58:29.285679+00:00",
+  "source_directory": "/home/thaddus/a-mem-v19-fixes",
+  "evaluation_directory": "/home/thaddus/v19-evaluations",
+  "branch": "directed_edges_variant",
+  "source_layout": "versions/v19",
+  "result_layout": "evaluations/v19",
+  "original_directories_preserved": true,
+  "existing_v21_changes_left_unstaged": true,
+  "committed": false,
+  "pushed": false,
+  "integrity": {
+    "artifact_hashes_verified": 1359,
+    "frozen_source_hashes_verified": 537,
+    "source_and_full_run_hashes_match": 78,
+    "evaluation_exports": 11,
+    "available_summaries_verified": 8,
+    "credentials_detected": 0,
+    "oversized_files_detected": 0
+  },
+  "checks": {
+    "bundle_verifier": "passed",
+    "dataset_plan": {
+      "episodes": 21,
+      "checkpoints": 579,
+      "boundaries": 567,
+      "source_turns": 4294
+    },
+    "packaging_script_ruff": "passed",
+    "staged_diff_check": "passed",
+    "broad_regression_suite": {
+      "status": "interrupted",
+      "passed": 582,
+      "subtests_passed": 20,
+      "failed_before_interrupt": 0,
+      "elapsed_seconds": 538.01,
+      "reason": "Stopped after progress stalled in a historical runtime test; archived implementation left unchanged. This was not a full-suite pass.",
+      "excluded_legacy_tests": [
+        "security_tests/test_answering_v20.py",
+        "security_tests/test_workflow_v20.py"
+      ],
+      "interrupt_location": "agentic_memory/privacy/lifecycle.py:62"
+    },
+    "evaluation_harness_tests": {
+      "status": "passed",
+      "tests_passed": 63,
+      "subtests_passed": 27,
+      "elapsed_seconds": 13.37,
+      "command": "python -m pytest evaluation/gatemem_medical/tests"
+    }
+  }
+}

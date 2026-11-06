@@ -1,3 +1,6 @@
+# Archived snapshots must retain the exact bytes recorded in their manifests.
+exclude: ^(versions/v19/|evaluations/v19/)
+
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

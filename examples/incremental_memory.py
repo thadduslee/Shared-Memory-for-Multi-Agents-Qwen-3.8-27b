@@ -21,7 +21,7 @@ def main(argv=None):
     parser.add_argument('--store',type=Path,required=True)
     parser.add_argument('--base-url',default=os.getenv('AMEM_LLM_BASE_URL','http://127.0.0.1:8000/v1'))
     parser.add_argument('--model',default=os.getenv('AMEM_LLM_MODEL','Qwen/Qwen3.8-27B'))
-    parser.add_argument('--permission-version',default='19',choices=['19','20'])
+    parser.add_argument('--permission-version',default='19',choices=['19','20','21'])
     args=parser.parse_args(argv)
     if args.store.exists() or args.store.with_suffix('.privacy.sqlite').exists():
         parser.error('Use a fresh store so the example starts with empty access.')
@@ -55,6 +55,7 @@ def main(argv=None):
                 # Continue storing later events without dropping possible limits.
                 updater.skip_exhausted(job['job_id'],max_attempts=2)
             if args.permission_version=='20':updater.service_pending(seconds=5)
+            elif args.permission_version=='21':updater.service_pending(max_batches=1)
         result=PermissionQueryService(updater).answer('coordinator','When and where is the project meeting?',model)
         print(json.dumps(result['output'],indent=2))
     finally:core.close()

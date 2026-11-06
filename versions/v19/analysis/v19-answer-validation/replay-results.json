@@ -1,0 +1,453 @@
+{
+  "replays": [
+    {
+      "case": "003-05",
+      "card_sha256": "3b75ca193abdf92777de16c49c1d92608e6256ec4989f49ce61b57fed7b91562",
+      "saved_authorized_packet_records": 4,
+      "historical_answer_action": "answer",
+      "replayed_action": "no_memory",
+      "call_stages": [
+        "answer_v19",
+        "verify_answer_v19"
+      ],
+      "receipt": {
+        "version": "v19-answer-evidence:1",
+        "mode": "enforce",
+        "enforced": true,
+        "generator_id": "test:answer",
+        "verifier_id": "test:answer",
+        "generation_calls": 1,
+        "verification_calls": 1,
+        "policy_calls": 1,
+        "verifier_seconds": 0.045407744124531746,
+        "repair_count": 1,
+        "regeneration_calls": 0,
+        "rejected_claims": 5,
+        "false_rejection": null,
+        "adjudication_required": true,
+        "status": "verified",
+        "final_digest": "b043897dbb720ed404ae19890ec4123fdde7ff67ded66467402ba10f35cad448",
+        "requests": [
+          {
+            "request_id": "r0",
+            "status": "irrelevant",
+            "verdict": "irrelevant",
+            "reason": "irrelevant",
+            "supporting_claim_ids": [],
+            "evidence": []
+          }
+        ],
+        "claims": [
+          {
+            "claim_id": "c0",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c1",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:dce8f1eb6282d58413bd73934d33b1af192d7464feb4746f0b87029f163d587d",
+                "start": 0,
+                "end": 66
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c2",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:39265acdf11128e008aaa02024244fa59b316fad806996ae82c115ff670c44f5",
+                "start": 0,
+                "end": 73
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c3",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:560c596fe54f54d46fe6099aed495f5bd1933e53ccf2bcec80443978f63a89ef",
+                "start": 0,
+                "end": 14
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c4",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e0",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:dce8f1eb6282d58413bd73934d33b1af192d7464feb4746f0b87029f163d587d",
+                "start": 0,
+                "end": 66
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e1",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:39265acdf11128e008aaa02024244fa59b316fad806996ae82c115ff670c44f5",
+                "start": 0,
+                "end": 73
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e2",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:560c596fe54f54d46fe6099aed495f5bd1933e53ccf2bcec80443978f63a89ef",
+                "start": 0,
+                "end": 14
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e3",
+            "request_ids": [
+              "r0"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          }
+        ],
+        "selected_claim_ids": [],
+        "seconds": 0.09915443975478411
+      },
+      "limits": "Scripted semantic verdict over saved authorized packet; no real-model quality or changed historical score claim."
+    },
+    {
+      "case": "003-07",
+      "card_sha256": "21dcec0c881c5b4d5c928a637f7789158387de19d1da6851df23fc52a5d0c904",
+      "saved_authorized_packet_records": 4,
+      "historical_answer_action": "answer",
+      "replayed_action": "no_memory",
+      "call_stages": [
+        "answer_v19",
+        "verify_answer_v19"
+      ],
+      "receipt": {
+        "version": "v19-answer-evidence:1",
+        "mode": "enforce",
+        "enforced": true,
+        "generator_id": "test:answer",
+        "verifier_id": "test:answer",
+        "generation_calls": 1,
+        "verification_calls": 1,
+        "policy_calls": 1,
+        "verifier_seconds": 0.002086346037685871,
+        "repair_count": 1,
+        "regeneration_calls": 0,
+        "rejected_claims": 5,
+        "false_rejection": null,
+        "adjudication_required": true,
+        "status": "verified",
+        "final_digest": "b043897dbb720ed404ae19890ec4123fdde7ff67ded66467402ba10f35cad448",
+        "requests": [
+          {
+            "request_id": "r0",
+            "status": "irrelevant",
+            "verdict": "irrelevant",
+            "reason": "irrelevant",
+            "supporting_claim_ids": [],
+            "evidence": []
+          },
+          {
+            "request_id": "r1",
+            "status": "irrelevant",
+            "verdict": "irrelevant",
+            "reason": "irrelevant",
+            "supporting_claim_ids": [],
+            "evidence": []
+          }
+        ],
+        "claims": [
+          {
+            "claim_id": "c0",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              },
+              {
+                "evidence_id": "note:permission-view:dce8f1eb6282d58413bd73934d33b1af192d7464feb4746f0b87029f163d587d",
+                "start": 0,
+                "end": 66
+              },
+              {
+                "evidence_id": "note:permission-view:39265acdf11128e008aaa02024244fa59b316fad806996ae82c115ff670c44f5",
+                "start": 0,
+                "end": 73
+              },
+              {
+                "evidence_id": "note:permission-view:560c596fe54f54d46fe6099aed495f5bd1933e53ccf2bcec80443978f63a89ef",
+                "start": 0,
+                "end": 14
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c1",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:dce8f1eb6282d58413bd73934d33b1af192d7464feb4746f0b87029f163d587d",
+                "start": 0,
+                "end": 66
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c2",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c3",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:39265acdf11128e008aaa02024244fa59b316fad806996ae82c115ff670c44f5",
+                "start": 0,
+                "end": 73
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "c4",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:560c596fe54f54d46fe6099aed495f5bd1933e53ccf2bcec80443978f63a89ef",
+                "start": 0,
+                "end": 14
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e0",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:dce8f1eb6282d58413bd73934d33b1af192d7464feb4746f0b87029f163d587d",
+                "start": 0,
+                "end": 66
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e1",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:6677b0dbdddd2d72b1cd65e219d0d0739e548adbf15e74a349f3302de9b649a0",
+                "start": 0,
+                "end": 57
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e2",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:39265acdf11128e008aaa02024244fa59b316fad806996ae82c115ff670c44f5",
+                "start": 0,
+                "end": 73
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          },
+          {
+            "claim_id": "e3",
+            "request_ids": [
+              "r0",
+              "r1"
+            ],
+            "evidence": [
+              {
+                "evidence_id": "note:permission-view:560c596fe54f54d46fe6099aed495f5bd1933e53ccf2bcec80443978f63a89ef",
+                "start": 0,
+                "end": 14
+              }
+            ],
+            "relevant": false,
+            "entailed": true,
+            "current": true,
+            "reason": "irrelevant"
+          }
+        ],
+        "selected_claim_ids": [],
+        "seconds": 0.06333148013800383
+      },
+      "limits": "Scripted semantic verdict over saved authorized packet; no real-model quality or changed historical score claim."
+    }
+  ],
+  "summary": {
+    "version": "v19-answer-evidence:1",
+    "queries": 2,
+    "modes": {
+      "enforce": 2,
+      "shadow": 0
+    },
+    "generation_calls": 2,
+    "verification_calls": 2,
+    "policy_calls": 2,
+    "regeneration_calls": 0,
+    "repair_count": 2,
+    "rejected_claims": 10,
+    "verifier_seconds_total": 0.04749409016221762,
+    "verifier_seconds_mean": 0.02374704508110881,
+    "repair_frequency": 1.0,
+    "validation_unavailable": 0,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  },
+  "real_model_validation": "still needed",
+  "paid_benchmark_launched": false
+}

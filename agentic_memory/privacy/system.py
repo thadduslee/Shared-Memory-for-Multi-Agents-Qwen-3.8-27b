@@ -641,6 +641,8 @@ class PrivacyMemorySystem:
         # approval is mandatory, even when there are no searchable records.
         if processor is not None and processor != self.embedder.processor_id:
             raise AccessDenied('Unsupported query processor')
+        from .retrieval_v21 import configuration, tag_score
+        v21_config=configuration(self,routes)
         with self.transaction():
             candidates = []
             for route in sorted(routes):
@@ -666,24 +668,37 @@ class PrivacyMemorySystem:
                 scores = []
                 for facet, qv in zip(facets, vectors):
                     terms = set(re.findall(r'\w+', facet.lower())) - {'what','which','who','where','when','why','how','the','a','an','are','is','was','were','as','of','for','now','current','active','latest','should','at','this','that','point','and','to','in','on','it','i','we','you','me','my','our'}
-                    scores.append(sum(x*y for x,y in zip(vector, qv)) + .55 * len(words & terms) / max(1,len(terms)))
+                    scores.append(sum(x*y for x,y in zip(vector, qv)) +
+                        (v21_config.lexical_weight if v21_config else .55) * len(words & terms) / max(1,len(terms)) +
+                        (v21_config.tag_weight * tag_score(view,terms) if v21_config else 0.))
                 turn = view['attributes'].get('sequence', 0)
                 ranked.append({'score': max(scores), 'scores': scores, 'view': view, 'words': words, 'sequence': turn})
             latest = max((r['sequence'] for r in ranked), default=0) or 1
             for record in ranked:
-                bonus = .18 * record['sequence'] / latest if current_query else 0
+                bonus = (v21_config.recency_weight if v21_config else .18) * record['sequence'] / latest if current_query else 0
                 record['score'] += bonus
                 record['scores'] = [s + bonus for s in record['scores']]
             ranked.sort(key=lambda r: (-r['score'], r['view']['id']))
             selected, bases, texts = [], set(), set()
+            dedup_boundaries={}
+            def dedup_boundary(view):
+                if view['id'] not in dedup_boundaries:
+                    from .deduplication_v21 import boundary
+                    dedup_boundaries[view['id']]=boundary(self,view)
+                return dedup_boundaries[view['id']]
             def select(record):
                 view = record['view']
                 base = view['payload'].get('base_memory_id', view['id'])
                 text = ' '.join(view['payload'].get('text', '').lower().split())
-                if base in bases or text in texts:
+                if v21_config:
+                    from .deduplication_v21 import equivalent
+                    key=dedup_boundary(view)
+                    if key and any(key==dedup_boundary(old['view']) and
+                        equivalent(self,view,old['view'],semantic=v21_config.semantic_dedup) for old in selected):return False
+                elif base in bases or text in texts:
                     return False
                 # Similar overlays and verbatim repetitions cannot consume the budget.
-                if any(len(record['words'] & old['words']) / max(1,len(record['words'] | old['words'])) > .90 for old in selected):
+                if not v21_config and any(len(record['words'] & old['words']) / max(1,len(record['words'] | old['words'])) > .90 for old in selected):
                     return False
                 bases.add(base); texts.add(text); selected.append(record)
                 return True
@@ -700,7 +715,7 @@ class PrivacyMemorySystem:
                 if current_query and budget >= 8:
                     recent = 0
                     for record in sorted(ranked,key=lambda r:(-r['sequence'],-r['score'],r['view']['id'])):
-                        if recent >= min(4,budget//3) or len(selected) >= budget:break
+                        if recent >= min(v21_config.recent_reserve if v21_config else 4,budget//3) or len(selected) >= budget:break
                         if record['sequence'] and select(record):recent += 1
                 for record in ranked:
                     if len(selected) >= budget: break
@@ -797,7 +812,7 @@ class PrivacyMemorySystem:
         return {'evidence':evidence,'input_ids':list(dict.fromkeys(inputs))}
 
     def process(self, ctx, processor, input_ids, system, payload, *, schema=None):
-        from .workflow_v20 import enabled
+        from .workflow_features import enabled
         scoped_version=getattr(processor,'_permission_version',None)
         if scoped_version and enabled(scoped_version) and 'permission_version' not in payload:
             payload={**payload,'permission_version':scoped_version,'stage':payload.get('stage','enrichment')}
@@ -819,7 +834,7 @@ class PrivacyMemorySystem:
             failure=type(exc).__name__
             raise
         finally:
-            from .workflow_v20 import enabled
+            from .workflow_features import enabled
             if enabled(payload.get('permission_version','')) and self.db.execute(
                     "SELECT 1 FROM privacy.sqlite_master WHERE name='workflow_timings'").fetchone():
                 compartments=self._sessions[ctx.session_id][2]

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="2.566" timestamp="2026-11-03T18:25:21.017109+08:00" hostname="maplecg-fisher"><testcase classname="security_tests.test_sliding_permissions.SlidingPermissionTests" name="test_existing_legacy_grants_cannot_silently_lose_their_scope_limits" time="0.230"><failure message="AssertionError: &quot;fresh compartment/store&quot; does not match &quot;V19 attribution requires a fresh store/compartment or explicit attribution_migration=quarantine_existing on a working copy&quot;">ValueError: V19 attribution requires a fresh store/compartment or explicit attribution_migration=quarantine_existing on a working copy
+
+During handling of the above exception, another exception occurred:
+
+self = &lt;test_sliding_permissions.SlidingPermissionTests testMethod=test_existing_legacy_grants_cannot_silently_lose_their_scope_limits&gt;
+
+    def test_existing_legacy_grants_cannot_silently_lose_their_scope_limits(self):
+        c=fixtures.PermissionInference();c.setUp()
+        try:
+            c.establish()
+&gt;           with self.assertRaisesRegex(ValueError,'fresh compartment/store'):
+E           AssertionError: "fresh compartment/store" does not match "V19 attribution requires a fresh store/compartment or explicit attribution_migration=quarantine_existing on a working copy"
+
+security_tests/test_sliding_permissions.py:277: AssertionError</failure></testcase></testsuite></testsuites>

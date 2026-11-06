@@ -1,0 +1,432 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 2,
+    "scored_checkpoints": 2,
+    "expected_boundaries": 567,
+    "completed_boundaries": 2,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 67,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 2,
+    "n_utility": 1,
+    "n_utility_scored": 1,
+    "n_privacy": 1,
+    "n_privacy_scored": 1,
+    "n_privacy_context_scored": 1,
+    "n_privacy_e2e_scored": 1,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.0,
+    "utility_accuracy": 0.0,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 1.0,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-03T11:36:51.511501+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:5a2e52bcc3bdfac769c0d3e4791cb4fa58c54d556df36eabe3985d557e3aae2f",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:5a2e52bcc3bdfac769c0d3e4791cb4fa58c54d556df36eabe3985d557e3aae2f",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": true,
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 9
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 10.507,
+    "permission_total": 1650.748,
+    "source_ingest": 0.389,
+    "source_total": 1661.649
+  },
+  "governance": {
+    "candidate_versions": 8,
+    "decisions": 8,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 55,
+      "quarantined": 12
+    },
+    "attempts": 87,
+    "record_versions": 19,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:11cb9a0fe260ccfc196b04fc198fab79df98b5a4b9bb1b627039520ac1250b34",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:12da103e4cc7717e47add73732a8471654fbfcb005fc1341b55eb6a4107687c1",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:1ed9cb69217c5ddf5613a6656a62050348fbc2e668d091523e9ee498b120b75d"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:b35feff572b567ada94090e4ac8e39d89e815c7083d0a2a0fbd9dc81e87521cb",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:982c359bb3cd798f8862289cea89ae905650a21064820593032608b10a79ae66",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:3712a9053fac0cbfb34b8c13cd04a63b55b9600febc4fde6cca5b6ca8b985a09"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:fdb3a9b8eb579e384d9af268158207a57fd1b00f4010a9a8236a0e80643a8fd3",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:73d34bc08837f388f4403111539606edf8440dd693498b652abee542e8b2ebc8",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:92480e077bcb50a3ce8e3386ec987e85870dffca90a09ac740093af36f52fa94"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:0f6e1bbb83f283ced7dc41529be5b70077399bbc75809ede7fe5d2fa769f1e12",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:7aceb51a604d87771399370809b2b17c97ccc9f7705e5a58d4caa2a5143840e2",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:7028525c10352fd8e71019b4edc03b3bfc1cb65844567262e4389ec58e569e64"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:399530b664bdb5f1ba07502f14ec749a230c70397929d52cb9a3435fa00cbcb2",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:5a70ee19c9d03ef52768dba6e3e7f96a4558084f2fa4fb623bbbab1ee6873883",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:2ac35ffae412bc4e5598065b2cceef8349e349b0b690d31efb532089850115f9"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:b8a54a5227929f5d73ca704c6be4208fc108eeaa729bcfc26e6bb907ab43efdb",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:5cdd2d05d715c72eeb431aa64a694cc9a09e738ee0227444e6e2ca029b975403",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:d5b52f6775d1d760305228c38d461decfc19969c3091d3747432002497942f21"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:30f4d9a6d98b46938f507d43d1bb0c8cf486ead40aecc2aac26cced77a773b85",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:dcad142e07a43534e6d290317d146fcf6a7836dd762884712f39a1d3c45b23d4",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:e389fb69e5af406ec035cfe9dbccb344aa0a2b24a7aabcff3fe1e3ef3599bd57"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:7e8e36a621715c244500f7cf8a00a0d626f2102edba73ae0964a440203214724",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:844712645be371589f618525154f32de9263d6abb0ddcb89db0fa062ac75ba2f",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:24f893741cb113ffc2708ee94ca23f5cb5b9b204d66e396da2f6fc7a947c21fe"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:31afa5ddfd79693a70a4852e98b04afe5f910daf43b98522fa4cf7fde389aa50",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:905f29ffb1e20593f3d41eeb2ea0b2b91686f19900078df1dcdc5912e6a242e8",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:b0b60e2e3fc5c27ab1543621dbcb2aa98ebd4372ca3f42ef327a28fb91f708be"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:2eff4562ccf556eb71920e87d2119f3e95437992956180b71529e2ac24c31c1b",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:e1ec2d3c57fd5a157e3fc12b324e6a976c1ec55a5518bd7d16ae0f3e9e899881",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:7bcaed44d81797a7248aadb8b108f4d1399e09007e10b79c78e008e5a0574124"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:e41f778cd32843d72e6fb8d22bf1f2075a84c9c98db44f8e7592c57983946074",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:3ee9cd6ec96ffd0fecb38344cadde63f405c03cf11a8cd002283b225f589e29b",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:a0c8c7541b1d36a8734a0b1ad273430cafb98decfc77b2254994d8cb82ae7c8c"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:5a2e52bcc3bdfac769c0d3e4791cb4fa58c54d556df36eabe3985d557e3aae2f",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:f51b5044e7c2c4020240ecef00bc80718f905b8a64a0c46e4a4c093496339e36",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNASSESSED",
+          "control_hold_ids": [
+            "control-hold:0341b70afc98689d0936ed7e8662a47aafad0e8454cf7d954888fcdc8a0b5045"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "validated_intersection_v19",
+          "limit": 2,
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      }
+    ],
+    "active_scoped_control_holds": 12,
+    "complete": false,
+    "runtime_assignments": 3,
+    "indexed_resources": 9,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.299,
+    "latency_seconds": {
+      "mean": 24.800735211792166,
+      "median": 18.010765317827463,
+      "p90": 48.04811683949083,
+      "max": 77.93591982405633
+    },
+    "processing_seconds": 1628.536,
+    "model_seconds": 1623.584,
+    "mean_seconds_per_source": 24.307,
+    "measured_attempts": 87,
+    "prompt_tokens": 721447,
+    "completion_tokens": 38736,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 1623.584,
+    "outside_model_seconds": 38.065,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 24.483254268486053
+      },
+      "51_to_100": {
+        "count": 17,
+        "mean": 25.73450269210426
+      },
+      "after_100": {
+        "count": 0,
+        "mean": null
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 67
+    },
+    "candidate_states": {
+      "active": 57
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 79,
+        "timed_calls": 79,
+        "seconds": 1568.1497361818328,
+        "model_seconds": 1563.4426813172176,
+        "prompt_tokens": 699166,
+        "completion_tokens": 37296
+      },
+      "incremental_binding_repair": {
+        "calls": 8,
+        "timed_calls": 8,
+        "seconds": 60.3859022911638,
+        "model_seconds": 60.141775094904006,
+        "prompt_tokens": 22281,
+        "completion_tokens": 1440
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 9,
+      "restricted": 6,
+      "scope_or_subject_excluded": 16
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 12,
+    "checkpoints_with_evidence": 0,
+    "checkpoints_without_evidence": 2,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 0,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 0,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:1",
+    "queries": 2,
+    "modes": {
+      "enforce": 2,
+      "shadow": 0
+    },
+    "generation_calls": 0,
+    "verification_calls": 0,
+    "policy_calls": 2,
+    "regeneration_calls": 0,
+    "repair_count": 0,
+    "rejected_claims": 0,
+    "verifier_seconds_total": 0,
+    "verifier_seconds_mean": null,
+    "repair_frequency": 0.0,
+    "validation_unavailable": 0,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

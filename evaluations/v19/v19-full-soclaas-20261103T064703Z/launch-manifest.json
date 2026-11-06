@@ -1,0 +1,36 @@
+{
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "revision": "02a7c8f643f0cdf5697ec3cbc5cf5bbe64705b5b",
+  "session": "v19-full-soclaas-20261103T064703Z",
+  "plan": {
+    "episodes": 21,
+    "checkpoints": 579,
+    "boundaries": 567,
+    "query_boundaries": 549,
+    "source_turns": 4294,
+    "new_data_at_every_boundary": true
+  },
+  "fresh_stores": true,
+  "resume": false,
+  "evolution": true,
+  "permission_mode": "inference",
+  "permission_version": "19",
+  "answer_validation_mode": "enforce",
+  "chat_endpoint": "http://localhost:19000/v1",
+  "models": {
+    "source": "qwen3.8:27b",
+    "generation": "qwen3.8:27b",
+    "verifier": "qwen3.8:27b",
+    "evolution": "qwen3.8:27b",
+    "judge": "qwen3.8:27b"
+  },
+  "embedding": "local pinned all-MiniLM-L6-v2",
+  "judge_independent_model": false,
+  "judge_separate_prompt_and_call": true,
+  "local_gpu_allocation": null,
+  "supersedes": "v19-full-gpu345-20261103T061619Z",
+  "host_events": false,
+  "dependency_registry": false,
+  "transport_tests": "23 passed; keyless requests omit Authorization header; configured keys unchanged",
+  "preflight_status": "pending SOCLAAS upstream readiness"
+}

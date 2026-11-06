@@ -253,7 +253,9 @@ class CompletionProcessor:
         self.last_wire_key_ordering=False
         self.transport_attempts=0
         call_started=time.monotonic()
+        canonical_schema=schema
         restore=lambda value:value
+        restore_keys=lambda value:value
         if (schema and set(schema.get('properties',{}))=={'updates','edges'}
                 and isinstance(payload.get('notes'),list)):
             payload,schema,restore=compact_note_references(payload,schema)
@@ -276,11 +278,11 @@ class CompletionProcessor:
             except ValueError:raise ProcessorConfigurationFailure('AMEM_INCREMENTAL_MAX_TOKENS must be a positive integer') from None
             if incremental_limit<=0:raise ProcessorConfigurationFailure('AMEM_INCREMENTAL_MAX_TOKENS must be a positive integer')
             output_limit=min(output_limit,incremental_limit)
-        from .workflow_v20 import enabled
+        from .workflow_features import enabled
         v20=enabled(payload.get('permission_version',''))
         if v20:
             stage=payload.get('stage','')
-            ceiling=512 if stage in {'policy_classification','query_policy'} else 4096 if stage in {'answer','answer_render','judge'} else 2048
+            ceiling=512 if stage in {'policy_classification','query_policy','retrieval_rerank'} else 4096 if stage in {'answer','answer_render','judge'} else 2048
             output_limit=min(output_limit,ceiling)
         self.last_effective_limits={'stage':payload.get('stage','query'),'max_tokens':output_limit,
                                     'timeout_seconds':self.timeout}
@@ -297,8 +299,6 @@ class CompletionProcessor:
                     'evidence_roles' in schema.get('properties',{})):
                 wire_schema,restore_keys=ordered_response_keys(schema)
                 body['response_format']['json_schema']['schema']=wire_schema
-                restore_values=restore
-                restore=lambda value:restore_values(restore_keys(value))
                 body['messages'][0]['content'] += (
                     '\nUse the exact output property names declared in the JSON schema. '
                     'Their numeric prefixes preserve the required order; after each prefix, '
@@ -367,7 +367,9 @@ class CompletionProcessor:
                     failure.details={'max_tokens':output_limit,'finish_reason':'length',
                         'instruction':'Return a complete compact JSON response; shorten reasons and omit prose.'}
                     raise failure
-                result=restore(parse_object(value['choices'][0]['message']['content']))
+                # Restore property names first, but keep citation/note aliases
+                # until the full model-facing schema has been checked locally.
+                result=restore_keys(parse_object(value['choices'][0]['message']['content']))
                 if local_schema:
                     if int(family)>=18:
                         # These are diagnostic annotations, never field scopes,
@@ -431,6 +433,18 @@ class CompletionProcessor:
                         failure=ProcessorContractFailure('Structured output failed local schema validation: '+' | '.join(issues))
                         # Protected repair input only. This draft has not passed
                         # the grammar and can never be published or executed.
+                        failure.details={'schema_path':list(exc.absolute_path),'rejected_output':result}
+                        raise failure from None
+                result=restore(result)
+                if local_schema and canonical_schema is not schema:
+                    # Validate the expansion too. Neither a bad alias nor a
+                    # restoration bug may introduce a record outside the
+                    # original caller's exact evidence contract.
+                    try:Draft202012Validator(canonical_schema).validate(result)
+                    except ValidationError as exc:
+                        path='/'.join(map(str,exc.absolute_path))
+                        failure=ProcessorContractFailure(
+                            'Restored output failed canonical schema validation: '+path+': '+exc.validator)
                         failure.details={'schema_path':list(exc.absolute_path),'rejected_output':result}
                         raise failure from None
                 return result

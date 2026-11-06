@@ -1,0 +1,402 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "official_predictions": 11,
+    "scored_checkpoints": 11,
+    "expected_boundaries": 567,
+    "completed_boundaries": 10,
+    "expected_source_turns": 4294,
+    "ingested_source_turns": 134,
+    "exact_checkpoint_coverage": false,
+    "exact_source_coverage": false,
+    "all_boundaries_complete": false
+  },
+  "metrics": {
+    "n_checkpoints": 11,
+    "n_utility": 6,
+    "n_utility_scored": 6,
+    "n_privacy": 5,
+    "n_privacy_scored": 5,
+    "n_privacy_context_scored": 5,
+    "n_privacy_e2e_scored": 5,
+    "n_safety": 0,
+    "n_safety_scored": 0,
+    "n_safety_context_scored": 0,
+    "n_safety_e2e_scored": 0,
+    "action_accuracy": 0.7272727272727273,
+    "utility_accuracy": 0.16666666666666666,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": null,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": null,
+    "over_refusal_rate": 0.16666666666666666,
+    "compliance_utility_score": null,
+    "compliance_utility_e2e_score": null,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": false,
+  "agent_input_contract": "raw-stream-v1",
+  "implementation_revisions": [
+    {
+      "previous_code_digest": "8f53735acee702f784c6d47c6328e5435920727a3c6752d2a0cf297a72d5a16a",
+      "code_digest": "6901e0e84ab5a03c78bfd7650f0b6268019b125afa99efb7d0b75e01994aafa5",
+      "at": "2026-11-02T12:14:16.050235+00:00",
+      "preserved_predictions": 0,
+      "completed_boundaries": 0
+    }
+  ],
+  "mixed_implementation": true,
+  "recovery": {
+    "at": "2026-11-02T13:04:51.216226+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:40b5407a7622608bcc2923ba46a644e9bde1a4ceb909443f78d9639da25deb2f",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:40b5407a7622608bcc2923ba46a644e9bde1a4ceb909443f78d9639da25deb2f",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": true,
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 340
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 71.87,
+    "permission_total": 6865.922,
+    "source_ingest": 0.37,
+    "source_total": 6938.246
+  },
+  "governance": {
+    "candidate_versions": 216,
+    "decisions": 216,
+    "recipient_decisions": 0,
+    "erasure_selectors": 0
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 132,
+      "quarantined": 6
+    },
+    "attempts": 254,
+    "record_versions": 231,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:e21961fe28b7ba9881a85c5beccd1bc737d2ffef0dc2ed6fc79ff4580f8bba5d",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:7f9e62b179785b0edf021ee9ad88c5d82c2768b8a2fa46b798a8bf7545efc9df",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:a260c5af628ec850a5c4fce0daddc3c64c2166381ee250fbd7c4b802f52d7fcf"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: c/1/existing: enum; allowed=own6,None",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:4af1f3e793afb6dbcb68d7e45c81883185b69a46b4decdc5c9b63ac53927a90a",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:39fc709588117a6d837dd329a31604b12a845485c8a51e8c98de0352f6216729",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:7b16cde91163af44b2050774aa64870ef2dab545ec9dfee51280f1485950bea8"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: : additionalProperties; allowed keys=o,via,s,e,i,work,r,v | via: enum; allowed=request",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "host-recovery:a29502735ecc11da7ed188e158e94e6f241ccb33927d57c26a482920e8388795:attempt:1",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:39fc709588117a6d837dd329a31604b12a845485c8a51e8c98de0352f6216729",
+        "validation": {
+          "accepted": false,
+          "error": "PermissionProposalRejected",
+          "reason": "Structured output failed local schema validation: p: enum; allowed=p2,p4,p5 | s: enum; allowed=p6 | q: enum; allowed=s1,s2,s3,s4,s5",
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "host-recovery:a29502735ecc11da7ed188e158e94e6f241ccb33927d57c26a482920e8388795:attempt:2",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:39fc709588117a6d837dd329a31604b12a845485c8a51e8c98de0352f6216729",
+        "validation": {
+          "accepted": false,
+          "error": "PermissionProposalRejected",
+          "reason": "Structured output failed local schema validation: q: enum; allowed=s1,s2,s3,s4,s5",
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:7be188a72852ad727cfe34ca86013930040d373d55ec906ecd4f4ef54c5c3a85",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:9ae4ac69c03cf3fbe45f0f736b790292165690e01b6bb8226806a68692a264cd",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:c4714629cc6f46a818b66fed21fbc618e485597804d5c6e163fc89c739ce1ee3"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "Structured output failed local schema validation: s: enum; allowed=p4",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      },
+      {
+        "id": "permission-job:40b5407a7622608bcc2923ba46a644e9bde1a4ceb909443f78d9639da25deb2f",
+        "compartment": "encounter:7dff65b90722fe1e47d3ef87",
+        "source_id": "permission-source:1820891ee81a1c1c526bc1eb64999d0ec1c2864030ec4f1e9bf6e750095829dd",
+        "validation": {
+          "accepted": false,
+          "control_hold_ids": [
+            "control-hold:75ed627c641086e76feef818f9e49a7d6b1d7c2f7f7947a41899a125e5bd9f89"
+          ],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "authenticated_control_authority",
+          "limit": 2,
+          "reason": "'grant:a53485d7ccb39178b2a462b7'",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": true
+        }
+      }
+    ],
+    "active_scoped_control_holds": 2,
+    "complete": false,
+    "runtime_assignments": 33,
+    "indexed_resources": 340,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.841,
+    "latency_seconds": {
+      "mean": 51.77795697970372,
+      "median": 59.967612660024315,
+      "p90": 73.38227560836822,
+      "max": 93.79996866360307,
+      "p95": 77.17148187290877
+    },
+    "processing_seconds": 6817.838,
+    "model_seconds": 6790.733,
+    "mean_seconds_per_source": 49.405,
+    "measured_attempts": 254,
+    "prompt_tokens": 3072019,
+    "completion_tokens": 149036,
+    "maintenance_model_seconds": 1.725,
+    "total_source_model_seconds": 6792.458,
+    "outside_model_seconds": 145.788,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 40.11748980622738,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 54.30759933555499,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      },
+      "after_100": {
+        "count": 34,
+        "mean": 65.20564053503468,
+        "basis": "v21 source processing including maintenance; no turn deadline"
+      }
+    },
+    "historical_incomplete": true
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "incomplete": 1,
+      "complete": 133
+    },
+    "candidate_states": {
+      "active": 129
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 142,
+        "timed_calls": 142,
+        "seconds": 3016.8839689223096,
+        "model_seconds": 3000.6702801054344,
+        "prompt_tokens": 2259060,
+        "completion_tokens": 59413
+      },
+      "incremental_binding_repair": {
+        "calls": 110,
+        "timed_calls": 110,
+        "seconds": 3754.721199383959,
+        "model_seconds": 3744.0667970450595,
+        "prompt_tokens": 763846,
+        "completion_tokens": 88846
+      },
+      "incremental_repair": {
+        "calls": 2,
+        "timed_calls": 2,
+        "seconds": 46.23246488813311,
+        "model_seconds": 45.996255912818015,
+        "prompt_tokens": 49113,
+        "completion_tokens": 777
+      },
+      "binding_maintenance": {
+        "calls": 1,
+        "timed_calls": 1,
+        "seconds": 1.7406733697280288,
+        "model_seconds": 1.7254881300032139,
+        "prompt_tokens": 818,
+        "completion_tokens": 35
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 343,
+      "restricted": 48,
+      "scope_or_subject_excluded": 1613
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 6,
+    "checkpoints_with_evidence": 8,
+    "checkpoints_without_evidence": 3,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 8173,
+    "pending_binding_reviews_at_latest_publication": 397,
+    "historical_pending_pair_observations": 8173,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false,
+    "historical_extraction_jobs": {
+      "complete": 133,
+      "incomplete": 1
+    },
+    "unattributed_candidates": 1
+  },
+  "workflow_v21": {
+    "latency_seconds": {
+      "model_call": {
+        "count": 285,
+        "total": 7104.901453893632,
+        "mean": 24.92947878559169,
+        "p50": 22.092542415484786,
+        "p90": 44.66648457571864,
+        "p95": 45.72373534087092,
+        "max": 53.336265563964844
+      },
+      "host_recovery": {
+        "count": 6,
+        "total": 65.96549424063414,
+        "mean": 10.994249040105691,
+        "p50": 9.302291139028966,
+        "p90": 19.944677946157753,
+        "p95": 19.944677946157753,
+        "max": 19.944677946157753
+      },
+      "answer_request": {
+        "count": 11,
+        "total": 157.65974086895585,
+        "mean": 14.332703715359623,
+        "p50": 12.48714068904519,
+        "p90": 29.030643249861896,
+        "p95": 35.184290420264006,
+        "max": 35.184290420264006
+      },
+      "judge_request": {
+        "count": 11,
+        "total": 75.55779239255935,
+        "mean": 6.868890217505395,
+        "p50": 7.64619155228138,
+        "p90": 12.473992589861155,
+        "p95": 15.493467557244003,
+        "max": 15.493467557244003
+      },
+      "source_foreground": {
+        "count": 134,
+        "total": 6938.246235280298,
+        "mean": 51.77795697970372,
+        "p50": 59.94979309197515,
+        "p90": 73.38227560836822,
+        "p95": 77.37234000209719,
+        "max": 93.79996866360307
+      }
+    },
+    "model_calls_by_phase": {
+      "foreground": 251,
+      "host": 6,
+      "answer": 17,
+      "judge": 11
+    },
+    "model_tokens": {
+      "prompt_tokens": 3120286,
+      "completion_tokens": 156730
+    },
+    "model_cost": 0.0,
+    "unreported_usage_calls": 0,
+    "transport_retries": 0,
+    "max_foreground_model_calls_per_source": 2,
+    "recovery_jobs": {
+      "complete": 4,
+      "needs_review": 1,
+      "pending": 3
+    },
+    "total_work_seconds": 7171.463768541813,
+    "source_seconds": {
+      "count": 134,
+      "mean": 51.77795697970372,
+      "p50": 59.98543222807348,
+      "p95": 77.17148187290877,
+      "max": 93.79996866360307,
+      "over_30_seconds": 105
+    },
+    "hard_turn_deadline_seconds": null,
+    "metric_semantics": {
+      "total_work_seconds": "source including its maintenance + external host work + answer including diagnostics + judge + enrichment; nested model time not added twice"
+    },
+    "scheduling": "v19-two-semantic-responses-including-maintenance",
+    "deduplication": "bounded-same-authority-provenance-only",
+    "stage_diagnostics": {
+      "attribution_unknown_observations": 6,
+      "pending_binding_pairs_observations": 1746,
+      "scope_exclusions_observations": 11690,
+      "checkpoints_with_holds": 11,
+      "checkpoints_without_evidence": 3
+    }
+  }
+}

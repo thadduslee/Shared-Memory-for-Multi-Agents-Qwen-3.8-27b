@@ -265,6 +265,16 @@ def export_run(run_dir,journal,events,episodes,checkpoints,scorer,core,offline):
             report['workflow_v20']['latency_seconds'].get('source_foreground',{}).get('p95'))
         for values in permission_stats.get('latency_by_episode_position',{}).values():
             values['basis']='foreground; source_including_host reported in workflow_v20'
+    versions={r[0].split('-',1)[0] for r in core.db.execute('SELECT version FROM permission_configurations')}
+    if versions=={'21'}:
+        from agentic_memory.privacy.workflow_v21 import summary as v21_summary
+        from agentic_memory.privacy.diagnostics_v21 import summarize_predictions
+        report.pop('workflow_v20',None)
+        report['workflow_v21']=v21_summary(core)
+        report['workflow_v21']['stage_diagnostics']=summarize_predictions(predictions)
+        report['permission_inference']['latency_seconds']['p95']=report['workflow_v21']['source_seconds']['p95']
+        for values in permission_stats.get('latency_by_episode_position',{}).values():
+            values['basis']='v21 source processing including maintenance; no turn deadline'
     write_json(run_dir/'summary.json',report)
     write_json(run_dir/'boundary_results.json',done)
     return report
@@ -281,13 +291,16 @@ def main(argv=None):
     parser.add_argument('--preflight',action='store_true')
     parser.add_argument('--plan',action='store_true')
     parser.add_argument('--offline',action='store_true',help='Explicit functional smoke mode: fake processors; no model-quality claims')
-    parser.add_argument('--allow-paid-api',action='store_true',help='Explicit opt-in for a v20 live run; omit for local-only validation')
+    parser.add_argument('--allow-paid-api',action='store_true',help='Explicit opt-in for a V20/V21 live run; omit for local-only validation')
     parser.add_argument('--max-boundaries',type=int,help='Additional boundaries this invocation; omitted means the full schedule')
     parser.add_argument('--max-checkpoints',type=int,help='Stop after this many chronological official predictions (including prior predictions on resume)')
     parser.add_argument('--no-evolution',action='store_true',help='Ablation only; full evolution is on by default')
     parser.add_argument('--permission-mode',choices=['inference','baseline'],default='inference',
                         help='Raw-stream inference (default) or metadata-assisted oracle baseline (not a raw-stream benchmark)')
-    parser.add_argument('--permission-version',default='19',help='19: trusted personal OWNS read access with explicit grants for other readers (default); earlier versions retain historical inference contracts')
+    parser.add_argument('--v21-tag-weight',type=float,default=.12,help='V21 cheap tag-score ablation; zero disables it')
+    parser.add_argument('--v21-context-tokens',type=int,default=6000,help='V21 conservative complete-evidence byte/token budget')
+    parser.add_argument('--v21-rerank-candidates',type=int,default=0,help='V21 optional single-batch reranking; zero adds no call')
+    parser.add_argument('--permission-version',default='19',help='21: AIM-inspired service/retrieval on V19 scheduling, without turn deadlines; 19: trusted personal OWNS with scoped grants (default); earlier versions retain their historical contracts')
     parser.add_argument('--episode-limit',type=int,help='Evaluate the first N episodes by ID; report exact coverage of that subset')
     args=parser.parse_args(argv)
     if args.max_checkpoints is not None and args.max_checkpoints<1:parser.error('--max-checkpoints must be positive')
@@ -309,11 +322,11 @@ def main(argv=None):
             'query_boundaries':sum(bool(e['checkpoint_ids']) for e in events),
             'source_turns':sum(len(e['turns']) for e in episodes),'new_data_at_every_boundary':True},indent=2))
         return 0
-    from agentic_memory.privacy.workflow_v20 import enabled
+    from agentic_memory.privacy.workflow_features import enabled
     if enabled(args.permission_version) and not args.offline and not args.allow_paid_api:
-        parser.error('V20 paid API calls are disabled. Use --offline for local checks; --allow-paid-api requires separate authorization.')
+        parser.error('V20/V21 paid API calls are disabled. Use --offline for local checks; --allow-paid-api requires separate authorization.')
     if enabled(args.permission_version) and args.permission_mode!='inference':
-        parser.error('The v20 workflow requires raw-stream inference mode.')
+        parser.error('V20/V21 requires raw-stream inference mode.')
     embedder,llm,judge=processors(args.offline)
     if args.preflight:
         print('Embedding:',embedder.space_id,'dimension',len(embedder.encode(['memory architecture'])[0]),flush=True)
@@ -366,7 +379,7 @@ def main(argv=None):
             manifest.update(personal_access_policy='trusted-personal-owns-across-tasks-v1',
                 ownership_actions=['search','read','derive'],
                 max_semantic_calls_per_turn_including_maintenance=2)
-        if int(family)>=20:
+        if int(family)==20:
             manifest['judge_schema_mode']=os.getenv('AMEM_JUDGE_SCHEMA_MODE','strict')
             manifest['review_schema_mode']=os.getenv('AMEM_REVIEW_SCHEMA_MODE','strict')
             manifest['judge_max_tokens']=min(getattr(judge,'max_tokens',2048),4096)
@@ -380,6 +393,17 @@ def main(argv=None):
                 'host_schedule':'one-batch-between-source-turns-v1',
                 'comparison_policy':'all-disclosed-subjects-required',
                 'cache_version':'semantic-authority-v20'}
+    if family=='21':
+        from dataclasses import asdict
+        from agentic_memory.privacy.retrieval_v21 import RetrievalConfig
+        retrieval_config=RetrievalConfig(tag_weight=args.v21_tag_weight,
+            max_context_tokens=args.v21_context_tokens,rerank_candidates=args.v21_rerank_candidates)
+        manifest['workflow_v21']={'base':'v19','source_deadline_seconds':None,'answer_deadline_seconds':None,
+            'foreground_semantic_calls_including_maintenance':2,'recovery':'explicit-batches-no-clock-deadline',
+            'retrieval':asdict(retrieval_config),'diagnostics':'host-only-stage-state-v1'}
+        manifest['review_schema_mode']=os.getenv('AMEM_REVIEW_SCHEMA_MODE','strict')
+        manifest['workflow_v21']['policy_max_tokens']=512
+        manifest['workflow_v21']['answer_max_tokens']=4096
     original_manifest,revisions=reconcile_manifest(journal,manifest,resume=args.resume,
                                                    previous_code_digest=args.resume_code_revision)
     # Preserve both the original experiment identity and its explicit lineage.
@@ -415,6 +439,9 @@ def main(argv=None):
                     permission_version=args.permission_version,
                     progress=lambda message:print(message,flush=True),retry=retry)
             else:adapters[eid]=MedicalFixtureAdapter(core,by_id[eid],routes)
+            if args.permission_version.split('-',1)[0]=='21':
+                from agentic_memory.privacy.retrieval_v21 import configure
+                configure(adapters[eid].updater,retrieval_config)
             core.register_processor(adapters[eid].service,llm)
         return adapters[eid]
     try:

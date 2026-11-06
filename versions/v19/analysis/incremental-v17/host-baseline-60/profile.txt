@@ -1,0 +1,33 @@
+         31491857 function calls (25542391 primitive calls) in 12.436 seconds
+
+   Ordered by: cumulative time
+   List reduced from 506 to 25 due to restriction <25>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   12.436   12.436 /home/thaddus/a-mem-variant/security_tests/test_incremental_permissions.py:159(turn)
+        1    0.001    0.001   12.433   12.433 /tmp/amem-v16-host-reference/agentic_memory/privacy/permissions.py:795(update)
+        1    0.002    0.002   12.432   12.432 /tmp/amem-v16-host-reference/agentic_memory/privacy/incremental.py:789(run)
+4810095/5914    5.342    0.000    9.968    0.002 /usr/lib/python3.10/copy.py:128(deepcopy)
+344572/2059    1.354    0.000    9.954    0.005 /usr/lib/python3.10/copy.py:227(_deepcopy_dict)
+        6    0.007    0.001    9.783    1.631 /tmp/amem-v16-host-reference/agentic_memory/privacy/incremental.py:194(pairs)
+     1810    0.074    0.000    9.750    0.005 /tmp/amem-v16-host-reference/agentic_memory/privacy/incremental.py:130(pair_key)
+795106/19959    0.802    0.000    9.726    0.000 /usr/lib/python3.10/copy.py:201(_deepcopy_list)
+        1    0.005    0.005    1.692    1.692 /tmp/amem-v16-host-reference/agentic_memory/privacy/permissions.py:1780(_publish)
+        5    0.002    0.000    1.350    0.270 /tmp/amem-v16-host-reference/agentic_memory/privacy/governance.py:74(activate)
+        5    0.017    0.003    1.072    0.214 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:184(install_assignment)
+     3321    0.123    0.000    1.007    0.000 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:292(_bind_assignments)
+    43950    0.053    0.000    0.887    0.000 /usr/lib/python3.10/json/__init__.py:299(loads)
+    43950    0.076    0.000    0.820    0.000 /usr/lib/python3.10/json/decoder.py:332(decode)
+  9737283    0.789    0.000    0.789    0.000 {method 'get' of 'dict' objects}
+  1139678    0.575    0.000    0.766    0.000 /usr/lib/python3.10/copy.py:243(_keep_alive)
+    43950    0.698    0.000    0.698    0.000 /usr/lib/python3.10/json/decoder.py:343(raw_decode)
+  7091648    0.561    0.000    0.561    0.000 {built-in method builtins.id}
+        3    0.002    0.001    0.491    0.164 /tmp/amem-v16-host-reference/agentic_memory/privacy/incremental.py:733(validate_bindings)
+       12    0.003    0.000    0.479    0.040 /tmp/amem-v16-host-reference/agentic_memory/privacy/permissions.py:1143(_validate)
+     8155    0.013    0.000    0.395    0.000 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:88(snapshot_read)
+     1638    0.002    0.000    0.376    0.000 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:464(require)
+1943/1638    0.012    0.000    0.374    0.000 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:386(allowed)
+    64101    0.353    0.000    0.353    0.000 {method 'execute' of 'sqlite3.Connection' objects}
+     1277    0.011    0.000    0.342    0.000 /tmp/amem-v16-host-reference/agentic_memory/privacy/system.py:468(_resource)
+
+

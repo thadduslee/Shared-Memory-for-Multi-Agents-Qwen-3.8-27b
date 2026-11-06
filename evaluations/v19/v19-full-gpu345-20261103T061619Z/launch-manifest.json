@@ -1,0 +1,37 @@
+{
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "revision": "aebd680143286fb652f9b1735e5799ad314df17e",
+  "session": "v19-full-gpu345-20261103T061619Z",
+  "plan": {
+    "episodes": 21,
+    "checkpoints": 579,
+    "boundaries": 567,
+    "query_boundaries": 549,
+    "source_turns": 4294,
+    "new_data_at_every_boundary": true
+  },
+  "permission_mode": "inference",
+  "permission_version": "19",
+  "answer_validation_mode": "enforce",
+  "evolution": true,
+  "scoring": "independent local Qwen/Qwen3-14B",
+  "models": {
+    "memory": "/home/thaddus/.cache/huggingface/hub/models--Qwen--Qwen3.8-27B/snapshots/1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+    "judge": "/home/thaddus/.cache/huggingface/hub/models--Qwen--Qwen3-14B/snapshots/40c069824f4251a91eefaf281ebe4c544efd3e18"
+  },
+  "gpu_mapping": {
+    "memory": [
+      4,
+      5
+    ],
+    "judge": [
+      3
+    ]
+  },
+  "fresh_stores": true,
+  "resume": false,
+  "host_events": false,
+  "dependency_registry": false,
+  "queue": "Wait for GPUs 3,4,5 to each use <512 MiB and <10% utilization for 3 consecutive checks",
+  "result_directory": "/home/thaddus/v19-evaluations/v19-full-gpu345-20261103T061619Z/results"
+}

@@ -1,0 +1,32 @@
+{
+  "created_utc": "20261103T153843Z",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "frozen_source": "/home/thaddus/v19-evaluations/v19-privacy-fallback-gpu45-20261103T153843Z/frozen-source",
+  "base_revision": "02a7c8f643f0cdf5697ec3cbc5cf5bbe64705b5b",
+  "includes_uncommitted_changes": true,
+  "change": "bounded independent privacy assessment after exhausted V19 processing",
+  "privacy_policy_version": "v19-independent-privacy-fallback:1",
+  "source_prompt_version": "permission-inference-v19-independent-privacy-v1",
+  "assessment_prompt_version": "privacy-assessment-v19-independent-v1",
+  "tmux_session": "v19-privacy-fallback-gpu45-20261103t153843z",
+  "gpus": [
+    4,
+    5
+  ],
+  "fresh_stores": true,
+  "episodes": 21,
+  "boundaries": 567,
+  "checkpoints": 579,
+  "source_turns": 4294,
+  "evolution": true,
+  "answer_validation": "enforce",
+  "memory_model": "Qwen/Qwen3.8-27B",
+  "judge_model": "Qwen/Qwen3.8-27B",
+  "judge_uses_same_model_as_memory": true,
+  "port": 18150,
+  "serving_configuration": "copied unchanged from /home/thaddus/v19-evaluations/v19-fixed-gpu45-20261103T110826Z",
+  "decoder_compatibility": "run-local uniqueItems projection; application validators retain full schema",
+  "raw_stream_only": true,
+  "task_registry_or_host_events": false,
+  "paid_api": false
+}
