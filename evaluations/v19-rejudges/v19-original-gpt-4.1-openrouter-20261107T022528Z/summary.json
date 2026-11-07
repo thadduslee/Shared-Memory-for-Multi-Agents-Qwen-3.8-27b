@@ -1,0 +1,62 @@
+{
+  "mode": "independent-rejudge",
+  "source": {
+    "run_dir": "/home/thaddus/a-mem-variant/evaluations/v19/v19-model-controls-full-soclaas-20261104T103839Z/results",
+    "manifest_sha256": "18cc73b960ea550c557af0d5f6d7daf4715f045ca90752fd5ad1fcb6c94b70ab",
+    "official_predictions_sha256": "b6b28d680ccef27ad89224851128d994a21a5bd2356b454fc0c89f27d336e333"
+  },
+  "judge": {
+    "provider": "openrouter",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "openai/gpt-4.1",
+    "temperature": 0,
+    "max_tokens": 2048,
+    "workers": 6,
+    "semantic_context_review": true,
+    "provider_preferences": {
+      "require_parameters": true,
+      "sort": "latency"
+    }
+  },
+  "scoring_sha256": "28bc22ecc11cd03bc7292667441acb80229af3f3d1c98d3177458c1ea979aefa",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "rejudged_checkpoints": 579,
+    "exact_checkpoint_coverage": true
+  },
+  "metrics": {
+    "n_checkpoints": 579,
+    "n_utility": 210,
+    "n_utility_scored": 210,
+    "n_privacy": 192,
+    "n_privacy_scored": 192,
+    "n_privacy_context_scored": 192,
+    "n_privacy_e2e_scored": 192,
+    "n_safety": 177,
+    "n_safety_scored": 177,
+    "n_safety_context_scored": 177,
+    "n_safety_e2e_scored": 177,
+    "action_accuracy": 0.6563039723661486,
+    "utility_accuracy": 0.7380952380952381,
+    "privacy_leakage_rate": 0.0625,
+    "deletion_leakage_rate": 0.01694915254237288,
+    "privacy_answer_leakage_rate": 0.0625,
+    "deletion_answer_leakage_rate": 0.01694915254237288,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0625,
+    "deletion_e2e_leakage_rate": 0.01694915254237288,
+    "over_refusal_rate": 0.1,
+    "compliance_utility_score": 0.6802360774818403,
+    "compliance_utility_e2e_score": 0.6802360774818403,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "complete": true
+}
