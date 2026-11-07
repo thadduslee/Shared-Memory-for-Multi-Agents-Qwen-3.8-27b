@@ -1,0 +1,16 @@
+{
+  "stage": "A",
+  "batch": 6,
+  "base_revision": "e4a095f",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "permission_family": "19",
+  "focused_tests_passed": 22,
+  "command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest security_tests/test_task_contracts_v19.py -q --tb=short",
+  "validation": "offline scripted binding reviews; no real-model calls",
+  "real_model_validation": "still needed",
+  "historical_runs_modified": false,
+  "notes": [
+    "Three separate configured domains: adherence, parcel pickup and device repair.",
+    "Initial generic revocation double could not satisfy the retained Batch 1 control review. Regression now checks that denial and the terminal receipt survive bounded repair failure; no earlier guard was relaxed."
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "batch": 6,
+  "client_date": "2026-11-03",
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "branch": "v19-recipient-revocation",
+  "base_revision": "e4a095f2779a61e920192f5e05fa513571139fd7",
+  "stage_a_revision": "4f11fe49eca63edee9dcd4ab58d428f2fa4b8771",
+  "permission_family": "19",
+  "runtime_file_sha256": {
+    "agentic_memory/privacy/task_contracts_v19.py": "9301be04dc7c841eedd7627c69389119fd6a5263ffdbd74bd7669c96114b87ee",
+    "agentic_memory/privacy/host_tasks_v19.py": "75475d8187f29be2babb3974e526d3901e4224473d1ec3589ff3a0e35402ac9a",
+    "agentic_memory/privacy/permissions.py": "671fd6fec9e672d54cc8278c47bda6722a284295fb0563001d900aa0bd37681e",
+    "agentic_memory/privacy/permission_state.py": "c7df451de273e0607dd49dffec9d97427b37a303c14b7798ad0e302a4f4c9d93",
+    "agentic_memory/privacy/incremental.py": "18283d8a1a9cb1dd03cb6ea0ce0cf6ae075ccef83502f6d1243fdb347a13e744",
+    "evaluation/gatemem_medical/inference_adapter.py": "a7c3c903981da0931b70cac081eff876d835c7fb048238a2310167099bb28f00"
+  },
+  "implementation_digest": "67fbfe46efb56fd0bfc07514d42deaef0e90a964f4c7330d5f90cf631cc2afad",
+  "stage_a_checkpoint": {
+    "new_tests_passed": 22,
+    "details": "stage-a-validation.json"
+  },
+  "final_batch_tests": {
+    "passed": 59,
+    "failed": 0,
+    "duration_seconds": 21.85,
+    "command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest -o addopts='' -q security_tests/test_task_contracts_v19.py security_tests/test_host_tasks_v19.py --tb=short"
+  },
+  "broader_offline": {
+    "passed": 552,
+    "failed": 0,
+    "deselected": 1,
+    "subtests_passed": 33,
+    "duration_seconds": 295.37,
+    "command": "/home/thaddus/gatemem/.venv-nb/bin/python -m pytest -o addopts='' -q --tb=short security_tests/test_task_contracts_v19.py security_tests/test_host_tasks_v19.py security_tests/test_attribution_v19.py security_tests/test_recipient_revocation_v19.py security_tests/test_acceptance_repair_v19.py security_tests/test_personal_ownership_v19.py security_tests/test_scoped_holds_v19.py security_tests/test_incremental_permissions.py security_tests/test_selective_memory_v17.py security_tests/test_compact_permissions_v18.py security_tests/test_governance_and_erasure.py security_tests/test_privacy_core.py security_tests/test_two_store.py security_tests/test_permission_inference.py evaluation/gatemem_medical/tests -k 'not test_generic_integration_can_explicitly_leave_ownership_disabled'",
+    "known_baseline_exclusion": "security_tests/test_personal_ownership_v19.py::test_generic_integration_can_explicitly_leave_ownership_disabled",
+    "notes": [
+      "The final batch-only run includes an additional cross-registry-rule ambiguity regression added after collection of the broad suite.",
+      "An earlier broad attempt observed the known ownership failure and a transient runner resume implementation-hash mismatch while files were edited. The successful final broad run retained the resume check and passed it."
+    ]
+  },
+  "replay": {
+    "command": "PYTHONPATH=. /home/thaddus/gatemem/.venv-nb/bin/python analysis/v19-task-contracts/replay_boundary.py",
+    "results": "boundary-offline.json",
+    "cases": [
+      "001-07",
+      "006-04"
+    ],
+    "source_calls": [
+      4,
+      2
+    ],
+    "trusted_host_events_manufactured": false,
+    "semantic_reconstruction": false,
+    "changed_historical_scores_claimed": false
+  },
+  "verification": [
+    "offline scripted semantic/binding tests",
+    "read-only card input-boundary replay in fresh temporary stores",
+    "compileall",
+    "git diff --check"
+  ],
+  "domains": [
+    "adherence",
+    "parcel pickup",
+    "device repair"
+  ],
+  "real_model_validation": "still needed: source extraction, accepted-service interpretation, individual binding quality, coverage and latency",
+  "original_checkout_modified": false,
+  "historical_runs_modified": false,
+  "v20_v21_workflows_imported": false
+}

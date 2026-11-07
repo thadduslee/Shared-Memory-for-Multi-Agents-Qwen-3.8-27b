@@ -1,0 +1,132 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "answer",
+        "answer_redacted",
+        "refuse",
+        "no_memory"
+      ]
+    },
+    "answer": {
+      "type": "string",
+      "maxLength": 128000
+    },
+    "answer_structured": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "current_items": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "string",
+                "maxLength": 48000
+              }
+            },
+            "continuing_items": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "string",
+                "maxLength": 48000
+              }
+            },
+            "retired_items": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "string",
+                "maxLength": 48000
+              }
+            },
+            "conditions_and_exceptions": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "string",
+                "maxLength": 48000
+              }
+            },
+            "supporting_items": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "string",
+                "maxLength": 48000
+              }
+            }
+          },
+          "required": [
+            "current_items",
+            "continuing_items",
+            "retired_items",
+            "conditions_and_exceptions",
+            "supporting_items"
+          ]
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {},
+          "required": []
+        }
+      ]
+    },
+    "used_record_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": [
+          "authorized-record"
+        ]
+      }
+    },
+    "retrieved_memory": {
+      "type": "array",
+      "maxItems": 384,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "memory_id": {
+            "type": "string",
+            "enum": [
+              "authorized-record"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "span": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "required": [
+          "memory_id",
+          "text",
+          "span"
+        ]
+      }
+    }
+  },
+  "required": [
+    "action",
+    "answer",
+    "answer_structured",
+    "used_record_ids",
+    "retrieved_memory"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "workspace": "/home/thaddus/a-mem-v19-fixes",
+  "base_revision": "02a7c8f643f0cdf5697ec3cbc5cf5bbe64705b5b",
+  "uncommitted_changes": true,
+  "checks": {
+    "patient_symptoms_answered": true,
+    "patient_plan_answered": true,
+    "family_scheduling_answered": true,
+    "family_symptoms_protected": true
+  },
+  "passed": true,
+  "reports": {
+    "regression-tests.xml": {
+      "tests": 890,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "final-focused-tests.xml": {
+      "tests": 122,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "permission-regressions.xml": {
+      "tests": 130,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "answer-validation-tests.xml": {
+      "tests": 55,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "test_counts_overlap": true,
+  "live_source_report": "live-check.json",
+  "final_query_report": "answer-recheck.json",
+  "final_query_only_code_changes": [
+    "agentic_memory/privacy/answer_validation_v19.py"
+  ],
+  "source_budgets_reset": false,
+  "historical_benchmark_untouched": true,
+  "full_benchmark_rerun": false,
+  "runtime_sha256": {
+    "agentic_memory/privacy/governance.py": "428db43dd3e853c287a019902263625ec507a2b0c01fbe190809d3e2b9286d61",
+    "agentic_memory/privacy/incremental_v18.py": "6000a4f18a7dafbd7fda4085e98b0f57ca4b5569bc0b1b6777899b748ba7e00c",
+    "agentic_memory/privacy/fact_candidates.py": "f4d09180b69a2221fde3099f4cfb77985b8b1fcd7f7f4a822aab066c0544ef9b",
+    "agentic_memory/privacy/system.py": "035c1638030db3e3dfb84415896f7f804a46645764ff3fd6390e74788a738f80",
+    "agentic_memory/privacy/answering.py": "74377f1fc245fde235be406d1bfbf2fea54dcb5d50274e6081ed811fa2d812a7",
+    "agentic_memory/privacy/attribution_v19.py": "f769db258284e0478fc37e2315d5972c0b28e6ba94e56ec0a624ba22d73a8ac2",
+    "agentic_memory/privacy/incremental_wire.py": "9d31196afc92b26d80af42235a89e1f567c57564423ddfd42111047815d9555b",
+    "agentic_memory/privacy/answer_validation_v19.py": "a63234aa8956201441c248cf825c0e880f7311558485b1526be438e2c5e44c3c",
+    "agentic_memory/privacy/lifecycle.py": "402f46fc42224bb18cf8dd7d7b0eaabe80b828af8e0ed8a001fc192da9d17c71",
+    "agentic_memory/privacy/scheduled_forgetting.py": "62f17022c1693fa08f14fcd675dbea60b04b8befc3e06bd1f4b0e8fa07c1cd52",
+    "agentic_memory/privacy/scoped_holds_v19.py": "0430d63006bf08e5f79f2209a37bd3552b4f7c07d3868b6b807b5b88bfe6bcc6",
+    "agentic_memory/privacy/permission_context.py": "00a6504fca6dfb7e3e43a011bf13fd24502870398d70141771a4114f72d80573",
+    "agentic_memory/privacy/learning.py": "5d5cb52436e495c08f45ef0859252ae95a9b5d6d500686c9207ea30024b3996a",
+    "agentic_memory/privacy/processors.py": "cad84be324e12a8f965121892c26843444a4979e0895e2e289db4c87ddb5458e",
+    "agentic_memory/privacy/host_tasks_v19.py": "75475d8187f29be2babb3974e526d3901e4224473d1ec3589ff3a0e35402ac9a",
+    "agentic_memory/privacy/permissions.py": "e9da954e21af3759348e8b0312d4c21e9c480e6010f5a21baa5bad3b3e1d40fe",
+    "agentic_memory/privacy/incremental_v17.py": "785b5318a51bce8bd4ac68fd6666017ae27a3460cdc0a1c9be4ed6c25b27d8ec",
+    "agentic_memory/privacy/__init__.py": "21db21cf978fc0cf8b2ee19efb75bb0662ee1b07a48bd7172161099f691c0922",
+    "agentic_memory/privacy/evolution.py": "7558dbc6207f8e92391eb13397c07fd5fff67c9a06c6f85f0bd05b9cdd571751",
+    "agentic_memory/privacy/revocation_v19.py": "b1f545556cfd97acb7407be9be4beceb2fb7a29f4fac5910496f0b062fae867d",
+    "agentic_memory/privacy/control_holds.py": "b62a4f2b8ce7923b3cd713c3bad7824fdfefbcb66c9aa11e914994baafca8cac",
+    "agentic_memory/privacy/incremental_policy.py": "28abd2282204ac937a2634176f72b13f0b5838e27ee1095cffcb6a7f66736ef4",
+    "agentic_memory/privacy/incremental.py": "dcb26ad107bffc84a5ab7f44dccb9b3b11ec1f20a41b6c89557efd273748066b",
+    "agentic_memory/privacy/task_tracking.py": "29da0d20b9c973a182b0cd29fc0cd58c56780f45755f8f106bbc5fd993e67acf",
+    "agentic_memory/privacy/incremental_routing.py": "92c1e4c61c2cac84f236fbb84a8ea80e3288382c7f47cdcd90562b672a7f7a7a",
+    "agentic_memory/privacy/migrate.py": "8e3216021432d32f22361d35e85f54e695be7a4b76e7b0014bb7e1cb652d7833",
+    "agentic_memory/privacy/permission_state.py": "c7df451de273e0607dd49dffec9d97427b37a303c14b7798ad0e302a4f4c9d93",
+    "agentic_memory/privacy/ownership.py": "bc29776f85efe4f3ec1dc51784a1c86b0884ce2ab16cbfe3df6adffe5df086c6",
+    "agentic_memory/privacy/ingestion.py": "ddd0616c5418c7119dd83b8fe1b474e068c2318ae5dab56546b2054c32f04567",
+    "agentic_memory/privacy/storage.py": "21155b94d5105093dd04306ccef9fd72d98b177dceeb194106363b8e327e0e80",
+    "agentic_memory/privacy/acceptance_v19.py": "bb9b3b7667c949f6c3f5f38feff06dd4629d18ec47da3d15a1ca1a3cd55cd4d2",
+    "agentic_memory/privacy/task_contracts_v19.py": "9301be04dc7c841eedd7627c69389119fd6a5263ffdbd74bd7669c96114b87ee",
+    "agentic_memory/privacy/quote_selection.py": "13eb230bbba70602bed060cb8c7fff358e00a3c0cc64026a74f0ffb3bb8b5717",
+    "agentic_memory/privacy/permission_wire.py": "f85c370b05a39bb6821d8d13757480e174ff77c10db1cb5cc73908eee9cee44c",
+    "agentic_memory/privacy/simple_permissions.py": "d5619c4f1cd79bcb4dba100653c6fa685dd7480a2375f348cbf77a615f49deea"
+  }
+}

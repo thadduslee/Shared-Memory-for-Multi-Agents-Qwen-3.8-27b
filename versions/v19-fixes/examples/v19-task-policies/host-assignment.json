@@ -1,0 +1,49 @@
+{
+  "event_id": "dispatch-event-001",
+  "task_id": "service-order-001",
+  "revision": 1,
+  "operation": "assign",
+  "issuer": "dispatcher",
+  "key_id": "dispatch-2026-01",
+  "namespace": "service-space",
+  "tenant": "example-tenant",
+  "authority": "verified-service-assignment",
+  "occurred_at": "2026-11-03T00:00:00+00:00",
+  "payload": {
+    "subject": "subject-1",
+    "worker": "worker-a",
+    "requester": "subject-1",
+    "beneficiary": "subject-1",
+    "task_category": "adherence_check",
+    "items": [
+      "doxylamine",
+      "pyridoxine"
+    ],
+    "activation": "2026-11-03T00:00:00+00:00",
+    "expiry": "2026-11-04T00:00:00+00:00",
+    "closed_categories": null,
+    "excluded_categories": [],
+    "recipient_limits": [
+      "worker-a",
+      "worker-b"
+    ],
+    "authority_envelope": {
+      "subject": "subject-1",
+      "worker": "worker-a",
+      "actions": [
+        "read",
+        "search",
+        "derive"
+      ],
+      "categories": [
+        "adherence",
+        "regimen",
+        "instructions",
+        "updates",
+        "followup"
+      ],
+      "activation": "2026-11-03T00:00:00+00:00",
+      "expiry": "2026-11-04T00:00:00+00:00"
+    }
+  }
+}

@@ -1,0 +1,217 @@
+{
+  "kind": "bounded local-model check; not a benchmark score",
+  "turns": [
+    {
+      "turn": 1,
+      "speaker": "person-a",
+      "text": "My name is Ada Vale. I've had discomfort since last night.",
+      "seconds": 45.69
+    },
+    {
+      "turn": 2,
+      "speaker": "person-b",
+      "text": "My name is Bea Reed.",
+      "seconds": 30.15
+    },
+    {
+      "turn": 3,
+      "speaker": "person-c",
+      "text": "My name is Quinn Lake. How are you feeling today?",
+      "seconds": 45.776
+    },
+    {
+      "turn": 4,
+      "speaker": "person-a",
+      "text": "I have a headache.",
+      "seconds": 36.835
+    },
+    {
+      "turn": 5,
+      "speaker": "person-c",
+      "text": "The current plan is to rest and return tomorrow.",
+      "seconds": 26.793
+    },
+    {
+      "turn": 6,
+      "speaker": "person-a",
+      "text": "Bea Reed may read my appointment time and location only. She must not receive my symptoms or treatment details.",
+      "seconds": 151.445
+    },
+    {
+      "turn": 7,
+      "speaker": "person-c",
+      "text": "The follow-up appointment is Tuesday at 4 PM in room 12.",
+      "seconds": 24.986
+    }
+  ],
+  "queries": [
+    {
+      "requester": "person-a",
+      "query": "What symptoms did I report?",
+      "seconds": 0.835,
+      "output": {
+        "action": "no_memory",
+        "answer": "I don't have that information.",
+        "answer_structured": {},
+        "retrieved_memory": [],
+        "used_record_ids": []
+      },
+      "input_manifest": {
+        "query_scope": "authenticated-requester-only",
+        "memory_ids": [],
+        "answer_decision": [
+          "missing"
+        ],
+        "answer_validation": {
+          "version": "v19-answer-evidence:1",
+          "mode": "enforce",
+          "enforced": true,
+          "generator_id": "vllm:qwen",
+          "verifier_id": "vllm:qwen",
+          "generation_calls": 0,
+          "verification_calls": 0,
+          "policy_calls": 1,
+          "verifier_seconds": 0.0,
+          "repair_count": 0,
+          "regeneration_calls": 0,
+          "rejected_claims": 0,
+          "false_rejection": null,
+          "adjudication_required": false,
+          "status": "no_evidence",
+          "claims": [],
+          "selected_claim_ids": [],
+          "seconds": 0.8020162535831332,
+          "final_digest": "b043897dbb720ed404ae19890ec4123fdde7ff67ded66467402ba10f35cad448"
+        },
+        "processing": {
+          "unresolved_attributions": 3,
+          "attribution_policy_version": "v19-disclosed-subjects:1",
+          "source_events": 7,
+          "extraction_receipts": 7,
+          "extraction_complete": true,
+          "incomplete_extractions": 0,
+          "rejected_relationships": 0,
+          "live_candidates": 6,
+          "bound_candidates": 3,
+          "active_assignments": 3,
+          "failure_holds": 1,
+          "scoped_control_holds": 1,
+          "binding_decisions": 3,
+          "pending_binding_reviews": 0,
+          "semantic_stages": {
+            "combined_incremental": {
+              "calls": 8,
+              "elapsed_s": 344.3810042012483
+            },
+            "incremental_repair": {
+              "calls": 3,
+              "elapsed_s": 16.592062642797828
+            }
+          },
+          "authorization_diagnoses": {},
+          "no_assignment_decisions": 0,
+          "excluded_binding_decisions": 0,
+          "answer_validation": {
+            "mode": "enforce",
+            "version": "v19-answer-evidence:1"
+          },
+          "task_contracts_v19": {
+            "enabled": false,
+            "dependency_policy": null,
+            "dialogue_receipts": 0,
+            "host_receipts": 0,
+            "host_integration": "disabled",
+            "host_events_available": false,
+            "real_model_validation": "needed",
+            "input_contract": "raw-stream-v1"
+          }
+        }
+      },
+      "context_complete": false
+    },
+    {
+      "requester": "person-a",
+      "query": "What is my current plan?",
+      "seconds": 0.87,
+      "output": {
+        "action": "no_memory",
+        "answer": "I don't have that information.",
+        "answer_structured": {},
+        "retrieved_memory": [],
+        "used_record_ids": []
+      },
+      "input_manifest": {
+        "query_scope": "authenticated-requester-only",
+        "memory_ids": [],
+        "answer_decision": [
+          "missing"
+        ],
+        "answer_validation": {
+          "version": "v19-answer-evidence:1",
+          "mode": "enforce",
+          "enforced": true,
+          "generator_id": "vllm:qwen",
+          "verifier_id": "vllm:qwen",
+          "generation_calls": 0,
+          "verification_calls": 0,
+          "policy_calls": 1,
+          "verifier_seconds": 0.0,
+          "repair_count": 0,
+          "regeneration_calls": 0,
+          "rejected_claims": 0,
+          "false_rejection": null,
+          "adjudication_required": false,
+          "status": "no_evidence",
+          "claims": [],
+          "selected_claim_ids": [],
+          "seconds": 0.8391183093190193,
+          "final_digest": "b043897dbb720ed404ae19890ec4123fdde7ff67ded66467402ba10f35cad448"
+        },
+        "processing": {
+          "unresolved_attributions": 3,
+          "attribution_policy_version": "v19-disclosed-subjects:1",
+          "source_events": 7,
+          "extraction_receipts": 7,
+          "extraction_complete": true,
+          "incomplete_extractions": 0,
+          "rejected_relationships": 0,
+          "live_candidates": 6,
+          "bound_candidates": 3,
+          "active_assignments": 3,
+          "failure_holds": 1,
+          "scoped_control_holds": 1,
+          "binding_decisions": 3,
+          "pending_binding_reviews": 0,
+          "semantic_stages": {
+            "combined_incremental": {
+              "calls": 8,
+              "elapsed_s": 344.3810042012483
+            },
+            "incremental_repair": {
+              "calls": 3,
+              "elapsed_s": 16.592062642797828
+            }
+          },
+          "authorization_diagnoses": {},
+          "no_assignment_decisions": 0,
+          "excluded_binding_decisions": 0,
+          "answer_validation": {
+            "mode": "enforce",
+            "version": "v19-answer-evidence:1"
+          },
+          "task_contracts_v19": {
+            "enabled": false,
+            "dependency_policy": null,
+            "dialogue_receipts": 0,
+            "host_receipts": 0,
+            "host_integration": "disabled",
+            "host_events_available": false,
+            "real_model_validation": "needed",
+            "input_contract": "raw-stream-v1"
+          }
+        }
+      },
+      "context_complete": false
+    }
+  ]
+}

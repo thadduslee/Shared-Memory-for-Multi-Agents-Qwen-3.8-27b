@@ -1,0 +1,177 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "claims": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "c0": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "relevant": {
+              "type": "boolean"
+            },
+            "entailed": {
+              "type": "boolean"
+            },
+            "current": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "supported",
+                "irrelevant",
+                "not_entailed",
+                "wrong_subject",
+                "quantity_time",
+                "negation_condition",
+                "category",
+                "stale",
+                "omitted_requirement",
+                "missing",
+                "erasure_recovery",
+                "uncertain"
+              ]
+            }
+          },
+          "required": [
+            "relevant",
+            "entailed",
+            "current",
+            "reason"
+          ]
+        },
+        "e0": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "relevant": {
+              "type": "boolean"
+            },
+            "entailed": {
+              "type": "boolean"
+            },
+            "current": {
+              "type": "boolean"
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "supported",
+                "irrelevant",
+                "not_entailed",
+                "wrong_subject",
+                "quantity_time",
+                "negation_condition",
+                "category",
+                "stale",
+                "omitted_requirement",
+                "missing",
+                "erasure_recovery",
+                "uncertain"
+              ]
+            }
+          },
+          "required": [
+            "relevant",
+            "entailed",
+            "current",
+            "reason"
+          ]
+        }
+      },
+      "required": [
+        "c0",
+        "e0"
+      ]
+    },
+    "requests": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "r0": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "verdict": {
+              "type": "string",
+              "enum": [
+                "covered",
+                "missing",
+                "irrelevant",
+                "erasure_recovery"
+              ]
+            },
+            "required_groups": {
+              "type": "array",
+              "maxItems": 52,
+              "items": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 52,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "c0",
+                    "e0"
+                  ]
+                }
+              }
+            },
+            "reason": {
+              "type": "string",
+              "enum": [
+                "supported",
+                "irrelevant",
+                "not_entailed",
+                "wrong_subject",
+                "quantity_time",
+                "negation_condition",
+                "category",
+                "stale",
+                "omitted_requirement",
+                "missing",
+                "erasure_recovery",
+                "uncertain"
+              ]
+            }
+          },
+          "required": [
+            "verdict",
+            "required_groups",
+            "reason"
+          ]
+        }
+      },
+      "required": [
+        "r0"
+      ]
+    },
+    "rendering_valid": {
+      "type": "boolean"
+    },
+    "query_complete": {
+      "type": "boolean"
+    },
+    "unrepresented_requests": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 2000
+      }
+    }
+  },
+  "required": [
+    "claims",
+    "requests",
+    "rendering_valid",
+    "query_complete",
+    "unrepresented_requests"
+  ]
+}

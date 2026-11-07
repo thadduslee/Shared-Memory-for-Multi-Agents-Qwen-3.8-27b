@@ -1,0 +1,119 @@
+{
+  "method": "Immutable read-only historical SQLite plus an in-memory interpretation ledger; no processor calls or ACL publication.",
+  "historical_run": "/home/thaddus/a-mem-variant/runs/gatemem-medical-v19-openrouter-full-20261102T005006+0800",
+  "evidence_card": "/home/thaddus/a-mem-variant/analysis/v19-v21-evidence-review-20261102/cards/v19/003-02.json",
+  "evidence_card_sha256": "098e0c465056f58a02a4aa69fa9f50196981dffdd56c48acb0b85617c1e9372b",
+  "retained_prefix_sources": 44,
+  "source_id": "permission-source:f0a6c134bebccea3e0dfe5591ba2ded4afe4c0e8138259ebf2653b4143c794f5",
+  "original_intent": {
+    "acceptance": {
+      "quote": "I can make that.",
+      "source_id": "permission-source:f0a6c134bebccea3e0dfe5591ba2ded4afe4c0e8138259ebf2653b4143c794f5",
+      "spans": [
+        [
+          0,
+          16
+        ]
+      ]
+    },
+    "existing_grant": "grant:c891a05940d398c89d30e0b6",
+    "intent": "SERVICE_ACCEPTANCE",
+    "model_recipient": "scheduler_tess",
+    "offer_source_id": "permission-source:a14c5be79d4cb950c415648e53663c5f9323763b30f7f3f8cf9aacb516bd2e53",
+    "reason": "p2 accepts p8's Tuesday schedule offer",
+    "requester": "patient_jonah_singh",
+    "service": "scheduling",
+    "subject": "patient_jonah_singh"
+  },
+  "task": {
+    "acceptance": {
+      "quote": "I can make that.",
+      "source_id": "permission-source:f0a6c134bebccea3e0dfe5591ba2ded4afe4c0e8138259ebf2653b4143c794f5",
+      "spans": [
+        [
+          0,
+          16
+        ]
+      ]
+    },
+    "beneficiary": "patient_jonah_singh",
+    "expires_at": null,
+    "limits": [
+      {
+        "quote": "The Tuesday schedule is set for 8:10 AM arrival, 8:30 AM FibroScan, and 9:05 AM pharmacy teaching.",
+        "source_id": "permission-source:a14c5be79d4cb950c415648e53663c5f9323763b30f7f3f8cf9aacb516bd2e53",
+        "spans": [
+          [
+            0,
+            98
+          ]
+        ]
+      },
+      {
+        "quote": "I can make that.",
+        "source_id": "permission-source:f0a6c134bebccea3e0dfe5591ba2ded4afe4c0e8138259ebf2653b4143c794f5",
+        "spans": [
+          [
+            0,
+            16
+          ]
+        ]
+      }
+    ],
+    "offer": {
+      "quote": "The Tuesday schedule is set for 8:10 AM arrival, 8:30 AM FibroScan, and 9:05 AM pharmacy teaching.",
+      "source_id": "permission-source:a14c5be79d4cb950c415648e53663c5f9323763b30f7f3f8cf9aacb516bd2e53",
+      "spans": [
+        [
+          0,
+          98
+        ]
+      ]
+    },
+    "offer_id": "offer:60a63bc2c731b0751014f79b6d7ff7931b036ae94809ced27c1fb67ab0950556",
+    "requester": "patient_jonah_singh",
+    "service": "scheduling",
+    "subject": "patient_jonah_singh",
+    "worker": "scheduler_tess"
+  },
+  "state": "REFERENCE_REPAIR_REQUIRED",
+  "candidate_offers": [
+    {
+      "expires_at": null,
+      "id": "offer:60a63bc2c731b0751014f79b6d7ff7931b036ae94809ced27c1fb67ab0950556",
+      "limits": [
+        {
+          "quote": "The Tuesday schedule is set for 8:10 AM arrival, 8:30 AM FibroScan, and 9:05 AM pharmacy teaching.",
+          "source_id": "permission-source:a14c5be79d4cb950c415648e53663c5f9323763b30f7f3f8cf9aacb516bd2e53",
+          "spans": [
+            [
+              0,
+              98
+            ]
+          ]
+        }
+      ],
+      "offer": {
+        "quote": "The Tuesday schedule is set for 8:10 AM arrival, 8:30 AM FibroScan, and 9:05 AM pharmacy teaching.",
+        "source_id": "permission-source:a14c5be79d4cb950c415648e53663c5f9323763b30f7f3f8cf9aacb516bd2e53",
+        "spans": [
+          [
+            0,
+            98
+          ]
+        ]
+      },
+      "service": "scheduling",
+      "state": "OPEN",
+      "subject": null,
+      "worker": "scheduler_tess"
+    }
+  ],
+  "saved_existing_grant_actual_recipient": "clinician_dr_lin",
+  "saved_silent_intent_drop_rejected": "Repair must explicitly preserve or reassess the original service acceptance",
+  "limits": [
+    "Retained end-of-run audit/source rows can have been scrubbed by later erasure.",
+    "This checks interpretation preservation and source resolution, not a paid evaluation or historical utility score.",
+    "No historical artifact or score was changed."
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "batch": 4,
+  "evidence_card": "/home/thaddus/a-mem-variant/analysis/v19-v21-evidence-review-20261102/cards/v19/004-01.json",
+  "card_sha256": "0424eb4dad16bbdc2ab22b2c84a04a3d397e13405eecc482cdd77bed9b048553",
+  "method": "Read-only evidence JSON; fresh temporary SQLite; scripted V19 extraction/binding; saved identifier failures retained. No external model/network calls or historical writes.",
+  "external_model_calls": 0,
+  "scripted_successful_calls": 3,
+  "historical_action": "no_memory",
+  "original_event": {
+    "turn_id": "t039",
+    "timestamp": "2026-03-06T09:54",
+    "speaker": {
+      "principal_id": "patient_nadia_ruiz",
+      "role": "patient"
+    },
+    "turn_kind": "dialogue",
+    "text": "And I should keep the prenatal vitamin and iron?"
+  },
+  "failed_job_id": "permission-job:7c13a215b1146cff0a1e005883842793c46fdbc4a38fe405b049ed26b3668b70",
+  "original_failures": [
+    "Structured output failed local schema validation: i: enum",
+    "Structured output failed local schema validation: i: enum"
+  ],
+  "retained_attempts": 2,
+  "processing_state": "quarantined",
+  "control_assessment": {
+    "actor": "patient_nadia_ruiz",
+    "boundary": {
+      "actions": null,
+      "fields": null,
+      "recipients": null,
+      "resources": null,
+      "subjects": [
+        "patient_nadia_ruiz"
+      ],
+      "timing": {
+        "effective": "unknown"
+      },
+      "unresolved": [
+        "recipients",
+        "actions",
+        "fields",
+        "resources",
+        "timing",
+        "meaning"
+      ]
+    },
+    "contract_version": 1,
+    "history": [
+      {
+        "evidence": null,
+        "policy_version": "v19-scoped-control-holds:1",
+        "reason": "Authenticated authority ceiling; meaning not yet validated",
+        "state": "UNASSESSED"
+      },
+      {
+        "evidence": {
+          "source_digest": "4d1da82f9968f7515eb7315e952089f8f3b035481ac38d8c27d43c1cd353854b",
+          "source_id": "permission-source:09bce4627868cf1e2a6f0164e716b6f30867b7b1fe3f62a93ee1a66008ab7646",
+          "validator": "medication-question-v1"
+        },
+        "policy_version": "v19-scoped-control-holds:1",
+        "reason": "Complete original event is an ordinary medication-continuation question",
+        "state": "VALIDATED_NON_CONTROL"
+      }
+    ],
+    "job_id": "permission-job:7c13a215b1146cff0a1e005883842793c46fdbc4a38fe405b049ed26b3668b70",
+    "original": {
+      "boundary": {
+        "actions": null,
+        "fields": null,
+        "recipients": null,
+        "resources": null,
+        "subjects": [
+          "patient_nadia_ruiz"
+        ],
+        "timing": {
+          "effective": "unknown"
+        },
+        "unresolved": [
+          "recipients",
+          "actions",
+          "fields",
+          "resources",
+          "timing",
+          "meaning"
+        ]
+      },
+      "source_digest": "4d1da82f9968f7515eb7315e952089f8f3b035481ac38d8c27d43c1cd353854b"
+    },
+    "source_id": "permission-source:09bce4627868cf1e2a6f0164e716b6f30867b7b1fe3f62a93ee1a66008ab7646",
+    "state": "VALIDATED_NON_CONTROL"
+  },
+  "legacy_subject_hold_would_block": true,
+  "legacy_comparison": "Original authority-ceiling subject-wide predicate intersects Nadia; the new validated non-control creates no authorization hold.",
+  "released_current_approved_evidence": [
+    "Home BP plan recap: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily.",
+    "Sure: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily."
+  ],
+  "answer_service_output": {
+    "action": "answer",
+    "answer": "Home BP plan recap: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily. Sure: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily.",
+    "answer_structured": {},
+    "used_record_ids": [
+      "note:permission-view:68592ff42b0463e7ebfcaaf9257e38e6515fbd258308265cc2ec87192078a7fb",
+      "note:permission-view:eb02cdcdd15542bfcc84caa769686809c84c6c6402a0c05263782bea57184867"
+    ],
+    "retrieved_memory": [
+      {
+        "memory_id": "note:permission-view:68592ff42b0463e7ebfcaaf9257e38e6515fbd258308265cc2ec87192078a7fb",
+        "text": "Home BP plan recap: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily."
+      },
+      {
+        "memory_id": "note:permission-view:eb02cdcdd15542bfcc84caa769686809c84c6c6402a0c05263782bea57184867",
+        "text": "Sure: nifedipine ER 30 mg nightly, stop labetalol, check blood pressure twice daily."
+      }
+    ]
+  },
+  "required_plan_details_present": {
+    "nifedipine ER 30 mg nightly": true,
+    "stop labetalol": true,
+    "check blood pressure twice daily": true
+  },
+  "limits": "Controlled regression with scripted semantic decisions; does not rerun the historical prefix or claim a changed benchmark score."
+}
