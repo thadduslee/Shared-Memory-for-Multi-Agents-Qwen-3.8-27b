@@ -291,7 +291,7 @@ def operation_schema(schema):
     return result
 
 ATTRIBUTION_FIELDS=('information_subjects','attribution_complete','action_actors','mentioned_people',
-    'care_participants','information_types','temporary_workers','ended_workers')
+    'care_participants','information_types','temporary_workers','ended_workers','asks_for_information')
 
 
 def contract(query, schema):
@@ -568,6 +568,7 @@ def contract(query, schema):
                             for name in ('temporary_workers','ended_workers'):
                                 extra[name]={'type':'array','maxItems':8,'uniqueItems':True,
                                     'items':enum(query['bootstrap']['participants'])}
+                    if query.get('request_detection'):extra['asks_for_information']={'type':'boolean'}
                     classifications[str(segment['index'])]['properties'].update(extra)
                     classifications[str(segment['index'])]['required'].extend(extra)
             compact_schema['properties']['f']=obj(classifications)
@@ -987,6 +988,7 @@ def encode_fixture(value, query=None):
                     attribution_complete=f['kind'] not in {'context','question'},action_actors=[],mentioned_people=[])
                 if query.get('information_types'):f.update(care_participants=[],information_types=[])
                 if query.get('temporary_care'):f.update(temporary_workers=[],ended_workers=[])
+                if query.get('request_detection'):f.update(asks_for_information=False)
     operations=map_operation(value['permission_changes'])
     for op in operations:
         if int((query or {}).get('permission_version','15').split('-',1)[0])>=16 and op['o']=='grant':

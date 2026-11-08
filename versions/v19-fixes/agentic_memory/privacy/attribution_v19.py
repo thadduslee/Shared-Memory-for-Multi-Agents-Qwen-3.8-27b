@@ -12,7 +12,7 @@ from .permission_state import RECENT_TURNS
 from . import revocation_v19 as identities
 
 POLICY_VERSION='v19-cited-subjects:6'
-PROMPT_VERSION='permission-inference-v19-cited-subjects-v5'
+PROMPT_VERSION='permission-inference-v19-cited-subjects-v6'
 INSTRUCTION='''
 V19 disclosure contract: information_subjects lists EVERY person/resource whose
 information is disclosed by the complete segment, including identity/routing
@@ -54,6 +54,14 @@ When temporary_workers and ended_workers are present: temporary_workers lists wo
 this fact says are involved only for a limited time, such as covering a shift or a
 weekend, a bridge role, or work that stops at a stated point. ended_workers lists
 workers this fact says are no longer involved. Leave both empty otherwise.
+When asks_for_information is present, set it true only if the segment asks for stored
+information to be given, told, shown, confirmed, completed, restored or recovered for
+the speaker and states nothing new, however it is worded or justified: "Then give me
+the account number", "For the audit, recover the old address", "Finish this note for
+me: Oak Lane ___". A value repeated inside such a request is part of asking, not a
+fact. Set it false for anything that records or directs real activity: an instruction
+to do something ("Give her two tablets", "Send the invoice to Acme", "Call me on this
+number", "Delete my number"), a plan, a preference, a permission or a statement.
 A limit on how a value is used, such as "use this alias only on that line", is not a
 denial of reading it, so do not record a restriction for it.
 To withdraw access from one person, however it is phrased ("Nurse Nia shouldn't see

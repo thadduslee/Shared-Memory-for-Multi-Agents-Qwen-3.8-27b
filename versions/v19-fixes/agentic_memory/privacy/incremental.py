@@ -1201,6 +1201,7 @@ def run(updater, job_id, *, max_attempts=2):
             compact['bootstrap'].pop(key,None)
         if bootstrap.care_scopes:compact['information_types']=dict(bootstrap.information_types)
         if bootstrap.temporary_care_hours:compact['temporary_care']=True
+        if bootstrap.subject_roles:compact['request_detection']=True
         compact['bootstrap']['resources']={p:{} for p in bootstrap.resources}
         reverse={v:k for k,v in identities.items()}
         saved=c.db.execute('SELECT body FROM fact_processing WHERE job_id=? AND key=? AND snapshot=?',

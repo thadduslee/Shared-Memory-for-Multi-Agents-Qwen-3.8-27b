@@ -220,7 +220,8 @@ def _decode_segment(updater, source, new_source_id, sources, spans, d, bootstrap
     # being factual, even if a classifier mislabels the segment.
     asked=question_spans(source['text'])+(request_spans(source['text']) if bootstrap.subject_roles else [])
     question=any(a<right and left<b for left,right in asked)
-    if question or d['kind'] in {'question','context'}:return None
+    # The model field works in any wording or language; the pattern above is a backstop.
+    if question or d['kind'] in {'question','context'} or d.get('asks_for_information') is True:return None
     candidate={'id':candidate_id(updater.compartment,new_source_id,[a,b]),
         'source_id':new_source_id,'spans':[[a,b]],'quote':quote,'subject':subject,
         'subject_evidence':evidence,'evidence_kind':d['kind'],

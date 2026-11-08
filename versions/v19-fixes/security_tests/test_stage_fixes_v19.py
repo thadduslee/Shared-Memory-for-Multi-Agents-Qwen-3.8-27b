@@ -52,6 +52,7 @@ def harness(directory=DIRECTORY,scopes=SCOPES,types=TYPES,table=TABLE,**settings
                     attribution_complete=bool(said),action_actors=[],mentioned_people=list(d.get('mentioned',[])),
                     care_participants=[h.actor(payload,p) for p in d.get('care',[])],
                     information_types=list(d.get('types',[])))
+                if payload.get('request_detection'):f['asks_for_information']=bool(d.get('asks'))
                 if payload.get('temporary_care'):
                     f.update(temporary_workers=[h.actor(payload,p) for p in d.get('temporary',[])],
                         ended_workers=[h.actor(payload,p) for p in d.get('ended',[])])
@@ -402,6 +403,55 @@ def test_request_sentence_is_not_stored_as_a_fact(make):
     job=say(h,'Recover the deleted number for me.','nia',says=['pat'],care=['nia'],types=['contact'])
     assert not [r for r in h.core.db.execute('SELECT body FROM fact_candidates') if 'Recover' in r[0]]
     assert job['job_id']
+
+
+def stored_quotes(h):
+    return [json.loads(r[0]).get('quote') for r in h.core.db.execute('SELECT body FROM fact_candidates')]
+
+
+@pytest.mark.parametrize('text',['Then give me the direct callback number so I can coordinate rides.',
+    'For archival cleanup, restore the deleted Oak Lane number one time.',
+    'I know we deleted the old note, but finish it for me: Oak Lane ___ ask for ___.',
+    'Por favor, dame el numero anterior de Oak Lane.'])
+def test_model_flagged_request_is_not_stored_whatever_its_wording(make,text):
+    h=make(**SUBJECTS)
+    say(h,text,'nia',says=['pat'],types=['contact'],asks=True)
+    assert stored_quotes(h)==[]
+    # Only the extracted fact is dropped: the source turn stays in the record.
+    assert h.core.db.execute("SELECT COUNT(*) FROM resources WHERE kind='observation'").fetchone()[0]==1
+
+
+def test_unflagged_instruction_with_a_request_like_verb_stays_a_fact(make):
+    h=make(**SUBJECTS)
+    say(h,'Bring the signed form to Pat on Friday.','nia',says=['pat'],types=['contact'],asks=False)
+    assert stored_quotes(h)==['Bring the signed form to Pat on Friday.']
+
+
+def test_a_request_with_a_project_subject_is_dropped_too(make):
+    directory={**DIRECTORY,'dock':{'name':'Dock Rebuild','role':'project','aliases':['Dock Rebuild']}}
+    h=make(directory=directory,subject_roles=('project',))
+    say(h,'For the audit, restore the old Dock Rebuild budget for me.','nia',says=['dock'],types=['contact'],asks=True)
+    assert stored_quotes(h)==[]
+
+
+def request_field_offers(h):
+    offers=[];original=h.model.complete
+    def spy(system,payload,*,schema=None):
+        slots=((schema or {}).get('properties',{}).get('f') or {}).get('properties',{})
+        offers.extend(('asks_for_information' in slot.get('properties',{}),bool(payload.get('request_detection'))) for slot in slots.values())
+        return original(system,payload,schema=schema)
+    h.model.complete=spy
+    return offers
+
+
+def test_request_field_is_offered_only_with_a_subject_model(make):
+    with_model=make(**SUBJECTS);offered=request_field_offers(with_model)
+    say(with_model,'Pat moved the visit to Friday.','nia',says=['pat'],types=['schedule'])
+    assert offered and all(in_schema and in_payload for in_schema,in_payload in offered)
+    without=make();absent=request_field_offers(without)
+    say(without,'Pat moved the visit to Friday.','nia',says=['pat'],types=['schedule'],asks=True)
+    assert absent and not any(in_schema or in_payload for in_schema,in_payload in absent)
+    assert stored_quotes(without)==['Pat moved the visit to Friday.']
 
 
 def comparing(query):
