@@ -1,0 +1,107 @@
+{
+  "id": "parcel-dependencies",
+  "version": "1",
+  "tenant": "example-tenant",
+  "categories": {
+    "status": {
+      "description": "status for only the named task items",
+      "pattern": "{items} status: (?:ready|collected)\\.",
+      "dependencies": [
+        "location"
+      ]
+    },
+    "location": {
+      "description": "location for only the named task items",
+      "pattern": "{items} collection location: desk [0-9]+\\.",
+      "dependencies": []
+    },
+    "instructions": {
+      "description": "instructions for only the named task items",
+      "pattern": "{items} instruction: show collection code\\.",
+      "dependencies": []
+    },
+    "updates": {
+      "description": "updates for only the named task items",
+      "pattern": "{items} collection cancelled\\.",
+      "dependencies": []
+    },
+    "followup": {
+      "description": "followup for only the named task items",
+      "pattern": "{items} delivered\\.",
+      "dependencies": []
+    },
+    "social": {
+      "description": "social for only the named task items",
+      "pattern": "Social: .+",
+      "dependencies": []
+    }
+  },
+  "tasks": {
+    "parcel_pickup": {
+      "objective": "Collect the accepted parcel",
+      "prerequisite_inputs": [
+        "location"
+      ],
+      "outputs": [
+        "status"
+      ],
+      "resulting_instructions": [
+        "instructions"
+      ],
+      "updates_cancellations": [
+        "updates"
+      ],
+      "follow_through": [
+        "followup"
+      ],
+      "actions": [
+        "read",
+        "search",
+        "derive"
+      ],
+      "max_lifetime_seconds": 86400
+    }
+  },
+  "dialogue": [
+    {
+      "task_category": "parcel_pickup",
+      "offer_pattern": "I will collect (?P<items>parcel-[a-z]+)\\.",
+      "item_separator": " and ",
+      "acceptances": [
+        {
+          "pattern": "Yes, please proceed\\.",
+          "closed_categories": null,
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, status only\\.",
+          "closed_categories": [
+            "status"
+          ],
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, no instructions\\.",
+          "closed_categories": null,
+          "excluded_categories": [
+            "instructions"
+          ]
+        }
+      ]
+    }
+  ],
+  "terminal_patterns": [
+    {
+      "pattern": "Cancel task {task_id}\\.",
+      "state": "CANCELLED"
+    },
+    {
+      "pattern": "Revoke task {task_id}\\.",
+      "state": "REVOKED"
+    },
+    {
+      "pattern": "Completed task {task_id}\\.",
+      "state": "COMPLETED"
+    }
+  ]
+}

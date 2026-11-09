@@ -1,0 +1,306 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 32,
+    "official_predictions": 32,
+    "scored_checkpoints": 32,
+    "expected_boundaries": 22,
+    "completed_boundaries": 22,
+    "expected_source_turns": 240,
+    "ingested_source_turns": 240,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 32,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 13,
+    "n_safety_scored": 13,
+    "n_safety_context_scored": 13,
+    "n_safety_e2e_scored": 13,
+    "action_accuracy": 0.6875,
+    "utility_accuracy": 0.6666666666666666,
+    "privacy_leakage_rate": 0.1,
+    "deletion_leakage_rate": 0.23076923076923078,
+    "privacy_answer_leakage_rate": 0.1,
+    "deletion_answer_leakage_rate": 0.23076923076923078,
+    "privacy_context_leakage_rate": 0.1,
+    "deletion_context_leakage_rate": 0.23076923076923078,
+    "privacy_e2e_leakage_rate": 0.1,
+    "deletion_e2e_leakage_rate": 0.23076923076923078,
+    "over_refusal_rate": 0.2222222222222222,
+    "compliance_utility_score": 0.46153846153846145,
+    "compliance_utility_e2e_score": 0.46153846153846145,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-08T08:36:14.732023+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:037ad42d2251060a00540e3db0882a60a038db2cd21782895207f8c61676ed82",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:037ad42d2251060a00540e3db0882a60a038db2cd21782895207f8c61676ed82",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": false,
+    "privacy_assessment": {
+      "outcome": "SUPPORTED_CHANGES",
+      "uncertainty_released": true,
+      "verified_controls": 1,
+      "unresolved": 1,
+      "extra_model_calls": 1
+    },
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {
+      "applied": 7
+    },
+    "attempts": 7,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 28,
+      "pending": 1258,
+      "stale": 5
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 360.143,
+    "evolution_total": 619.836,
+    "permission_total": 24421.965,
+    "source_ingest": 8.981,
+    "source_total": 24791.678
+  },
+  "governance": {
+    "candidate_versions": 1127,
+    "decisions": 1127,
+    "recipient_decisions": 0,
+    "erasure_selectors": 3
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 237,
+      "quarantined": 3
+    },
+    "attempts": 376,
+    "record_versions": 1142,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:30a618b732666fe8385c87725e1b7762fabb578d0539bd90dffa1347b2a8b2cb",
+        "compartment": "encounter:cd19b2a5785803820f0eb93a",
+        "source_id": "permission-source:770c66203021aa48f707455f505310c925eb0e664e5dd8e614a1ed0b949274c9",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNRESOLVED_RELEASED",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "UNRESOLVED_RELEASED",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Meaning, recipient, scope or applicability unresolved after the bounded assessment; uncertainty hold deliberately released and established permissions remain in force.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Unresolved V19 revocation: a person cannot withdraw their own access to their own information",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:c43438afad400a552d71670fcc8be39c8800a5b14e15502810d4bb36518ba81f",
+        "compartment": "encounter:cd19b2a5785803820f0eb93a",
+        "source_id": "permission-source:47c2e27f4634233a2ef8fd0c94cfb00b7830d6ba0c3a0e5a572a12f6037b7ac0",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Unresolved V19 revocation: only the information subject can withdraw this access",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:037ad42d2251060a00540e3db0882a60a038db2cd21782895207f8c61676ed82",
+        "compartment": "encounter:cd19b2a5785803820f0eb93a",
+        "source_id": "permission-source:e6c2acf1099e2bf7fc47cb3d92051e185c6100bbd0aa855213929ec4c6cc336d",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "SUPPORTED_CHANGES",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "SUPPORTED_CHANGES",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Independently validated changes published through existing validators; unresolved portions released under established permissions.",
+            "uncertainty_released": true,
+            "verified_controls": [
+              [
+                "bridge-41"
+              ]
+            ]
+          },
+          "reason": "Erasure needs live same-subject candidates",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      }
+    ],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 11,
+    "indexed_resources": 1314,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.567,
+    "latency_seconds": {
+      "mean": 103.29865628440942,
+      "median": 80.51048125745729,
+      "p90": 192.15854547265917,
+      "max": 371.1873966315761
+    },
+    "processing_seconds": 23680.087,
+    "model_seconds": 23410.826,
+    "mean_seconds_per_source": 98.667,
+    "measured_attempts": 376,
+    "prompt_tokens": 4053041,
+    "completion_tokens": 107367,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 23410.826,
+    "outside_model_seconds": 1380.852,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 65.59708866499365
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 109.46693549292162
+      },
+      "after_100": {
+        "count": 140,
+        "mean": 114.56054500258927
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 240
+    },
+    "candidate_states": {
+      "active": 229,
+      "erased": 4
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 243,
+        "timed_calls": 243,
+        "seconds": 18755.695507572033,
+        "model_seconds": 18535.33531410899,
+        "prompt_tokens": 3714722,
+        "completion_tokens": 96367
+      },
+      "incremental_binding_repair": {
+        "calls": 130,
+        "timed_calls": 130,
+        "seconds": 4646.656725179404,
+        "model_seconds": 4598.770793336444,
+        "prompt_tokens": 289034,
+        "completion_tokens": 9963
+      },
+      "incremental_repair": {
+        "calls": 3,
+        "timed_calls": 3,
+        "seconds": 277.73504571337253,
+        "model_seconds": 276.72006446216255,
+        "prompt_tokens": 49285,
+        "completion_tokens": 1037
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 4,
+      "scope_or_subject_excluded": 201
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 3,
+    "checkpoints_with_evidence": 24,
+    "checkpoints_without_evidence": 8,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 55,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 55,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 32,
+    "modes": {
+      "enforce": 32,
+      "shadow": 0
+    },
+    "generation_calls": 23,
+    "verification_calls": 23,
+    "policy_calls": 14,
+    "regeneration_calls": 0,
+    "repair_count": 9,
+    "rejected_claims": 1,
+    "verifier_seconds_total": 2516.4130353843793,
+    "verifier_seconds_mean": 109.40926240801649,
+    "repair_frequency": 0.28125,
+    "validation_unavailable": 1,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

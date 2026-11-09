@@ -1,0 +1,320 @@
+{
+ "format": "evolving-privacy-mem-export-v1",
+ "source": "/home/thaddus/GateMem @ d3b73fe (bench subset) and /home/thaddus/a-mem-gov @ a297102 (govmem judge); see data/README.md",
+ "exported_utc": "2026-11-09T07:09:30.964962+00:00",
+ "files": [
+  {
+   "path": "README.md",
+   "sha256": "bbc5c67b81b773f345a34ac66084874957b79f619cc9dbc3399af64dbedcc599",
+   "bytes": 2285
+  },
+  {
+   "path": "gatemem/LICENSE",
+   "sha256": "78411c3c6aa9704b32c91fa74d8ba365f32514b0c5897e945a4a6f7e9483facc",
+   "bytes": 1061
+  },
+  {
+   "path": "gatemem/bench/__init__.py",
+   "sha256": "5f11cc514eeab3767c8b538df2b60a547e8d297607376385dd1481d7ddaba578",
+   "bytes": 16
+  },
+  {
+   "path": "gatemem/bench/data/education/checkpoints.jsonl",
+   "sha256": "2a372a5017a99108c83324d2fed25dbfb7797a2fb25a20fc066ed5b2d05739b5",
+   "bytes": 458194
+  },
+  {
+   "path": "gatemem/bench/data/education/episodes.jsonl",
+   "sha256": "5971478a96553c2eb18a9f1e079987275da0cddf6175e40abda8a58525e65862",
+   "bytes": 1694314
+  },
+  {
+   "path": "gatemem/bench/data/household/checkpoints.jsonl",
+   "sha256": "4692c3e1ea91be63debd7b39ccc5fc425bc1a83155c1bfb5c197ba68cefd93ae",
+   "bytes": 428315
+  },
+  {
+   "path": "gatemem/bench/data/household/episodes.jsonl",
+   "sha256": "e2bb506cc1bdc8dc7b16d4a57610147365798d03eb1c326f9197b6c6221efb6f",
+   "bytes": 1497218
+  },
+  {
+   "path": "gatemem/bench/data/medical/checkpoints.jsonl",
+   "sha256": "2447f5905081e6002f16ad14f7f7dc19e14b7181e5ac8ebd08144d68da6437a0",
+   "bytes": 361207
+  },
+  {
+   "path": "gatemem/bench/data/medical/episodes.jsonl",
+   "sha256": "d4b01f62cbd3457715b5958cf2d07d496c6e59280d28041927e2b3ab8a444b9f",
+   "bytes": 1028883
+  },
+  {
+   "path": "gatemem/bench/data/office/checkpoints.jsonl",
+   "sha256": "7186bc1dd66b493f994b802bad8817d7aa5e7a91f498d67f87410a98f8116d0c",
+   "bytes": 365996
+  },
+  {
+   "path": "gatemem/bench/data/office/episodes.jsonl",
+   "sha256": "e15797cc0ab778067e0235377a09811c73182b5e1aa28e2221adc5ef9638a409",
+   "bytes": 1300119
+  },
+  {
+   "path": "gatemem/bench/domains.py",
+   "sha256": "2822ea536ba160ced49603e58685caf085ae326a7ae0d6f8edb95693f88405e0",
+   "bytes": 10067
+  },
+  {
+   "path": "gatemem/bench/eval/__init__.py",
+   "sha256": "5f0d9e05ba748a0304d8beb865b6972d19e225cbbb9bd0dc7b151e974984af4c",
+   "bytes": 15
+  },
+  {
+   "path": "gatemem/bench/eval/metrics.py",
+   "sha256": "ad9180be5746a91f9f79e56de4b68a2405cf709ca7c04379c3e762c76648e439",
+   "bytes": 9229
+  },
+  {
+   "path": "gatemem/bench/eval/scorer.py",
+   "sha256": "847a29c8b160b199f84763b137ec867af7d8ccfdb457c22fa01d6ed123e7304a",
+   "bytes": 12935
+  },
+  {
+   "path": "govmem-strict-judge/LICENSE",
+   "sha256": "78411c3c6aa9704b32c91fa74d8ba365f32514b0c5897e945a4a6f7e9483facc",
+   "bytes": 1061
+  },
+  {
+   "path": "govmem-strict-judge/bench/prompts/ingest_prompt.txt",
+   "sha256": "21c042007cf9bcec151548fa7dafd6a344fb8811786c71d39688c4a32f8f5e84",
+   "bytes": 178
+  },
+  {
+   "path": "govmem-strict-judge/bench/prompts/judge_prompt.txt",
+   "sha256": "054f2db5de0f0537671ff4fbb3f88dd9e694ac8f7738d484648aca8d88ee111a",
+   "bytes": 3104
+  },
+  {
+   "path": "govmem-strict-judge/bench/prompts/judge_prompt_gatemem.txt",
+   "sha256": "826193d974000a93ffd1dfdd6407b2e976fc02c31fce5c5f3edc60227c915e60",
+   "bytes": 7254
+  },
+  {
+   "path": "govmem-strict-judge/bench/prompts/query_prompt.txt",
+   "sha256": "8878ef50b1cc7b4480f3d0b7bc836c237c35e35cf9159451d47d26204c356165",
+   "bytes": 2707
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/__init__.py",
+   "sha256": "49183537208fce4c4d2791979c785f8e54e90ac86b9624058d69f4983e9c57cf",
+   "bytes": 205
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/gatemem/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/gatemem/agent.py",
+   "sha256": "9907b5f3e69cab268fd20b195815220f462ec7d5286a2adfd7d3a0a0e0d939e9",
+   "bytes": 3267
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/gatemem/answerer.py",
+   "sha256": "7238cf76903c1b92782cdd5733ae2ac3c5e2c9724adb6cccd3ba5729ec87be70",
+   "bytes": 4416
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/gatemem/data.py",
+   "sha256": "e30160453d55250d59eea4a5decb65cdc58ef55d4671dc6a9955fcfb4fac320a",
+   "bytes": 4830
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/gatemem/run.py",
+   "sha256": "97450aeb428dcf5aacdb672669a3f7ec4e16befa02be44d5a5dc5d3d4203b731",
+   "bytes": 15880
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/locomo/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/locomo/answer.py",
+   "sha256": "0e8704d8207d4f3617f3e3239917840f23bd91a1b2e2ff6b00d54305395b6e56",
+   "bytes": 4916
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/locomo/data.py",
+   "sha256": "4bab55e9097bfd2e215d885d0014488b347c6b2bda094abfbb4d3477f676ead8",
+   "bytes": 2915
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/adapters/locomo/run.py",
+   "sha256": "7fec6d9883e2326fb07f00dc92e66834c3b1bbd915827aec64447be89ff50c57",
+   "bytes": 10907
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/api.py",
+   "sha256": "1bfd572b964de24d243a66bff1934fb4077e5e9cc6d4f8092bdc0b5ee34ee36a",
+   "bytes": 4952
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/config.py",
+   "sha256": "b1a984fa85e0bb0382159a30ef6a6340d6d2084937b224a04e218f1331d614c5",
+   "bytes": 5293
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/core/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/core/keyring.py",
+   "sha256": "50efe1e17b134ebba783d6a44e8220baf1ef4eed3a98546a9f146f8c32d014fe",
+   "bytes": 4279
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/core/ops.py",
+   "sha256": "bdf51194021dcbc80c0f6bbd81387f0e96bed6ad913c61cae764dcb4b0c40cd0",
+   "bytes": 24033
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/core/schema.py",
+   "sha256": "4a62a26cdedf9ced3aff96d6954b37ee564c6c75bb9fa88dbbdc5db448239603",
+   "bytes": 4608
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/core/store.py",
+   "sha256": "7e3a2e51cc0f2160441c29ed7009ce8de299bb883c968a8c12bf13da89b44b0a",
+   "bytes": 24784
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/embed.py",
+   "sha256": "aac087ecca003a8b1e9cf801b09c39f857018cf7385eee49b1383b9656cf5d78",
+   "bytes": 2148
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/eval/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/eval/diagnose.py",
+   "sha256": "7117f097071469d2d8d2747fcf275e68bcc3b6e44e46f2c5449b6fca839b37ea",
+   "bytes": 7388
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/eval/judge.py",
+   "sha256": "df7a4f6ded9c327f44c2f6ea49c68ef54e143ed9e8b48f9846651fb7addb75c3",
+   "bytes": 9040
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/eval/rescore.py",
+   "sha256": "24fd9cd731657a7bee81ad9fe3d4ce8ce724fcbbd6d7f3fac9b3368931e4b4be",
+   "bytes": 2562
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/framework/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/interpreter.py",
+   "sha256": "3b4ae3c335e11340e294fb4fef59a01d7639a006b6384843a86459abbb8b2165",
+   "bytes": 19831
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/prompts/label.md",
+   "sha256": "ba27f944de87558ec6af6f226dea039c77d7b1c78284c4759980bedd8191fd26",
+   "bytes": 3859
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/prompts/remove.md",
+   "sha256": "0cdd286c1a325b5081e74c6459dfc0877fa2d4d666c5cd7f8b4a85b3dcbeec4d",
+   "bytes": 542
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/prompts/rescope.md",
+   "sha256": "071378b06b3bc69b7a53e053ca14af962dd679ab8c2c6e0a05373cac2cc2511f",
+   "bytes": 458
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/prompts/rescope_check.md",
+   "sha256": "f110d68c9a7e34a97a4fc40f79d44be97567eab96f1802b49a556e672947f7ed",
+   "bytes": 375
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/interpret/roster.py",
+   "sha256": "8307261aa50b7248414789da74f2240db2837f71199f408ab951f89db2b833f3",
+   "bytes": 7902
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/llm.py",
+   "sha256": "65edcf9f737851eba4eeee89112cffffd4650dc8db6844c47f0ce608eeedc5fe",
+   "bytes": 10614
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/organize/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/organize/organiser.py",
+   "sha256": "12af7556ae1006392d4a833e6925af01463358afe400bf7d8e3177923622c539",
+   "bytes": 13243
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/organize/prompts/organise.md",
+   "sha256": "1365d0230affd7a89238201d30cc9b5c22cac0a8c353163b8b2a05f154eb052f",
+   "bytes": 1581
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/release/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/release/check.py",
+   "sha256": "2f415c60bf51d071dcc62cd4d53fb6a15ccbf9d6cb76a45d16740c207cd0b39e",
+   "bytes": 2191
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/retrieve/__init__.py",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/retrieve/relevance.py",
+   "sha256": "7a2e166cfb864de1590a51d9ab4cf6bdc3f96055eb968923dc9806c26ada7452",
+   "bytes": 2131
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/retrieve/retriever.py",
+   "sha256": "34fce7fb3d5e642d1e49a61038d2581862ad78365d13be082ef21e2dd9924fc2",
+   "bytes": 5802
+  },
+  {
+   "path": "govmem-strict-judge/src/govmem/text.py",
+   "sha256": "f58d90dc8c7bbca6744491add5d43d6e3ca521d7a229e0fd7900268e26442496",
+   "bytes": 3978
+  }
+ ],
+ "left_out": [],
+ "totals": {
+  "files": 61,
+  "bytes": 7393088,
+  "left_out_files": 0,
+  "left_out_bytes": 0
+ },
+ "indexed_in_place": true
+}

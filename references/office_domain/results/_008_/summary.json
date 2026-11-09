@@ -1,0 +1,249 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 32,
+    "official_predictions": 32,
+    "scored_checkpoints": 32,
+    "expected_boundaries": 31,
+    "completed_boundaries": 31,
+    "expected_source_turns": 240,
+    "ingested_source_turns": 240,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 32,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 13,
+    "n_safety_scored": 13,
+    "n_safety_context_scored": 13,
+    "n_safety_e2e_scored": 13,
+    "action_accuracy": 0.75,
+    "utility_accuracy": 0.6666666666666666,
+    "privacy_leakage_rate": 0.2,
+    "deletion_leakage_rate": 0.0,
+    "privacy_answer_leakage_rate": 0.2,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.2,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.2,
+    "deletion_e2e_leakage_rate": 0.0,
+    "over_refusal_rate": 0.1111111111111111,
+    "compliance_utility_score": 0.5333333333333333,
+    "compliance_utility_e2e_score": 0.5333333333333333,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-08T14:50:14.671727+00:00",
+    "state": "running",
+    "stage": "judge office_episode_custom_en_008_horizon_horizonline_dual_project_ckpt_09",
+    "recovered_after_failures": 5
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 1835
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 485.774,
+    "permission_total": 24325.824,
+    "source_ingest": 12.15,
+    "source_total": 24824.339
+  },
+  "governance": {
+    "candidate_versions": 1396,
+    "decisions": 1396,
+    "recipient_decisions": 0,
+    "erasure_selectors": 3
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 238,
+      "quarantined": 2
+    },
+    "attempts": 402,
+    "record_versions": 1413,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:943be20f9932f3e4697d4c0fd0dc2d5d2d2578f82c01200de590cb4560feb094",
+        "compartment": "encounter:012c0f32fe150ba056a619ae",
+        "source_id": "permission-source:c5af8a6f1e87a58d1ab20fccc5a8bc5e8e47c6fea89a8ee57b87cb1b32164f91",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Facts require an explicit attribution basis and reason",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:b57744ebafcd33b4c5c77318e286558bf7779656a7705c4d1b65c9b1f74da78c",
+        "compartment": "encounter:012c0f32fe150ba056a619ae",
+        "source_id": "permission-source:c5a947e8ea4a3533d66267b53682de5c95e0ca0f0c8507e12032747aaf51cc08",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Facts require an explicit attribution basis and reason",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      }
+    ],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 18,
+    "indexed_resources": 1823,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.675,
+    "latency_seconds": {
+      "mean": 103.43474603390787,
+      "median": 102.88426342513412,
+      "p90": 141.97447570133954,
+      "max": 243.1528286570683
+    },
+    "processing_seconds": 23547.443,
+    "model_seconds": 23215.037,
+    "mean_seconds_per_source": 98.114,
+    "measured_attempts": 402,
+    "prompt_tokens": 4387277,
+    "completion_tokens": 108661,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 23215.037,
+    "outside_model_seconds": 1609.302,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 108.16241930564865
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 113.48727950306609
+      },
+      "after_100": {
+        "count": 140,
+        "mean": 98.15610076930108
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 238,
+      "pending": 2
+    },
+    "candidate_states": {
+      "active": 253,
+      "erased": 6
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 245,
+        "timed_calls": 245,
+        "seconds": 17208.881733104587,
+        "model_seconds": 16940.45633868035,
+        "prompt_tokens": 4070842,
+        "completion_tokens": 98000
+      },
+      "incremental_binding_repair": {
+        "calls": 157,
+        "timed_calls": 157,
+        "seconds": 6338.561430591159,
+        "model_seconds": 6274.580962000415,
+        "prompt_tokens": 316435,
+        "completion_tokens": 10661
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 2,
+      "scope_or_subject_excluded": 193
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 2,
+    "checkpoints_with_evidence": 27,
+    "checkpoints_without_evidence": 5,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 5,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 5,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 32,
+    "modes": {
+      "enforce": 32,
+      "shadow": 0
+    },
+    "generation_calls": 26,
+    "verification_calls": 25,
+    "policy_calls": 9,
+    "regeneration_calls": 0,
+    "repair_count": 10,
+    "rejected_claims": 3,
+    "verifier_seconds_total": 2433.422493142076,
+    "verifier_seconds_mean": 97.33689972568304,
+    "repair_frequency": 0.3125,
+    "validation_unavailable": 1,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

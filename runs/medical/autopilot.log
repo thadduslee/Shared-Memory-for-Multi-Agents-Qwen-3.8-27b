@@ -1,0 +1,13 @@
+2026-11-09 01:00:38 +0800 autopilot started
+2026-11-09 01:19:42 +0800 policy ready: /home/thaddus/a-mem-variant/evaluations/v19-role-policies/medical-v2-20261108T165625Z
+policy check ok: {'billing': ['patient_identifiers', 'billing_financial_records'], 'clinician': ['patient_identifiers', 'health_records', 'lab_results', 'medication_records'], 'lab_tech': ['patient_identifiers', 'lab_results'], 'nurse': ['patient_identifiers', 'health_records', 'medication_records'], 'pharmacist': ['patient_identifiers', 'medication_records', 'billing_financial_records'], 'reception': ['patient_identifiers', 'appointment_scheduling'], 'scheduler': ['patient_identifiers', 'appointment_scheduling', 'care_team_assignments'], 'social_worker': ['patient_identifiers', 'care_team_assignments', 'social_work_notes']}
+2026-11-09 01:19:42 +0800 policy frozen: 3de5a65c67cc6af6165a1fe03328c2b798af503da6c0faa08acb97c371747957  role_policy.json
+2026-11-09 01:19:54 +0800 offline smoke test passed
+role_policy.json: OK
+23
+23
+2026-11-09 01:21:55 +0800 launched all 21 episodes
+2026-11-09 12:46:56 +0800 all 21 episodes have exit codes:      21 0 
+wrote /home/thaddus/v19-evaluations/medical_domain_new_system/summary.json
+U=0.8619  A=0.0469  F=0.0508  OR=0.0429  MGS=0.7797  (strict A=0.0469 F=0.0508 MGS=0.7797)
+2026-11-09 12:46:56 +0800 summary written: /home/thaddus/v19-evaluations/medical_domain_new_system/summary.json

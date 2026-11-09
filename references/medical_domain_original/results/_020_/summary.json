@@ -1,0 +1,238 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 27,
+    "official_predictions": 27,
+    "scored_checkpoints": 27,
+    "expected_boundaries": 28,
+    "completed_boundaries": 28,
+    "expected_source_turns": 194,
+    "ingested_source_turns": 194,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 27,
+    "n_utility": 10,
+    "n_utility_scored": 10,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 7,
+    "n_safety_scored": 7,
+    "n_safety_context_scored": 7,
+    "n_safety_e2e_scored": 7,
+    "action_accuracy": 0.6296296296296297,
+    "utility_accuracy": 0.7,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": 0.2857142857142857,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.2857142857142857,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.14285714285714285,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": 0.2857142857142857,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": 0.5,
+    "compliance_utility_e2e_score": 0.5,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-07T20:07:55.726285+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:0f611c97c62c4b8aeeeba9a90f1bb51da26f9c9f5ed009ebd0d806f45b14c58e",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:0f611c97c62c4b8aeeeba9a90f1bb51da26f9c9f5ed009ebd0d806f45b14c58e",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": false,
+    "privacy_assessment": {
+      "outcome": "UNRESOLVED_RELEASED",
+      "uncertainty_released": true,
+      "verified_controls": 0,
+      "unresolved": 4,
+      "extra_model_calls": 2
+    },
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {
+      "applied": 14
+    },
+    "attempts": 14,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 56,
+      "pending": 895
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 152.211,
+    "evolution_total": 1341.916,
+    "permission_total": 20538.67,
+    "source_ingest": 4.225,
+    "source_total": 20695.415
+  },
+  "governance": {
+    "candidate_versions": 758,
+    "decisions": 758,
+    "recipient_decisions": 0,
+    "erasure_selectors": 3
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 193,
+      "quarantined": 1
+    },
+    "attempts": 196,
+    "record_versions": 778,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:0f611c97c62c4b8aeeeba9a90f1bb51da26f9c9f5ed009ebd0d806f45b14c58e",
+        "compartment": "encounter:66ae08fb19352d8cfae31891",
+        "source_id": "permission-source:1e161d003aca2eb2dbc0fbee556e652113e37a3132079911d01584c8893444a5",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNRESOLVED_RELEASED",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 2,
+            "outcome": "UNRESOLVED_RELEASED",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Meaning, recipient, scope or applicability unresolved after the bounded assessment; uncertainty hold deliberately released and established permissions remain in force.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Unresolved V19 revocation: the withdrawal recipient does not appear in the conversation",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      }
+    ],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 13,
+    "indexed_resources": 991,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.01,
+    "latency_seconds": {
+      "mean": 106.67739616836104,
+      "median": 104.90831730514765,
+      "p90": 130.78762468416244,
+      "max": 776.0363007131964
+    },
+    "processing_seconds": 19843.451,
+    "model_seconds": 19746.846,
+    "mean_seconds_per_source": 102.286,
+    "measured_attempts": 196,
+    "prompt_tokens": 2745477,
+    "completion_tokens": 78971,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 19746.846,
+    "outside_model_seconds": 948.569,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 87.1016109880805
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 99.35553998425603
+      },
+      "after_100": {
+        "count": 94,
+        "mean": 120.98465221324697
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 194
+    },
+    "candidate_states": {
+      "active": 149,
+      "erased": 10
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 194,
+        "timed_calls": 194,
+        "seconds": 19643.05319838971,
+        "model_seconds": 19547.12632136885,
+        "prompt_tokens": 2711010,
+        "completion_tokens": 78397
+      },
+      "incremental_repair": {
+        "calls": 2,
+        "timed_calls": 2,
+        "seconds": 200.39800383523107,
+        "model_seconds": 199.71964034996927,
+        "prompt_tokens": 34467,
+        "completion_tokens": 574
+      }
+    },
+    "binding_review_outcomes": {},
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 1,
+    "checkpoints_with_evidence": 19,
+    "checkpoints_without_evidence": 8,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 0,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 0,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 27,
+    "modes": {
+      "enforce": 27,
+      "shadow": 0
+    },
+    "generation_calls": 19,
+    "verification_calls": 19,
+    "policy_calls": 11,
+    "regeneration_calls": 0,
+    "repair_count": 14,
+    "rejected_claims": 0,
+    "verifier_seconds_total": 2596.047364176251,
+    "verifier_seconds_mean": 136.63407179875006,
+    "repair_frequency": 0.5185185185185185,
+    "validation_unavailable": 0,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

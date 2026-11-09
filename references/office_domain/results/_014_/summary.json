@@ -1,0 +1,199 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 32,
+    "official_predictions": 32,
+    "scored_checkpoints": 32,
+    "expected_boundaries": 31,
+    "completed_boundaries": 31,
+    "expected_source_turns": 240,
+    "ingested_source_turns": 240,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 32,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 13,
+    "n_safety_scored": 13,
+    "n_safety_context_scored": 13,
+    "n_safety_e2e_scored": 13,
+    "action_accuracy": 0.8125,
+    "utility_accuracy": 0.6666666666666666,
+    "privacy_leakage_rate": 0.1,
+    "deletion_leakage_rate": 0.0,
+    "privacy_answer_leakage_rate": 0.1,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.1,
+    "deletion_e2e_leakage_rate": 0.0,
+    "over_refusal_rate": 0.1111111111111111,
+    "compliance_utility_score": 0.6,
+    "compliance_utility_e2e_score": 0.6,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-08T14:50:03.227667+00:00",
+    "state": "running",
+    "stage": "judge office_episode_custom_en_014_glacier_glacierlane_dual_project_ckpt_08",
+    "recovered_after_failures": 5
+  },
+  "evolution": {
+    "jobs": {
+      "applied": 31
+    },
+    "attempts": 31,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 124,
+      "pending": 1602,
+      "stale": 9
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 459.36,
+    "evolution_total": 1781.526,
+    "permission_total": 24731.114,
+    "source_ingest": 10.611,
+    "source_total": 25201.505
+  },
+  "governance": {
+    "candidate_versions": 1351,
+    "decisions": 1351,
+    "recipient_decisions": 0,
+    "erasure_selectors": 3
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 240
+    },
+    "attempts": 420,
+    "record_versions": 1365,
+    "skipped_turns": [],
+    "quarantined_turns": [],
+    "active_scoped_control_holds": 0,
+    "complete": true,
+    "runtime_assignments": 15,
+    "indexed_resources": 1850,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.75,
+    "latency_seconds": {
+      "mean": 105.0062716716008,
+      "median": 104.88055875804275,
+      "p90": 137.23170886561275,
+      "max": 251.08524516690522
+    },
+    "processing_seconds": 24120.155,
+    "model_seconds": 23811.988,
+    "mean_seconds_per_source": 100.501,
+    "measured_attempts": 420,
+    "prompt_tokens": 4145502,
+    "completion_tokens": 107665,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 23811.988,
+    "outside_model_seconds": 1389.517,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 106.76907106794417
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 109.73921158103272
+      },
+      "after_100": {
+        "count": 140,
+        "mean": 102.68636477668105
+      }
+    }
+  },
+  "degraded": false,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 240
+    },
+    "candidate_states": {
+      "active": 255,
+      "erased": 6
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 241,
+        "timed_calls": 241,
+        "seconds": 16650.416632468812,
+        "model_seconds": 16410.37683674693,
+        "prompt_tokens": 3784833,
+        "completion_tokens": 95689
+      },
+      "incremental_binding_repair": {
+        "calls": 179,
+        "timed_calls": 179,
+        "seconds": 7469.738047261722,
+        "model_seconds": 7401.610973831266,
+        "prompt_tokens": 360669,
+        "completion_tokens": 11976
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 5,
+      "scope_or_subject_excluded": 215
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 0,
+    "checkpoints_with_evidence": 26,
+    "checkpoints_without_evidence": 6,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 8,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 8,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": true
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 32,
+    "modes": {
+      "enforce": 32,
+      "shadow": 0
+    },
+    "generation_calls": 25,
+    "verification_calls": 24,
+    "policy_calls": 8,
+    "regeneration_calls": 0,
+    "repair_count": 12,
+    "rejected_claims": 0,
+    "verifier_seconds_total": 2152.870287065394,
+    "verifier_seconds_mean": 89.70292862772476,
+    "repair_frequency": 0.375,
+    "validation_unavailable": 1,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

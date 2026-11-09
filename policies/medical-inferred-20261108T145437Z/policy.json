@@ -1,0 +1,82 @@
+{
+  "domain": "medical",
+  "model": "qwen3.8:27b",
+  "prompt_version": 1,
+  "script_sha256": "fa8707db54b5927631c87e05e5641631285a838aa371bb17de42f24d198cff1a",
+  "information_kinds": {
+    "patient_identity": "Names, dates of birth, MRNs, and contact details used to identify and verify the patient.",
+    "care_team_assignment": "Facts about which staff members are assigned to or responsible for the patient, such as assigned_clinician.",
+    "clinical_notes": "Narrative clinical observations, assessments, care plans, and treatment discussions.",
+    "diagnoses": "Confirmed or suspected medical conditions, problem lists, and diagnostic conclusions.",
+    "medications": "Prescriptions, medication orders, dosing, allergies, and medication-related safety information.",
+    "lab_results": "Test orders, specimen details, and laboratory or diagnostic test results.",
+    "appointments": "Visit times, locations, reminders, and scheduling status.",
+    "billing": "Invoices, insurance details, payments, claims, and service-date information needed for billing.",
+    "consent": "Explicit owner consent or revocation for access to, or sharing of, specific patient details.",
+    "family_contact": "Family members, next of kin, and contact or communication preferences for family.",
+    "social_context": "Social determinants, housing, employment, support needs, and social-work assessments.",
+    "summary": "High-level, non-sensitive summaries suitable for limited or family access."
+  },
+  "role_kinds": {
+    "billing": [
+      "billing",
+      "patient_identity"
+    ],
+    "clinician": [
+      "care_team_assignment",
+      "clinical_notes",
+      "consent",
+      "diagnoses",
+      "lab_results",
+      "medications",
+      "patient_identity"
+    ],
+    "lab_tech": [
+      "lab_results",
+      "patient_identity"
+    ],
+    "nurse": [
+      "care_team_assignment",
+      "clinical_notes",
+      "diagnoses",
+      "lab_results",
+      "medications",
+      "patient_identity"
+    ],
+    "pharmacist": [
+      "diagnoses",
+      "lab_results",
+      "medications",
+      "patient_identity"
+    ],
+    "reception": [
+      "appointments",
+      "patient_identity"
+    ],
+    "scheduler": [
+      "appointments",
+      "patient_identity"
+    ],
+    "social_worker": [
+      "consent",
+      "family_contact",
+      "patient_identity",
+      "social_context",
+      "summary"
+    ]
+  },
+  "role_reasons": {
+    "billing": "Billing staff need enough identity to match the patient and billing facts to process charges, insurance, and payments.",
+    "clinician": "Assigned clinicians need the patient's clinical record, care-team context, and consent status to provide and coordinate care.",
+    "lab_tech": "Lab technicians need patient identity and lab facts to process, match, and report tests.",
+    "nurse": "Assigned nurses need the patient's clinical record and care-team context to deliver safe day-to-day care.",
+    "pharmacist": "Assigned pharmacists need medication, diagnosis, and relevant lab facts to verify and dispense medicines safely.",
+    "reception": "Reception staff need patient identity and appointment facts to check patients in, out, and answer visit-status questions.",
+    "scheduler": "Schedulers need patient identity and appointment facts to book, change, or cancel visits.",
+    "social_worker": "Social workers need social, family, consent, and summary facts to support the patient and manage family communication."
+  },
+  "authorities": [
+    "clinician"
+  ],
+  "authorities_reason": "The assigned clinician is the responsible professional for the patient's care and information, so they can approve, restrict, or request deletion."
+}

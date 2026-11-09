@@ -1,0 +1,46 @@
+{
+  "dataset_digest": "dad6adc4cac39197bbf3d2cbe2fe286866bde0d053733038a4a502865f56117f",
+  "code_digest": "98b2f93157b77376946d2ed8fe6d4d80e716b593e42d28ecf8eeca3a7cd6a226",
+  "embedding_fingerprint": {
+    "model": "test-hash",
+    "revision": "v1",
+    "dimensions": 128,
+    "preprocessing": "unicode-word-lower:l2"
+  },
+  "models": {
+    "embedding": "test-hash-v1:sha256-word-lower:128:l2",
+    "memory": "test:scripted",
+    "judge": null
+  },
+  "offline": true,
+  "evolution": true,
+  "evolution_schedule": "after-answers-durable-batches-of-4",
+  "schedule": "episode-id-then-turn-position-v2-with-data-tails",
+  "permission_mode": "inference",
+  "permission_version": "19",
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "provider_routing": {},
+  "source_schema_mode": "strict",
+  "access_policy": {
+    "role_tables": "policy-sha256:3de5a65c67cc6af6165a1fe03328c2b798af503da6c0faa08acb97c371747957",
+    "learned_access_sources": 2,
+    "reply_access": true
+  },
+  "answer_validation": {
+    "mode": "enforce",
+    "version": "v19-answer-evidence:2"
+  },
+  "permission_workflow": "combined-incremental",
+  "permission_max_tokens": 3072,
+  "initial_requester_grants": 0,
+  "max_semantic_calls_per_turn": 2,
+  "opaque_model_identities": true,
+  "incremental_max_tokens": 2048,
+  "personal_access_policy": "trusted-personal-owns-across-tasks-v1",
+  "ownership_actions": [
+    "search",
+    "read",
+    "derive"
+  ],
+  "max_semantic_calls_per_turn_including_maintenance": 2
+}

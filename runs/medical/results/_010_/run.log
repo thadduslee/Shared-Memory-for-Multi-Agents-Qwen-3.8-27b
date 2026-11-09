@@ -1,0 +1,919 @@
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 5237.48it/s]
+/home/thaddus/v19-evaluations/medical_domain_new_system/frozen-source/agentic_memory/privacy/processors.py:188: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+  'dimensions': self.model.get_sentence_embedding_dimension(),
+boundary 1/29: ingest 16 new turns; ask 1 original queries
+  source t001: 63.4s; permission 63.2s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 1 fields; 4 permission changes; 1 memory fields; 4492/643 input/output tokens
+  source t002: 125.0s; permission 124.9s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 1 fields; 1 permission changes; 1 memory fields; 5179/628 input/output tokens
+  source t003: 90.9s; permission 90.7s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 2 fields; 3 permission changes; 2 memory fields; 5122/460 input/output tokens
+  source t004: 80.9s; permission 80.9s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 5657/364 input/output tokens
+  source t005: 217.4s; permission 217.3s (2 attempts); maintenance 0.1s (0 batches); enrichment queued 1 fields; 3 permission changes; 1 memory fields; 6075/560 input/output tokens
+  source t006: 142.3s; permission 142.1s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 3186/256 input/output tokens
+  source t007: 104.1s; permission 103.9s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 2 fields; 4 permission changes; 2 memory fields; 1792/63 input/output tokens
+  source t008: 68.8s; permission 68.7s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 6627/348 input/output tokens
+  quarantined permission permission-job:556f4d9859f5aa28808d9d20fc6e26b6887ba51fe875412b865fba65a9ccab46 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t009: 191.1s; permission 191.0s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 841/77 input/output tokens
+  source t010: 99.5s; permission 99.3s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 2180/104 input/output tokens
+  source t011: 108.9s; permission 108.7s (2 attempts); maintenance 0.3s (0 batches); enrichment queued 6 fields; 5 permission changes; 6 memory fields; 1827/78 input/output tokens
+  source t012: 117.2s; permission 117.0s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1857/78 input/output tokens
+  quarantined permission permission-job:52211bc0732a30648b0b4d4ff1ab1eed290f87bf59798ce56f7c55e272d180a8 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t013: 186.5s; permission 186.5s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 966/56 input/output tokens
+  source t014: 120.0s; permission 119.8s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1838/62 input/output tokens
+  quarantined permission permission-job:119e5008cf7e37c58165f70d1ef5480ae55d481bcce35b3f46f58523d6f8e776 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t015: 245.1s; permission 245.1s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 1008/65 input/output tokens
+  source t016: 66.2s; permission 66.1s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 8416/378 input/output tokens
+committed 1/28 predictions in 2136.7s; active artifacts {'observation': 16, 'observation_view': 25, 'memory': 25}
+boundary 2/29: ingest 2 new turns; ask 1 original queries
+  source t017: 155.7s; permission 155.5s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 3 fields; 4 permission changes; 3 memory fields; 1788/62 input/output tokens
+  source t018: 150.6s; permission 150.4s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1841/81 input/output tokens
+committed 2/28 predictions in 554.3s; active artifacts {'observation': 18, 'observation_view': 31, 'memory': 31}
+boundary 3/29: ingest 2 new turns; ask 1 original queries
+  source t019: 164.5s; permission 164.2s (2 attempts); maintenance 0.3s (0 batches); enrichment queued 3 fields; 5 permission changes; 3 memory fields; 1857/63 input/output tokens
+  quarantined permission permission-job:c1b2304b7792f807c66b847782506e55b3c1bcdc5d009bffa37dae65fb39ca09 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t020: 242.7s; permission 242.4s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1095/44 input/output tokens
+committed 3/28 predictions in 624.1s; active artifacts {'observation': 20, 'observation_view': 37, 'memory': 37}
+boundary 4/29: ingest 6 new turns; ask 1 original queries
+  source t021: 147.1s; permission 147.1s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 0 fields; 1 permission changes; 0 memory fields; 1780/61 input/output tokens
+  quarantined permission permission-job:83f9e0e75fef64d7e986ff44e5413656d11cb9118caba86801ff3cefba155c0e after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t022: 263.1s; permission 263.0s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 1127/58 input/output tokens
+  source t023: 86.3s; permission 86.1s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 9732/363 input/output tokens
+  source t024: 133.8s; permission 133.5s (2 attempts); maintenance 0.3s (0 batches); enrichment queued 2 fields; 4 permission changes; 2 memory fields; 1829/61 input/output tokens
+  source t025: 64.7s; permission 64.6s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 11563/202 input/output tokens
+  source t026: 80.9s; permission 80.8s (1 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 1 permission changes; 0 memory fields; 10291/379 input/output tokens
+committed 4/28 predictions in 835.5s; active artifacts {'observation': 26, 'observation_view': 39, 'memory': 39}
+boundary 5/29: ingest 10 new turns; ask 1 original queries
+  source t027: 172.1s; permission 171.6s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 1809/60 input/output tokens
+  source t028: 83.5s; permission 83.3s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 1 permission changes; 0 memory fields; 10648/374 input/output tokens
+  source t029: 93.3s; permission 93.1s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 1 permission changes; 0 memory fields; 10902/387 input/output tokens
+  source t030: 103.8s; permission 103.6s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 11224/374 input/output tokens
+  source t031: 86.4s; permission 86.2s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 11857/376 input/output tokens
+  quarantined permission permission-job:92ec9d8576696431a90aae4747933956601b0bdaf9a8e14c72996bb83fedbed4 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t032: 228.8s; permission 228.5s (2 attempts); maintenance 0.3s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1165/59 input/output tokens
+  source t033: 159.3s; permission 158.9s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 2171/112 input/output tokens
+  source t034: 152.8s; permission 152.4s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1884/59 input/output tokens
+  quarantined permission permission-job:678f317298799434192a01910f126008010de1885c7b841990ffe4efc4db23c3 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t035: 249.5s; permission 249.2s (2 attempts); maintenance 0.3s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1258/52 input/output tokens
+  source t036: 173.4s; permission 173.1s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 2195/113 input/output tokens
+committed 5/28 predictions in 1784.1s; active artifacts {'observation': 36, 'observation_view': 61, 'memory': 61}
+boundary 6/29: ingest 1 new turns; ask 1 original queries
+  source t037: 75.1s; permission 74.9s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 12267/370 input/output tokens
+committed 6/28 predictions in 185.6s; active artifacts {'observation': 37, 'observation_view': 61, 'memory': 61}
+boundary 7/29: ingest 9 new turns; ask 1 original queries
+  source t038: 89.0s; permission 88.8s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 11781/365 input/output tokens
+  source t039: 67.0s; permission 66.4s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 12777/380 input/output tokens
+  source t040: 134.4s; permission 133.9s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 7 fields; 2 permission changes; 7 memory fields; 1799/60 input/output tokens
+  source t041: 93.5s; permission 93.3s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 2 permission changes; 0 memory fields; 11863/662 input/output tokens
+  source t042: 146.4s; permission 145.8s (2 attempts); maintenance 0.6s (0 batches); enrichment queued 12 fields; 6 permission changes; 12 memory fields; 2131/122 input/output tokens
+  source t043: 178.3s; permission 177.7s (2 attempts); maintenance 0.6s (0 batches); enrichment queued 6 fields; 4 permission changes; 6 memory fields; 1967/63 input/output tokens
+  quarantined permission permission-job:2c1e3b7379e57625a9af813f4e6a87afba605532510e6c064e7dc6103dcab107 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t044: 270.1s; permission 270.1s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 1477/57 input/output tokens
+  source t045: 175.7s; permission 175.3s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1818/60 input/output tokens
+  source t046: 103.8s; permission 103.6s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 13174/549 input/output tokens
+committed 7/28 predictions in 1395.0s; active artifacts {'observation': 46, 'observation_view': 89, 'memory': 89}
+boundary 8/29: ingest 2 new turns; ask 1 original queries
+  quarantined permission permission-job:b6aba4cef11b44eb9d4da499b048a123c435c3d9c1a827b802ddd37d9c6247eb after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t047: 296.8s; permission 296.0s (2 attempts); maintenance 0.8s (0 batches); enrichment queued 7 fields; 3 permission changes; 7 memory fields; 851/95 input/output tokens
+  source t048: 184.5s; permission 184.5s (2 attempts); maintenance 0.0s (0 batches); enrichment queued 1 fields; 2 permission changes; 1 memory fields; 2129/102 input/output tokens
+committed 8/28 predictions in 625.4s; active artifacts {'observation': 48, 'observation_view': 97, 'memory': 97}
+boundary 9/29: ingest 8 new turns; ask 1 original queries
+  source t049: 153.7s; permission 153.3s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1829/80 input/output tokens
+  source t050: 190.3s; permission 189.6s (2 attempts); maintenance 0.8s (0 batches); enrichment queued 13 fields; 2 permission changes; 13 memory fields; 1829/58 input/output tokens
+  source t051: 137.2s; permission 136.7s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1780/59 input/output tokens
+  source t052: 150.7s; permission 149.6s (2 attempts); maintenance 1.1s (0 batches); enrichment queued 11 fields; 6 permission changes; 11 memory fields; 1802/58 input/output tokens
+  source t053: 154.4s; permission 153.8s (2 attempts); maintenance 0.6s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1774/45 input/output tokens
+  source t054: 161.4s; permission 160.9s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 1814/60 input/output tokens
+  source t055: 94.5s; permission 94.2s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 14751/303 input/output tokens
+  source t056: 80.1s; permission 79.9s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16134/319 input/output tokens
+committed 9/28 predictions in 1454.7s; active artifacts {'observation': 56, 'observation_view': 137, 'memory': 137}
+boundary 10/29: ingest 1 new turns; ask 1 original queries
+  source t057: 172.1s; permission 171.6s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1828/64 input/output tokens
+committed 10/28 predictions in 460.4s; active artifacts {'observation': 57, 'observation_view': 140, 'memory': 140}
+boundary 11/29: ingest 17 new turns; ask 1 original queries
+  source t058: 66.8s; permission 66.6s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 14257/233 input/output tokens
+  source t059: 179.4s; permission 178.9s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 1804/59 input/output tokens
+  source t060: 109.2s; permission 108.9s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 13771/462 input/output tokens
+  source t061: 118.0s; permission 117.6s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 13926/392 input/output tokens
+  source t062: 60.5s; permission 60.3s (1 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15763/342 input/output tokens
+  source t063: 178.1s; permission 177.5s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1852/61 input/output tokens
+  source t064: 139.0s; permission 138.6s (2 attempts); maintenance 0.4s (0 batches); enrichment queued 1 fields; 1 permission changes; 1 memory fields; 1802/62 input/output tokens
+  quarantined permission permission-job:101a2144cfa02d009dcf9c13b021e33f9c4cb99e19e661cdc71a32ddb05f81b7 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t065: 276.1s; permission 275.5s (2 attempts); maintenance 0.6s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 797/64 input/output tokens
+  source t066: 184.8s; permission 184.3s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 2155/124 input/output tokens
+  source t067: 183.6s; permission 183.2s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 1780/62 input/output tokens
+  source t068: 162.4s; permission 161.9s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1823/59 input/output tokens
+  source t069: 198.9s; permission 198.4s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1784/62 input/output tokens
+  source t070: 182.3s; permission 181.7s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 1811/59 input/output tokens
+  source t071: 167.5s; permission 166.5s (2 attempts); maintenance 1.0s (0 batches); enrichment queued 8 fields; 8 permission changes; 8 memory fields; 1792/78 input/output tokens
+  source t072: 77.1s; permission 76.5s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 2 fields; 3 permission changes; 2 memory fields; 15892/668 input/output tokens
+  source t073: 124.2s; permission 123.7s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 4 fields; 2 permission changes; 4 memory fields; 14781/703 input/output tokens
+  source t074: 81.9s; permission 81.6s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 14111/209 input/output tokens
+committed 11/28 predictions in 2767.7s; active artifacts {'observation': 74, 'observation_view': 187, 'memory': 187}
+boundary 12/29: ingest 9 new turns; ask 1 original queries
+  source t075: 107.9s; permission 107.0s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 15258/392 input/output tokens
+  source t076: 48.2s; permission 48.0s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15855/313 input/output tokens
+  source t077: 101.1s; permission 100.8s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 1 permission changes; 0 memory fields; 15362/368 input/output tokens
+  quarantined permission permission-job:d9e5ec76dd8fcf5c2d69bde30cafec48546abe13c7a134d82381acbb0bfcd3bc after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t078: 250.9s; permission 250.3s (2 attempts); maintenance 0.5s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 2105/64 input/output tokens
+  source t079: 80.5s; permission 80.3s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 14980/364 input/output tokens
+  source t080: 108.9s; permission 108.1s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 3 fields; 2 permission changes; 3 memory fields; 14755/401 input/output tokens
+  source t081: 94.3s; permission 93.7s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 16625/355 input/output tokens
+  source t082: 99.9s; permission 98.9s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 14588/367 input/output tokens
+  source t083: 117.2s; permission 116.5s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 15605/368 input/output tokens
+committed 12/28 predictions in 1146.9s; active artifacts {'observation': 83, 'observation_view': 210, 'memory': 210}
+boundary 13/29: ingest 34 new turns; ask 1 original queries
+  source t084: 134.1s; permission 133.9s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16593/356 input/output tokens
+  source t085: 155.6s; permission 155.3s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15588/560 input/output tokens
+  source t086: 112.8s; permission 112.2s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 15235/416 input/output tokens
+  source t087: 81.4s; permission 81.1s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 14581/390 input/output tokens
+  source t088: 131.5s; permission 130.9s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 16298/624 input/output tokens
+  source t089: 131.2s; permission 128.9s (1 attempts); maintenance 2.2s (0 batches); enrichment queued 47 fields; 7 permission changes; 47 memory fields; 14630/393 input/output tokens
+  source t090: 88.0s; permission 86.3s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 9 fields; 8 permission changes; 9 memory fields; 15037/376 input/output tokens
+  source t091: 102.0s; permission 101.6s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16718/313 input/output tokens
+  source t092: 118.8s; permission 116.2s (1 attempts); maintenance 2.6s (0 batches); enrichment queued 37 fields; 14 permission changes; 37 memory fields; 15070/690 input/output tokens
+  quarantined permission permission-job:3d993f35146627d8dfd3258da8c707dba7f24cb375ba429927be9b02e42e7fc3 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t093: 248.9s; permission 248.8s (2 attempts); maintenance 0.1s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 1988/72 input/output tokens
+  source t094: 111.0s; permission 110.2s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 6 fields; 7 permission changes; 6 memory fields; 15781/388 input/output tokens
+  source t095: 87.0s; permission 85.4s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 13 fields; 6 permission changes; 13 memory fields; 15488/387 input/output tokens
+  source t096: 90.0s; permission 89.1s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 16100/372 input/output tokens
+  source t097: 120.3s; permission 120.0s (1 attempts); maintenance 0.3s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17681/306 input/output tokens
+  source t098: 79.3s; permission 79.0s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15373/371 input/output tokens
+  source t099: 134.2s; permission 133.5s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 18631/374 input/output tokens
+  source t100: 115.9s; permission 115.2s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 16636/386 input/output tokens
+  source t101: 111.4s; permission 110.4s (1 attempts); maintenance 1.0s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 17870/545 input/output tokens
+  source t102: 93.0s; permission 92.1s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 15591/428 input/output tokens
+  source t103: 129.1s; permission 126.8s (1 attempts); maintenance 2.3s (0 batches); enrichment queued 0 fields; 12 permission changes; 0 memory fields; 18126/592 input/output tokens
+  source t104: 91.4s; permission 90.6s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 16379/400 input/output tokens
+  source t105: 75.4s; permission 74.8s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18618/305 input/output tokens
+  source t106: 120.0s; permission 119.1s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 15326/392 input/output tokens
+  source t107: 87.9s; permission 86.9s (1 attempts); maintenance 1.0s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17710/365 input/output tokens
+  source t108: 88.8s; permission 87.6s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 16057/401 input/output tokens
+  source t109: 112.4s; permission 112.0s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17644/312 input/output tokens
+  source t110: 152.5s; permission 151.3s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 16022/395 input/output tokens
+  source t111: 101.6s; permission 101.2s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17686/305 input/output tokens
+  source t112: 113.9s; permission 113.1s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 15141/380 input/output tokens
+  source t113: 104.8s; permission 101.3s (1 attempts); maintenance 3.5s (0 batches); enrichment queued 49 fields; 13 permission changes; 49 memory fields; 16777/386 input/output tokens
+  source t114: 90.8s; permission 90.4s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18464/305 input/output tokens
+  source t115: 86.6s; permission 85.3s (1 attempts); maintenance 1.3s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16494/373 input/output tokens
+  source t116: 87.7s; permission 87.3s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17848/307 input/output tokens
+  source t117: 108.8s; permission 108.4s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16400/369 input/output tokens
+committed 13/28 predictions in 3951.4s; active artifacts {'observation': 117, 'observation_view': 431, 'memory': 431}
+boundary 14/29: ingest 3 new turns; ask 1 original queries
+  source t118: 121.5s; permission 119.8s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 8 fields; 6 permission changes; 8 memory fields; 16335/386 input/output tokens
+  source t119: 126.1s; permission 125.7s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18635/317 input/output tokens
+  source t120: 108.1s; permission 107.1s (1 attempts); maintenance 1.0s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 16368/392 input/output tokens
+committed 14/28 predictions in 722.9s; active artifacts {'observation': 120, 'observation_view': 444, 'memory': 444}
+boundary 15/29: ingest 6 new turns; ask 1 original queries
+  source t121: 103.4s; permission 102.2s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16640/397 input/output tokens
+  source t122: 99.8s; permission 99.3s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18398/308 input/output tokens
+  source t123: 101.7s; permission 101.3s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16439/360 input/output tokens
+  source t124: 147.7s; permission 146.6s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 18597/463 input/output tokens
+  source t125: 117.3s; permission 116.2s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16910/379 input/output tokens
+  source t126: 123.9s; permission 122.8s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16959/573 input/output tokens
+committed 15/28 predictions in 1023.8s; active artifacts {'observation': 126, 'observation_view': 472, 'memory': 472}
+boundary 16/29: ingest 5 new turns; ask 1 original queries
+  quarantined permission permission-job:408ba5a37fae99cc7807e0c02d63963dc3773d2b18278b9b8aa2e08917031fcd after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t127: 273.3s; permission 272.0s (2 attempts); maintenance 1.3s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 1946/78 input/output tokens
+  source t128: 117.5s; permission 116.4s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17243/398 input/output tokens
+  source t129: 107.1s; permission 106.7s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19295/329 input/output tokens
+  source t130: 112.2s; permission 111.0s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17310/379 input/output tokens
+  source t131: 87.1s; permission 86.7s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15920/347 input/output tokens
+committed 16/28 predictions in 845.8s; active artifacts {'observation': 131, 'observation_view': 493, 'memory': 493}
+boundary 17/29: ingest 13 new turns; ask 1 original queries
+  source t132: 142.5s; permission 141.3s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 18473/346 input/output tokens
+  source t133: 89.0s; permission 87.7s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 16281/439 input/output tokens
+  source t134: 134.8s; permission 134.1s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16268/556 input/output tokens
+  source t135: 137.3s; permission 136.0s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 16774/405 input/output tokens
+  source t136: 98.3s; permission 97.8s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 15120/369 input/output tokens
+  source t137: 107.5s; permission 106.3s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 17355/395 input/output tokens
+  source t138: 108.1s; permission 107.0s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 17418/378 input/output tokens
+  source t139: 120.4s; permission 119.3s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 5 fields; 5 permission changes; 5 memory fields; 16279/673 input/output tokens
+  source t140: 115.7s; permission 115.3s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18175/311 input/output tokens
+  source t141: 111.8s; permission 110.6s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 16595/402 input/output tokens
+  source t142: 110.7s; permission 109.5s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16866/387 input/output tokens
+  quarantined permission permission-job:bbaaf38b3893e3690914e9f490658bb7164f716a6728574e14085755aeff8656 after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t143: 284.5s; permission 283.1s (2 attempts); maintenance 1.4s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 1970/64 input/output tokens
+  source t144: 107.0s; permission 106.0s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 17119/375 input/output tokens
+committed 17/28 predictions in 1805.7s; active artifacts {'observation': 144, 'observation_view': 553, 'memory': 553}
+boundary 18/29: ingest 2 new turns; ask 1 original queries
+  source t145: 106.6s; permission 106.2s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19971/325 input/output tokens
+  source t146: 87.3s; permission 86.0s (1 attempts); maintenance 1.3s (0 batches); enrichment queued 6 fields; 6 permission changes; 6 memory fields; 16564/405 input/output tokens
+committed 18/28 predictions in 580.0s; active artifacts {'observation': 146, 'observation_view': 559, 'memory': 559}
+boundary 19/29: ingest 8 new turns; ask 1 original queries
+  source t147: 95.8s; permission 95.1s (1 attempts); maintenance 0.7s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16654/330 input/output tokens
+  source t148: 113.9s; permission 112.4s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 17834/412 input/output tokens
+  source t149: 94.7s; permission 94.3s (1 attempts); maintenance 0.4s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17236/365 input/output tokens
+  source t150: 117.0s; permission 115.4s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17299/393 input/output tokens
+  source t151: 91.1s; permission 90.3s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17197/346 input/output tokens
+  quarantined permission permission-job:4993d2405099a2e85114677b4a82f33cc1ab05704d0c7b99d2e6dd19572c526e after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t152: 237.1s; permission 235.4s (2 attempts); maintenance 1.6s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 1933/47 input/output tokens
+  source t153: 108.8s; permission 107.0s (1 attempts); maintenance 1.8s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 16460/382 input/output tokens
+  source t154: 109.6s; permission 108.8s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19047/304 input/output tokens
+committed 19/28 predictions in 1117.2s; active artifacts {'observation': 154, 'observation_view': 591, 'memory': 591}
+boundary 20/29: ingest 2 new turns; ask 1 original queries
+  source t155: 146.5s; permission 146.0s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17111/617 input/output tokens
+  source t156: 117.8s; permission 116.7s (1 attempts); maintenance 1.1s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 16671/411 input/output tokens
+committed 20/28 predictions in 382.4s; active artifacts {'observation': 156, 'observation_view': 594, 'memory': 594}
+boundary 21/29: ingest 2 new turns; ask 1 original queries
+  source t157: 122.5s; permission 120.5s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 15949/668 input/output tokens
+  source t158: 100.2s; permission 98.8s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 3 fields; 3 permission changes; 3 memory fields; 16221/389 input/output tokens
+committed 21/28 predictions in 504.1s; active artifacts {'observation': 158, 'observation_view': 608, 'memory': 608}
+boundary 22/29: ingest 2 new turns; ask 1 original queries
+  source t159: 119.9s; permission 118.0s (1 attempts); maintenance 1.8s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 16747/393 input/output tokens
+  source t160: 96.2s; permission 95.6s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17297/362 input/output tokens
+committed 22/28 predictions in 374.9s; active artifacts {'observation': 160, 'observation_view': 619, 'memory': 619}
+boundary 23/29: ingest 6 new turns; ask 1 original queries
+  source t161: 115.0s; permission 114.5s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16610/560 input/output tokens
+  source t162: 88.1s; permission 86.7s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 8 fields; 3 permission changes; 8 memory fields; 16556/391 input/output tokens
+  source t163: 106.3s; permission 104.6s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16317/394 input/output tokens
+  source t164: 108.8s; permission 107.4s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 18504/372 input/output tokens
+  source t165: 90.8s; permission 90.3s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17703/370 input/output tokens
+  source t166: 112.6s; permission 111.2s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 18309/355 input/output tokens
+committed 23/28 predictions in 860.6s; active artifacts {'observation': 166, 'observation_view': 648, 'memory': 648}
+boundary 24/29: ingest 4 new turns; ask 1 original queries
+  source t167: 159.9s; permission 158.9s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 16200/638 input/output tokens
+  source t168: 133.8s; permission 132.9s (1 attempts); maintenance 1.0s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 16550/388 input/output tokens
+  source t169: 149.1s; permission 148.5s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 20849/329 input/output tokens
+  source t170: 127.8s; permission 126.1s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 6 fields; 6 permission changes; 6 memory fields; 17021/409 input/output tokens
+committed 24/28 predictions in 818.4s; active artifacts {'observation': 170, 'observation_view': 658, 'memory': 658}
+boundary 25/29: ingest 4 new turns; ask 1 original queries
+  source t171: 101.4s; permission 100.6s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 16990/359 input/output tokens
+  source t172: 109.0s; permission 107.4s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 16717/388 input/output tokens
+  source t173: 106.8s; permission 105.0s (1 attempts); maintenance 1.8s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 16769/385 input/output tokens
+  source t174: 79.4s; permission 78.6s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19141/305 input/output tokens
+committed 25/28 predictions in 582.3s; active artifacts {'observation': 174, 'observation_view': 676, 'memory': 676}
+boundary 26/29: ingest 14 new turns; ask 1 original queries
+  source t175: 104.8s; permission 104.3s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17242/373 input/output tokens
+  source t176: 96.4s; permission 95.0s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 16988/405 input/output tokens
+  source t177: 108.2s; permission 106.6s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 16609/375 input/output tokens
+  source t178: 77.5s; permission 76.9s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19094/314 input/output tokens
+  source t179: 113.1s; permission 112.6s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18699/378 input/output tokens
+  source t180: 95.3s; permission 94.7s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19714/314 input/output tokens
+  source t181: 88.0s; permission 86.3s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 18170/379 input/output tokens
+  source t182: 93.3s; permission 92.8s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18876/303 input/output tokens
+  source t183: 93.8s; permission 92.3s (1 attempts); maintenance 1.5s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17767/378 input/output tokens
+  source t184: 104.4s; permission 103.0s (1 attempts); maintenance 1.4s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 18711/355 input/output tokens
+  source t185: 82.7s; permission 80.7s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17818/395 input/output tokens
+  source t186: 79.0s; permission 78.5s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18862/316 input/output tokens
+  quarantined permission permission-job:6b8345b329e7688829142fb8b1c190682140fb742bb30dc4efad2678850bf30b after exhausted bounded repair; no rejected changes published; independent privacy assessment NO_PRIVACY_INSTRUCTION (1 extra calls; 0 verified controls; 0 unresolved portions released); event uncertainty hold released; continuing to the next turn
+  source t187: 256.0s; permission 255.8s (2 attempts); maintenance 0.2s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 1903/72 input/output tokens
+  source t188: 94.1s; permission 92.6s (1 attempts); maintenance 1.5s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17621/390 input/output tokens
+committed 26/28 predictions in 1886.1s; active artifacts {'observation': 188, 'observation_view': 724, 'memory': 724}
+boundary 27/29: ingest 2 new turns; ask 1 original queries
+  source t189: 98.3s; permission 97.4s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17239/352 input/output tokens
+  source t190: 104.0s; permission 102.4s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 17530/390 input/output tokens
+committed 27/28 predictions in 412.8s; active artifacts {'observation': 190, 'observation_view': 735, 'memory': 735}
+boundary 28/29: ingest 2 new turns; ask 1 original queries
+  source t191: 169.2s; permission 167.4s (2 attempts); maintenance 1.8s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 17173/147 input/output tokens
+  source t192: 87.2s; permission 85.9s (1 attempts); maintenance 1.2s (0 batches); enrichment queued 4 fields; 4 permission changes; 4 memory fields; 16451/400 input/output tokens
+committed 28/28 predictions in 414.7s; active artifacts {'observation': 192, 'observation_view': 750, 'memory': 750}
+boundary 29/29: ingest 14 new turns; ask 0 original queries
+  source t193: 91.0s; permission 90.2s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17695/344 input/output tokens
+  source t194: 100.4s; permission 99.8s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19213/312 input/output tokens
+  source t195: 82.5s; permission 80.9s (1 attempts); maintenance 1.6s (0 batches); enrichment queued 7 fields; 7 permission changes; 7 memory fields; 17162/392 input/output tokens
+  source t196: 87.7s; permission 86.8s (1 attempts); maintenance 0.9s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19535/305 input/output tokens
+  source t197: 99.8s; permission 98.1s (1 attempts); maintenance 1.7s (0 batches); enrichment queued 11 fields; 11 permission changes; 11 memory fields; 17288/374 input/output tokens
+  source t198: 76.9s; permission 76.3s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19645/305 input/output tokens
+  source t199: 101.9s; permission 100.4s (1 attempts); maintenance 1.5s (0 batches); enrichment queued 2 fields; 2 permission changes; 2 memory fields; 17547/384 input/output tokens
+  source t200: 102.0s; permission 101.4s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18801/304 input/output tokens
+  source t201: 63.5s; permission 63.0s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17498/354 input/output tokens
+  source t202: 64.9s; permission 63.7s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18956/314 input/output tokens
+  source t203: 78.6s; permission 78.0s (1 attempts); maintenance 0.6s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 17027/347 input/output tokens
+  source t204: 56.9s; permission 56.3s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19762/304 input/output tokens
+  source t205: 106.3s; permission 105.4s (1 attempts); maintenance 0.8s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 18305/349 input/output tokens
+  source t206: 56.4s; permission 55.8s (1 attempts); maintenance 0.5s (0 batches); enrichment queued 0 fields; 0 permission changes; 0 memory fields; 19635/304 input/output tokens
+committed 28/28 predictions in 1168.8s; active artifacts {'observation': 206, 'observation_view': 770, 'memory': 770}
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 28,
+    "official_predictions": 28,
+    "scored_checkpoints": 28,
+    "expected_boundaries": 29,
+    "completed_boundaries": 29,
+    "expected_source_turns": 206,
+    "ingested_source_turns": 206,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 28,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 9,
+    "n_safety_scored": 9,
+    "n_safety_context_scored": 9,
+    "n_safety_e2e_scored": 9,
+    "action_accuracy": 0.75,
+    "utility_accuracy": 0.8888888888888888,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": 0.1111111111111111,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.1111111111111111,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": 0.1111111111111111,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": 0.7901234567901234,
+    "compliance_utility_e2e_score": 0.7901234567901234,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-09T01:22:21.132720+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:6b8345b329e7688829142fb8b1c190682140fb742bb30dc4efad2678850bf30b",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:6b8345b329e7688829142fb8b1c190682140fb742bb30dc4efad2678850bf30b",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": false,
+    "privacy_assessment": {
+      "outcome": "NO_PRIVACY_INSTRUCTION",
+      "uncertainty_released": true,
+      "verified_controls": 0,
+      "unresolved": 0,
+      "extra_model_calls": 1
+    },
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 783
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 151.716,
+    "permission_total": 25251.466,
+    "source_ingest": 4.328,
+    "source_total": 25407.721
+  },
+  "governance": {
+    "candidate_versions": 649,
+    "decisions": 649,
+    "recipient_decisions": 0,
+    "erasure_selectors": 2
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 190,
+      "quarantined": 16
+    },
+    "attempts": 260,
+    "record_versions": 666,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:556f4d9859f5aa28808d9d20fc6e26b6887ba51fe875412b865fba65a9ccab46",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:3f7654dc4b5ae7dc4c216b0e3c52365ddc73a75dfee0a1258d4496359933c398",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:52211bc0732a30648b0b4d4ff1ab1eed290f87bf59798ce56f7c55e272d180a8",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:cec69c74047cf5ae6d96f0dcf7f19555fcc8a5b74d07151647d3fa2d59f6794a",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:119e5008cf7e37c58165f70d1ef5480ae55d481bcce35b3f46f58523d6f8e776",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:0af543d44a9874e6c4f358da43392f52d03ead849efd255dfa136d65ac2d91a2",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:c1b2304b7792f807c66b847782506e55b3c1bcdc5d009bffa37dae65fb39ca09",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:be199bc33d3279211492f3fd3f8345b17915f973a55a5a75840e81c14788ad51",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:83f9e0e75fef64d7e986ff44e5413656d11cb9118caba86801ff3cefba155c0e",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:85479a018481380303c87bf4e29400116c5ea6b4de89c7d1c659b371d32f139a",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:92ec9d8576696431a90aae4747933956601b0bdaf9a8e14c72996bb83fedbed4",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:7600e1dca3642405da7b11890c19e5eff37afdbfbe149d00cbb45ef531596779",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:678f317298799434192a01910f126008010de1885c7b841990ffe4efc4db23c3",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:235691af96ab320187564ac2d0e308c612a040576986fcce9d8e29e108a9e4ec",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:2c1e3b7379e57625a9af813f4e6a87afba605532510e6c064e7dc6103dcab107",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:8d67b072595e9c687a2111566671bf4079d90554b257f3254707b953e74129a7",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:b6aba4cef11b44eb9d4da499b048a123c435c3d9c1a827b802ddd37d9c6247eb",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:58a932da63076fdc6dca89c3a6d808a27d3f2af29400491e3c8905a74466033c",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:101a2144cfa02d009dcf9c13b021e33f9c4cb99e19e661cdc71a32ddb05f81b7",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:0f1eaad63b53512777738014b62d49fbc96121abdf28e46cfe6be708a8b70546",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:d9e5ec76dd8fcf5c2d69bde30cafec48546abe13c7a134d82381acbb0bfcd3bc",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:10fa1761613a0ee2296e99cd5e630a3875607a4c633244f1fed669c23d04003b",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:3d993f35146627d8dfd3258da8c707dba7f24cb375ba429927be9b02e42e7fc3",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:f12a20e1874eb95db67fda478b29e7d7a48b3357a5b69352809d43b284afefe9",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:408ba5a37fae99cc7807e0c02d63963dc3773d2b18278b9b8aa2e08917031fcd",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:da1dc85b0d9f0d23a02f751e83466fee9f069378b72779d7203432c8acc3c585",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:bbaaf38b3893e3690914e9f490658bb7164f716a6728574e14085755aeff8656",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:52afd257561a5c92859551be3a3229ab3f5c2e39612b81a9e6cf202facd4d722",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:4993d2405099a2e85114677b4a82f33cc1ab05704d0c7b99d2e6dd19572c526e",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:fc21b8abc52aeb034f9d3e5b44aa6d113d4f58de5942c1e45c7490374a87af1b",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:6b8345b329e7688829142fb8b1c190682140fb742bb30dc4efad2678850bf30b",
+        "compartment": "encounter:4b10eece26b5baa1ca32c9c4",
+        "source_id": "permission-source:3ad060a88b4f235843767782b1338696d1bc9bc85670a2db8d1aa05c651511be",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      }
+    ],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 15,
+    "indexed_resources": 770,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.262,
+    "latency_seconds": {
+      "mean": 123.33845142237571,
+      "median": 108.85660799080506,
+      "p90": 184.50623960699886,
+      "max": 296.8475467842072
+    },
+    "processing_seconds": 24076.064,
+    "model_seconds": 23978.588,
+    "mean_seconds_per_source": 116.874,
+    "measured_attempts": 260,
+    "prompt_tokens": 3455619,
+    "completion_tokens": 96225,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 23978.588,
+    "outside_model_seconds": 1429.133,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 143.56305020611734
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 129.8285737297125
+      },
+      "after_100": {
+        "count": 106,
+        "mean": 110.73716788884815
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 206
+    },
+    "candidate_states": {
+      "active": 132,
+      "erased": 5
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 222,
+        "timed_calls": 222,
+        "seconds": 21564.089752596803,
+        "model_seconds": 21470.128788405098,
+        "prompt_tokens": 3363434,
+        "completion_tokens": 92748
+      },
+      "incremental_repair": {
+        "calls": 2,
+        "timed_calls": 2,
+        "seconds": 176.8362899813801,
+        "model_seconds": 176.06813364475965,
+        "prompt_tokens": 23248,
+        "completion_tokens": 707
+      },
+      "incremental_binding_repair": {
+        "calls": 36,
+        "timed_calls": 36,
+        "seconds": 2335.1375937070698,
+        "model_seconds": 2332.391400752589,
+        "prompt_tokens": 68937,
+        "completion_tokens": 2770
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 2,
+      "restricted": 9,
+      "scope_or_subject_excluded": 35
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 16,
+    "checkpoints_with_evidence": 16,
+    "checkpoints_without_evidence": 12,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 4,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 4,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 28,
+    "modes": {
+      "enforce": 28,
+      "shadow": 0
+    },
+    "generation_calls": 16,
+    "verification_calls": 16,
+    "policy_calls": 12,
+    "regeneration_calls": 0,
+    "repair_count": 9,
+    "rejected_claims": 0,
+    "verifier_seconds_total": 1675.3646563729271,
+    "verifier_seconds_mean": 104.71029102330795,
+    "repair_frequency": 0.32142857142857145,
+    "validation_unavailable": 2,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

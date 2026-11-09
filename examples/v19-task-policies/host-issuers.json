@@ -1,0 +1,30 @@
+{
+  "dispatcher": {
+    "key_id": "dispatch-2026-01",
+    "authority": "verified-service-assignment",
+    "tenant": "example-tenant",
+    "subjects": [
+      "subject-1"
+    ],
+    "workers": [
+      "worker-a",
+      "worker-b"
+    ],
+    "task_categories": [
+      "adherence_check"
+    ],
+    "actions": [
+      "read",
+      "search",
+      "derive"
+    ],
+    "categories": [
+      "adherence",
+      "regimen",
+      "instructions",
+      "updates",
+      "followup"
+    ],
+    "max_lifetime_seconds": 86400
+  }
+}

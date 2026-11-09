@@ -1,0 +1,107 @@
+{
+  "id": "repair-dependencies",
+  "version": "1",
+  "tenant": "example-tenant",
+  "categories": {
+    "status": {
+      "description": "status for only the named task items",
+      "pattern": "{items} repair: (?:pending|complete)\\.",
+      "dependencies": [
+        "diagnostic"
+      ]
+    },
+    "diagnostic": {
+      "description": "diagnostic for only the named task items",
+      "pattern": "{items} diagnostic: battery failure\\.",
+      "dependencies": []
+    },
+    "instructions": {
+      "description": "instructions for only the named task items",
+      "pattern": "{items} instruction: replace battery\\.",
+      "dependencies": []
+    },
+    "updates": {
+      "description": "updates for only the named task items",
+      "pattern": "{items} repair cancelled\\.",
+      "dependencies": []
+    },
+    "followup": {
+      "description": "followup for only the named task items",
+      "pattern": "{items} check: charging verified\\.",
+      "dependencies": []
+    },
+    "social": {
+      "description": "social for only the named task items",
+      "pattern": "Social: .+",
+      "dependencies": []
+    }
+  },
+  "tasks": {
+    "device_repair": {
+      "objective": "Repair the accepted device",
+      "prerequisite_inputs": [
+        "diagnostic"
+      ],
+      "outputs": [
+        "status"
+      ],
+      "resulting_instructions": [
+        "instructions"
+      ],
+      "updates_cancellations": [
+        "updates"
+      ],
+      "follow_through": [
+        "followup"
+      ],
+      "actions": [
+        "read",
+        "search",
+        "derive"
+      ],
+      "max_lifetime_seconds": 86400
+    }
+  },
+  "dialogue": [
+    {
+      "task_category": "device_repair",
+      "offer_pattern": "I will repair (?P<items>device-[a-z]+)\\.",
+      "item_separator": " and ",
+      "acceptances": [
+        {
+          "pattern": "Yes, please proceed\\.",
+          "closed_categories": null,
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, status only\\.",
+          "closed_categories": [
+            "status"
+          ],
+          "excluded_categories": []
+        },
+        {
+          "pattern": "Yes, no instructions\\.",
+          "closed_categories": null,
+          "excluded_categories": [
+            "instructions"
+          ]
+        }
+      ]
+    }
+  ],
+  "terminal_patterns": [
+    {
+      "pattern": "Cancel task {task_id}\\.",
+      "state": "CANCELLED"
+    },
+    {
+      "pattern": "Revoke task {task_id}\\.",
+      "state": "REVOKED"
+    },
+    {
+      "pattern": "Completed task {task_id}\\.",
+      "state": "COMPLETED"
+    }
+  ]
+}

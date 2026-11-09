@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-08T21:52:45.745388+00:00",
+  "state": "skipped",
+  "stage": "permission permission-job:b391ad0ecef13bc4a3a22a3216a83189886f14851731f5d3f8628001984d12be",
+  "error_type": "PermissionRepairExhausted",
+  "error": "V15 control assessment unresolved after bounded repair",
+  "details": {
+    "job_id": "permission-job:b391ad0ecef13bc4a3a22a3216a83189886f14851731f5d3f8628001984d12be",
+    "rejections": 2,
+    "limit": 2
+  },
+  "unresolved_access_hold": false,
+  "privacy_assessment": {
+    "outcome": "UNRESOLVED_RELEASED",
+    "uncertainty_released": true,
+    "verified_controls": 0,
+    "unresolved": 1,
+    "extra_model_calls": 1
+  },
+  "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+}

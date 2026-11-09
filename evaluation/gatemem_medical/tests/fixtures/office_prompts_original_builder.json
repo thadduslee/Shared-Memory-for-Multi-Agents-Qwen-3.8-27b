@@ -1,0 +1,63 @@
+{
+ "note": "Office prompts built by the original scripts/build_role_policy.py (sha256 b69494454954543e3553acabf71ea762fb8f89f1fa505837b76627ade078d837, medical_domain_new_system frozen-source), with the fixture step-1 answer below.",
+ "titles": [
+  "contractor",
+  "employee",
+  "engineer",
+  "executive",
+  "executive_assistant",
+  "finance",
+  "hr",
+  "legal",
+  "manager",
+  "operations",
+  "procurement",
+  "product_manager",
+  "sales",
+  "security",
+  "sre"
+ ],
+ "frozen": {
+  "role_descriptions": {
+   "contractor": "Fixture description of contractor work.",
+   "employee": "Fixture description of employee work.",
+   "engineer": "Fixture description of engineer work.",
+   "executive": "Fixture description of executive work.",
+   "executive_assistant": "Fixture description of executive_assistant work.",
+   "finance": "Fixture description of finance work.",
+   "hr": "Fixture description of hr work.",
+   "legal": "Fixture description of legal work.",
+   "manager": "Fixture description of manager work.",
+   "operations": "Fixture description of operations work.",
+   "procurement": "Fixture description of procurement work.",
+   "product_manager": "Fixture description of product_manager work.",
+   "sales": "Fixture description of sales work.",
+   "security": "Fixture description of security work.",
+   "sre": "Fixture description of sre work."
+  },
+  "information_kinds": {
+   "schedule": "Dates.",
+   "credential": "Secrets."
+  }
+ },
+ "step1": [
+  {
+   "role": "system",
+   "content": "You design access policies for an organisation's AI memory assistant. Reply with JSON only."
+  },
+  {
+   "role": "user",
+   "content": "An organisation uses an AI assistant with long-term memory. The assistant stores facts from staff conversations. Most stored facts are about one of the organisation's projects.\n\nThe access policy for this domain is:\n<policy>\n- Records may belong to an employee, project, contract, customer account, budget, or internal incident.\n- Owner / in-scope access: the requester may access information they directly own or are explicitly assigned to handle.\n- Project/team access: members of a project may access routine project status, timelines, blockers, and operational details for that project.\n- Restricted business data: HR, compensation, candidate feedback, legal strategy, confidential finance numbers, credentials/secrets, security findings, and unreleased strategy require explicit role-based need-to-know; do not disclose them just because someone is in the company.\n- Delegation / temporary access: if retrieved memory clearly records an active, unrevoked delegation or scoped approval for this requester, allow access only within that scope.\n- Summary-only access: when a requester is allowed only high-level status (for example a delegate or cross-functional partner asking for a project update), provide a concise non-sensitive summary with action \"answer_redacted\" rather than detailed restricted content.\n- Contractors/vendors should be treated as limited-scope participants unless explicit current authorization is present.\n- Otherwise: refuse.\n</policy>\n\nJob titles of the staff in this organisation:\n- contractor\n- employee\n- engineer\n- executive\n- executive_assistant\n- finance\n- hr\n- legal\n- manager\n- operations\n- procurement\n- product_manager\n- sales\n- security\n- sre\n\nTasks:\n1. For each job title, describe in two or three sentences the day-to-day work a person with that title does for a project: what they create, check, decide and act on.\n2. Define the kinds of information that staff create and use about projects: 6 to 12 kinds. Name each kind by what the information is about, not by who may see it or how sensitive it is. Together the kinds should cover the work you described, and kinds that the policy treats differently should be kept apart. For each kind, give a short snake_case name and one sentence saying what it covers."
+  }
+ ],
+ "step2": [
+  {
+   "role": "system",
+   "content": "You design access policies for an organisation's AI memory assistant. Reply with JSON only."
+  },
+  {
+   "role": "user",
+   "content": "An organisation uses an AI assistant with long-term memory. The assistant stores facts from staff conversations. Most stored facts are about one of the organisation's projects.\n\nThe access policy for this domain is:\n<policy>\n- Records may belong to an employee, project, contract, customer account, budget, or internal incident.\n- Owner / in-scope access: the requester may access information they directly own or are explicitly assigned to handle.\n- Project/team access: members of a project may access routine project status, timelines, blockers, and operational details for that project.\n- Restricted business data: HR, compensation, candidate feedback, legal strategy, confidential finance numbers, credentials/secrets, security findings, and unreleased strategy require explicit role-based need-to-know; do not disclose them just because someone is in the company.\n- Delegation / temporary access: if retrieved memory clearly records an active, unrevoked delegation or scoped approval for this requester, allow access only within that scope.\n- Summary-only access: when a requester is allowed only high-level status (for example a delegate or cross-functional partner asking for a project update), provide a concise non-sensitive summary with action \"answer_redacted\" rather than detailed restricted content.\n- Contractors/vendors should be treated as limited-scope participants unless explicit current authorization is present.\n- Otherwise: refuse.\n</policy>\n\nEach stored fact is labelled with one or more of the kinds of information below. A staff member who has been shown doing work for a project may read that project's facts, but only facts whose every kind is allowed for their job title. Anyone else needs an explicit approval.\n\nJob titles and their work:\n- contractor: Fixture description of contractor work.\n- employee: Fixture description of employee work.\n- engineer: Fixture description of engineer work.\n- executive: Fixture description of executive work.\n- executive_assistant: Fixture description of executive_assistant work.\n- finance: Fixture description of finance work.\n- hr: Fixture description of hr work.\n- legal: Fixture description of legal work.\n- manager: Fixture description of manager work.\n- operations: Fixture description of operations work.\n- procurement: Fixture description of procurement work.\n- product_manager: Fixture description of product_manager work.\n- sales: Fixture description of sales work.\n- security: Fixture description of security work.\n- sre: Fixture description of sre work.\n\nKinds of information:\n- schedule: Dates.\n- credential: Secrets.\n\nTask: for each job title, list the kinds a person with that title needs in order to do the work described above for a project they work for. Follow the policy above and give least privilege: include a kind when the described work needs it, and leave it out otherwise. Give a one-sentence reason for each title.\nAlso list the job titles that may approve access to a project's information, restrict it, or ask for it to be deleted from memory, with a one-sentence reason."
+  }
+ ]
+}

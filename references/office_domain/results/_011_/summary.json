@@ -1,0 +1,207 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 32,
+    "official_predictions": 32,
+    "scored_checkpoints": 32,
+    "expected_boundaries": 31,
+    "completed_boundaries": 31,
+    "expected_source_turns": 240,
+    "ingested_source_turns": 240,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 32,
+    "n_utility": 9,
+    "n_utility_scored": 9,
+    "n_privacy": 10,
+    "n_privacy_scored": 10,
+    "n_privacy_context_scored": 10,
+    "n_privacy_e2e_scored": 10,
+    "n_safety": 13,
+    "n_safety_scored": 13,
+    "n_safety_context_scored": 13,
+    "n_safety_e2e_scored": 13,
+    "action_accuracy": 0.78125,
+    "utility_accuracy": 0.8888888888888888,
+    "privacy_leakage_rate": 0.2,
+    "deletion_leakage_rate": 0.0,
+    "privacy_answer_leakage_rate": 0.2,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.2,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.2,
+    "deletion_e2e_leakage_rate": 0.0,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": 0.7111111111111111,
+    "compliance_utility_e2e_score": 0.7111111111111111,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-08T14:49:56.553131+00:00",
+    "state": "running",
+    "stage": "permission permission-job:cf9f0d08f911aaff485faed850adb23505458e902ae0615f45ddbfc4453062ed",
+    "recovered_after_failures": 9
+  },
+  "evolution": {
+    "jobs": {
+      "applied": 31
+    },
+    "attempts": 31,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "complete": 124,
+      "pending": 1829,
+      "stale": 10
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 507.489,
+    "evolution_total": 1918.215,
+    "permission_total": 24743.679,
+    "source_ingest": 8.235,
+    "source_total": 25259.82
+  },
+  "governance": {
+    "candidate_versions": 1456,
+    "decisions": 1456,
+    "recipient_decisions": 0,
+    "erasure_selectors": 3
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 240
+    },
+    "attempts": 426,
+    "record_versions": 1471,
+    "skipped_turns": [],
+    "quarantined_turns": [],
+    "active_scoped_control_holds": 0,
+    "complete": true,
+    "runtime_assignments": 16,
+    "indexed_resources": 2074,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.738,
+    "latency_seconds": {
+      "mean": 105.24925151693557,
+      "median": 106.26348273642361,
+      "p90": 133.2778614424169,
+      "max": 310.57262465544045
+    },
+    "processing_seconds": 23890.275,
+    "model_seconds": 23564.915,
+    "mean_seconds_per_source": 99.543,
+    "measured_attempts": 426,
+    "prompt_tokens": 4262786,
+    "completion_tokens": 111979,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 23564.915,
+    "outside_model_seconds": 1694.905,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 108.93946301830933
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 110.12830444384366
+      },
+      "after_100": {
+        "count": 140,
+        "mean": 102.18879993540634
+      }
+    }
+  },
+  "degraded": false,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 240
+    },
+    "candidate_states": {
+      "active": 254,
+      "erased": 6
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 250,
+        "timed_calls": 250,
+        "seconds": 16722.100770179182,
+        "model_seconds": 16465.527960927226,
+        "prompt_tokens": 3886925,
+        "completion_tokens": 99484
+      },
+      "incremental_repair": {
+        "calls": 1,
+        "timed_calls": 1,
+        "seconds": 106.77802085410804,
+        "model_seconds": 106.35959266778082,
+        "prompt_tokens": 15929,
+        "completion_tokens": 429
+      },
+      "incremental_binding_repair": {
+        "calls": 175,
+        "timed_calls": 175,
+        "seconds": 7061.396546665579,
+        "model_seconds": 6993.027450149879,
+        "prompt_tokens": 359932,
+        "completion_tokens": 12066
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 2,
+      "scope_or_subject_excluded": 224
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 0,
+    "checkpoints_with_evidence": 27,
+    "checkpoints_without_evidence": 5,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 56,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 56,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": true
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 32,
+    "modes": {
+      "enforce": 32,
+      "shadow": 0
+    },
+    "generation_calls": 26,
+    "verification_calls": 26,
+    "policy_calls": 8,
+    "regeneration_calls": 0,
+    "repair_count": 12,
+    "rejected_claims": 1,
+    "verifier_seconds_total": 2397.8357648123056,
+    "verifier_seconds_mean": 92.22445249278098,
+    "repair_frequency": 0.375,
+    "validation_unavailable": 0,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}

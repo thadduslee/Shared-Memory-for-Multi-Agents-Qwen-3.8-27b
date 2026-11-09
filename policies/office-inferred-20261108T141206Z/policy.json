@@ -1,0 +1,144 @@
+{
+  "domain": "office",
+  "model": "qwen3.8:27b",
+  "prompt_version": 1,
+  "script_sha256": "fa8707db54b5927631c87e05e5641631285a838aa371bb17de42f24d198cff1a",
+  "information_kinds": {
+    "project_status": "Routine progress, health, milestones, and high-level outcomes for the project.",
+    "timeline": "Planned dates, deadlines, schedule changes, and delivery timing for the project.",
+    "blockers": "Impediments, risks, dependencies, and open issues that affect project delivery.",
+    "operational_details": "Day-to-day work, tasks, environments, processes, and non-sensitive implementation details.",
+    "budget_finance": "Costs, spend, forecasts, invoices, and other confidential finance numbers tied to the project.",
+    "contract_terms": "Contract scope, terms, obligations, and commercial commitments tied to the project.",
+    "customer_account": "Customer-specific account details, requirements, and account context tied to the project.",
+    "hr_compensation": "Staffing, performance, compensation, candidate feedback, and other HR matters tied to the project.",
+    "legal_strategy": "Legal advice, litigation, compliance positions, and other legal strategy details.",
+    "security_findings": "Vulnerabilities, security incidents, audit findings, and other security findings for the project.",
+    "credentials_secrets": "Passwords, keys, tokens, certificates, and other secret material referenced in project discussions.",
+    "unreleased_strategy": "Unreleased product roadmap, business strategy, go-to-market plans, and other unreleased strategy details."
+  },
+  "role_kinds": {
+    "contractor": [
+      "project_status",
+      "timeline"
+    ],
+    "employee": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "timeline"
+    ],
+    "engineer": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "timeline"
+    ],
+    "executive": [
+      "blockers",
+      "budget_finance",
+      "project_status",
+      "timeline",
+      "unreleased_strategy"
+    ],
+    "executive_assistant": [
+      "blockers",
+      "project_status",
+      "timeline"
+    ],
+    "finance": [
+      "blockers",
+      "budget_finance",
+      "project_status",
+      "timeline"
+    ],
+    "hr": [
+      "blockers",
+      "hr_compensation",
+      "project_status",
+      "timeline"
+    ],
+    "legal": [
+      "blockers",
+      "contract_terms",
+      "legal_strategy",
+      "project_status",
+      "timeline"
+    ],
+    "manager": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "timeline"
+    ],
+    "operations": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "timeline"
+    ],
+    "procurement": [
+      "blockers",
+      "budget_finance",
+      "contract_terms",
+      "project_status",
+      "timeline"
+    ],
+    "product_manager": [
+      "blockers",
+      "customer_account",
+      "operational_details",
+      "project_status",
+      "timeline",
+      "unreleased_strategy"
+    ],
+    "sales": [
+      "blockers",
+      "contract_terms",
+      "customer_account",
+      "project_status",
+      "timeline"
+    ],
+    "security": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "security_findings",
+      "timeline"
+    ],
+    "sre": [
+      "blockers",
+      "operational_details",
+      "project_status",
+      "security_findings",
+      "timeline"
+    ]
+  },
+  "role_reasons": {
+    "contractor": "Contractors are limited-scope participants, so they only need high-level routine status and schedule unless a scoped approval adds more.",
+    "employee": "A generic employee working on a project needs routine status, schedule, blockers, and operational details to participate.",
+    "engineer": "An engineer needs routine project context and operational details to build, test, and support the project.",
+    "executive": "An executive needs high-level status, schedule, risks, and role-based need-to-know for finance and unreleased strategy.",
+    "executive_assistant": "An executive assistant needs status, schedule, and blockers to coordinate the executive's project work without detailed operational access.",
+    "finance": "A finance staff member needs routine project context and confidential finance numbers to manage project costs.",
+    "hr": "An HR staff member needs routine project context and HR/compensation data to handle staffing and people matters.",
+    "legal": "A legal staff member needs routine project context, legal strategy, and contract terms to provide legal guidance on the project.",
+    "manager": "A manager needs routine project status, schedule, blockers, and operational details to coordinate delivery.",
+    "operations": "An operations staff member needs routine project context and operational details to run and support the project.",
+    "procurement": "A procurement staff member needs routine project context, finance numbers, and contract terms to manage purchasing and vendor costs.",
+    "product_manager": "A product manager needs routine delivery details, customer account context, and unreleased strategy to define and track the project's product scope.",
+    "sales": "A sales staff member needs routine status, schedule, blockers, customer account context, and contract terms to support customer-facing commitments.",
+    "security": "A security staff member needs routine project context, operational details, and security findings to protect the project.",
+    "sre": "An SRE needs routine project context, operational details, and security findings to maintain reliability and respond to issues."
+  },
+  "authorities": [
+    "executive",
+    "finance",
+    "hr",
+    "legal",
+    "manager",
+    "product_manager",
+    "security"
+  ],
+  "authorities_reason": "These roles have project ownership, senior sponsorship, or domain authority over the restricted information kinds stored about a project."
+}

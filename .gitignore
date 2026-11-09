@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Credentials: only the *.example templates are tracked
+.env
+.env.*
+!.env.example
+pipeline/config/*.env
+!pipeline/config/*.env.example
+
+# Runtime state. Memory stores and judge journals are large, machine-local and
+# resumable only on the machine that wrote them; every published run lists
+# their sha256 and size in EXPORT_MANIFEST.json instead.
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.lock
+model-trace.jsonl
+nohup.out

@@ -1,0 +1,41 @@
+{
+  "mode": "strict-independent-rejudge",
+  "source_run": "/home/thaddus/v19-evaluations/medical_domain_new_system",
+  "judge": {
+    "provider": "openrouter",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "openai/gpt-4.1"
+  },
+  "benchmark": {
+    "repo": "/home/thaddus/a-mem-gov",
+    "commit": "a297102d7e707c616c99a8e274f912d6c8e81b3d",
+    "judge_sha256": "df7a4f6ded9c327f44c2f6ea49c68ef54e143ed9e8b48f9846651fb7addb75c3",
+    "prompt_sha256": "054f2db5de0f0537671ff4fbb3f88dd9e694ac8f7738d484648aca8d88ee111a"
+  },
+  "coverage": {
+    "expected_checkpoints": 579,
+    "rejudged_checkpoints": 579,
+    "exact_checkpoint_coverage": true
+  },
+  "context_source": "memory_audit.prompt_context.text when present; otherwise joined saved output.retrieved_memory[].text",
+  "context_source_counts": {
+    "saved_prompt_context": 0,
+    "retrieved_memory_text": 579
+  },
+  "metrics": {
+    "U": 0.8476190476190476,
+    "A": 0.078125,
+    "F": 0.07344632768361582,
+    "OR": 0.04285714285714286,
+    "MGS": 0.7240079365079365,
+    "A_strict": 0.078125,
+    "F_strict": 0.07344632768361582,
+    "MGS_strict": 0.7240079365079365,
+    "n_utility": 210,
+    "n_privacy": 192,
+    "n_safety": 177,
+    "n": 579,
+    "judge_fallbacks": 0
+  },
+  "complete": true
+}

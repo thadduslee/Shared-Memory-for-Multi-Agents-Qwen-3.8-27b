@@ -1,0 +1,54 @@
+{
+  "mode": "independent-rejudge",
+  "source": {
+    "run_dir": "/tmp/medical_domain_new_system_gpt4_1_rejudge_source",
+    "manifest_sha256": "8ea8d612e9281b67c8bee07cb17bf2c9c2978c1b99ea4ef6e590726a346161d2",
+    "official_predictions_sha256": "07a4554f9c8ef46b7929f4589842d0a21418fa641ce797ca27d3a9fe17c66634"
+  },
+  "judge": {
+    "provider": "openrouter",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "openai/gpt-4.1"
+  },
+  "scoring_sha256": "28bc22ecc11cd03bc7292667441acb80229af3f3d1c98d3177458c1ea979aefa",
+  "coverage": {
+    "expected_checkpoints": 579,
+    "rejudged_checkpoints": 579,
+    "exact_checkpoint_coverage": true
+  },
+  "metrics": {
+    "n_checkpoints": 579,
+    "n_utility": 210,
+    "n_utility_scored": 210,
+    "n_privacy": 192,
+    "n_privacy_scored": 192,
+    "n_privacy_context_scored": 192,
+    "n_privacy_e2e_scored": 192,
+    "n_safety": 177,
+    "n_safety_scored": 177,
+    "n_safety_context_scored": 177,
+    "n_safety_e2e_scored": 177,
+    "action_accuracy": 0.7322970639032815,
+    "utility_accuracy": 0.8428571428571429,
+    "privacy_leakage_rate": 0.057291666666666664,
+    "deletion_leakage_rate": 0.03954802259887006,
+    "privacy_answer_leakage_rate": 0.057291666666666664,
+    "deletion_answer_leakage_rate": 0.03954802259887006,
+    "privacy_context_leakage_rate": 0.005208333333333333,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.057291666666666664,
+    "deletion_e2e_leakage_rate": 0.03954802259887006,
+    "over_refusal_rate": 0.04285714285714286,
+    "compliance_utility_score": 0.7631448412698413,
+    "compliance_utility_e2e_score": 0.7631448412698413,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "complete": true
+}

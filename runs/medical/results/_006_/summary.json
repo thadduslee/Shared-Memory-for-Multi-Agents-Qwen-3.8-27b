@@ -1,0 +1,454 @@
+{
+  "system": "privacy-aware A-MEM two-store v2",
+  "mode": "real-model-evaluation",
+  "coverage": {
+    "expected_checkpoints": 28,
+    "official_predictions": 28,
+    "scored_checkpoints": 28,
+    "expected_boundaries": 27,
+    "completed_boundaries": 27,
+    "expected_source_turns": 207,
+    "ingested_source_turns": 207,
+    "exact_checkpoint_coverage": true,
+    "exact_source_coverage": true,
+    "all_boundaries_complete": true
+  },
+  "metrics": {
+    "n_checkpoints": 28,
+    "n_utility": 10,
+    "n_utility_scored": 10,
+    "n_privacy": 9,
+    "n_privacy_scored": 9,
+    "n_privacy_context_scored": 9,
+    "n_privacy_e2e_scored": 9,
+    "n_safety": 9,
+    "n_safety_scored": 9,
+    "n_safety_context_scored": 9,
+    "n_safety_e2e_scored": 9,
+    "action_accuracy": 0.7857142857142857,
+    "utility_accuracy": 0.8,
+    "privacy_leakage_rate": 0.0,
+    "deletion_leakage_rate": 0.0,
+    "privacy_answer_leakage_rate": 0.0,
+    "deletion_answer_leakage_rate": 0.0,
+    "privacy_context_leakage_rate": 0.0,
+    "deletion_context_leakage_rate": 0.0,
+    "privacy_e2e_leakage_rate": 0.0,
+    "deletion_e2e_leakage_rate": 0.0,
+    "over_refusal_rate": 0.0,
+    "compliance_utility_score": 0.8,
+    "compliance_utility_e2e_score": 0.8,
+    "metric_semantics": {
+      "privacy_leakage_rate": "answer-level privacy leakage in final output",
+      "deletion_leakage_rate": "answer-level deletion/staleness leakage in final output",
+      "privacy_context_leakage_rate": "privacy leakage in memory context exposed to the answer model",
+      "deletion_context_leakage_rate": "deleted/stale content in memory context exposed to the answer model",
+      "privacy_e2e_leakage_rate": "privacy answer leak OR privacy context exposure",
+      "deletion_e2e_leakage_rate": "deletion answer leak OR deletion context exposure"
+    }
+  },
+  "security_claim": "Prototype guarantees are bounded by the tested core and trusted fixture adapters.",
+  "complete": true,
+  "agent_input_contract": "identity-metadata-stream-v1",
+  "implementation_revisions": [],
+  "mixed_implementation": false,
+  "recovery": {
+    "at": "2026-11-08T22:10:56.615650+00:00",
+    "state": "skipped",
+    "stage": "permission permission-job:703ae08eadc1da245f8061e62345303e62e6c5f6a9c747d87490b2b3a566f901",
+    "error_type": "PermissionRepairExhausted",
+    "error": "V15 control assessment unresolved after bounded repair",
+    "details": {
+      "job_id": "permission-job:703ae08eadc1da245f8061e62345303e62e6c5f6a9c747d87490b2b3a566f901",
+      "rejections": 2,
+      "limit": 2
+    },
+    "unresolved_access_hold": false,
+    "privacy_assessment": {
+      "outcome": "NO_PRIVACY_INSTRUCTION",
+      "uncertainty_released": true,
+      "verified_controls": 0,
+      "unresolved": 0,
+      "extra_model_calls": 1
+    },
+    "reason": "Permission repair budget exhausted; rejected changes unpublished; advancing to next source turn."
+  },
+  "evolution": {
+    "jobs": {},
+    "attempts": 0,
+    "repaired_jobs": 0,
+    "model_rejections": 0,
+    "queue": {
+      "pending": 748
+    },
+    "enrichment_complete": false
+  },
+  "pipeline_seconds": {
+    "binding_maintenance": 155.663,
+    "permission_total": 19553.254,
+    "source_ingest": 5.696,
+    "source_total": 19714.822
+  },
+  "governance": {
+    "candidate_versions": 596,
+    "decisions": 596,
+    "recipient_decisions": 0,
+    "erasure_selectors": 4
+  },
+  "permission_inference": {
+    "jobs": {
+      "complete": 198,
+      "quarantined": 9
+    },
+    "attempts": 263,
+    "record_versions": 612,
+    "skipped_turns": [],
+    "quarantined_turns": [
+      {
+        "id": "permission-job:47901a31c39c6a6833de760f9fdbc824550312bad6e9f7d6c302d616b8471fbb",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:c64d3cf7144255783cb4c8603cd51b55015a3806360b048faeeeab85a2aa2860",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "UNRESOLVED_RELEASED",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 2,
+            "outcome": "UNRESOLVED_RELEASED",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Meaning, recipient, scope or applicability unresolved after the bounded assessment; uncertainty hold deliberately released and established permissions remain in force.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:ab7d817992f3073bdc9856ca76cd2ca7d43e279c4f1499a0d1a470413b5ff2c5",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:175eb2abb59d4060fb535001e3f7d295dbe13ab23e3b73be6d4f54213c15ec4a",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:868cc7a2bd0b796830b8a462f764095ff9c2c4c86dc1124c5236118f5cded6ea",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:5df62fe5af4bf5d4c6c96ca7dd0c9fbc3fdc5882123fdb9825dd487c66929f3e",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:e222b9b0907ee476a4c694b3b32ea0b2fcf1383458918e8dbdd17ade20e1e223",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:08d220f80b004c2142ebad00d23b71e21c817895279197aa3cf221bf3bac724e",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:b67f32a23a228286a725951b9d472c0016f166496a33a768209218fdf255522d",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:173de4c53a2f52eea5ccb67fec677d4dde9b92b2d0ea65579c9ff0c2ff707a72",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:183123ca3bb28f931d7781b3bd6f13d6fb57bfe05e3313a9dffca453c5c3d2f4",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:5902e03906c98c90c7823253d8f5013629d3ab4486138ae99af9d53eeeeb7bd2",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:1e00358eb6f8ea1a1fdac7ac1b63b6938142bcd51e62ca5e0049f3fc6dfe9bd7",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:34e042d3e0428d764bb454e4ba1bf5bbf5ee364d20014e5b975abd430b8fd0db",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:196f42be8402e53f9b93628c56f65bb7ceffd8e345bb6e3beb17a6d97a23d3c4",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:c66bfc3d9f89985f67f079cc610f294367430027d6151c500190aa827b48414b",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      },
+      {
+        "id": "permission-job:703ae08eadc1da245f8061e62345303e62e6c5f6a9c747d87490b2b3a566f901",
+        "compartment": "encounter:16c4fc36181a635b82a485c7",
+        "source_id": "permission-source:f7f4ffff4e4dc50debd821d8127d02d0b921e2c2ff93acafbbd63b26ff6fd279",
+        "validation": {
+          "accepted": false,
+          "control_assessment_state": "NO_PRIVACY_INSTRUCTION",
+          "control_hold_ids": [],
+          "error": "PermissionProposalRejected",
+          "hold_scope": "finalized_independent_assessment_v19",
+          "limit": 2,
+          "privacy_assessment": {
+            "assessed_by": "independent_model_assessment",
+            "extra_model_calls": 1,
+            "outcome": "NO_PRIVACY_INSTRUCTION",
+            "policy_version": "v19-independent-privacy-fallback:1",
+            "release_reason": "Complete original event assessed: no privacy instruction established; event uncertainty hold released.",
+            "uncertainty_released": true,
+            "verified_controls": []
+          },
+          "reason": "Service acceptance is durable but its task/recipient/authority remains unresolved",
+          "rejections": 2,
+          "skipped": true,
+          "unresolved_access_hold": false
+        }
+      }
+    ],
+    "active_scoped_control_holds": 0,
+    "complete": false,
+    "runtime_assignments": 15,
+    "indexed_resources": 705,
+    "coverage_adjustments": 0,
+    "semantic_calls_per_source": 1.271,
+    "latency_seconds": {
+      "mean": 95.24068735956983,
+      "median": 72.48371355887502,
+      "p90": 192.85619866847992,
+      "max": 522.9428676078096
+    },
+    "processing_seconds": 19182.274,
+    "model_seconds": 19076.543,
+    "mean_seconds_per_source": 92.668,
+    "measured_attempts": 263,
+    "prompt_tokens": 3397813,
+    "completion_tokens": 93629,
+    "maintenance_model_seconds": 0,
+    "total_source_model_seconds": 19076.543,
+    "outside_model_seconds": 638.279,
+    "latency_by_episode_position": {
+      "first_50": {
+        "count": 50,
+        "mean": 114.52579879526049
+      },
+      "51_to_100": {
+        "count": 50,
+        "mean": 106.1393837240152
+      },
+      "after_100": {
+        "count": 107,
+        "mean": 81.13610427539413
+      }
+    }
+  },
+  "degraded": true,
+  "memory_processing": {
+    "durable_extraction_enabled": true,
+    "extraction_jobs": {
+      "complete": 207
+    },
+    "candidate_states": {
+      "active": 136,
+      "erased": 10
+    },
+    "semantic_stages": {
+      "combined_incremental": {
+        "calls": 216,
+        "timed_calls": 216,
+        "seconds": 17905.550893944688,
+        "model_seconds": 17805.329757650383,
+        "prompt_tokens": 3284772,
+        "completion_tokens": 89306
+      },
+      "incremental_binding_repair": {
+        "calls": 46,
+        "timed_calls": 46,
+        "seconds": 1020.031695747748,
+        "model_seconds": 1014.8779526855797,
+        "prompt_tokens": 97690,
+        "completion_tokens": 4176
+      },
+      "incremental_repair": {
+        "calls": 1,
+        "timed_calls": 1,
+        "seconds": 256.69149734359235,
+        "model_seconds": 256.3352256147191,
+        "prompt_tokens": 15351,
+        "completion_tokens": 147
+      }
+    },
+    "binding_review_outcomes": {
+      "bound": 21,
+      "restricted": 5,
+      "scope_or_subject_excluded": 58
+    },
+    "authorization_gap_diagnoses": {},
+    "failure_hold_jobs": 9,
+    "checkpoints_with_evidence": 27,
+    "checkpoints_without_evidence": 1,
+    "semantic_accuracy_measured": false,
+    "historical_binding_failures": 0,
+    "pending_binding_reviews_at_latest_publication": 0,
+    "historical_pending_pair_observations": 0,
+    "metric_semantics": {
+      "historical_binding_failures": "Legacy alias: repeated pending-pair observations, not unique failures.",
+      "pending_binding_reviews_at_latest_publication": "Outstanding pairs at the last source or maintenance publication in each compartment."
+    },
+    "ready_for_answers": false
+  },
+  "answer_validation": {
+    "version": "v19-answer-evidence:2",
+    "queries": 28,
+    "modes": {
+      "enforce": 28,
+      "shadow": 0
+    },
+    "generation_calls": 25,
+    "verification_calls": 25,
+    "policy_calls": 4,
+    "regeneration_calls": 0,
+    "repair_count": 12,
+    "rejected_claims": 2,
+    "verifier_seconds_total": 2367.6977581987157,
+    "verifier_seconds_mean": 94.70791032794862,
+    "repair_frequency": 0.42857142857142855,
+    "validation_unavailable": 7,
+    "adjudicated_queries": 0,
+    "false_rejection_rate": null,
+    "matched_real_model_latency": "not_measured"
+  }
+}
